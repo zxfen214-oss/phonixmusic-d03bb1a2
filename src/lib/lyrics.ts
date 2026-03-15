@@ -1,0 +1,327 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export interface LyricLine {
+  time: number; // in seconds
+  text: string;
+  secondaryText?: string; // parenthesized text like (ooh), rendered smaller & skipped in karaoke
+  alignment?: 'left' | 'right'; // text alignment directive
+  isMusic?: boolean; // instrumental section marker
+  musicEnd?: number; // end time for music section (seconds)
+  isNl?: boolean; // <nl> tag: next line joins as secondary main line
+  elrcWords?: { word: string; startTime: number; endTime: number }[]; // eLRC word-level timestamps
+}
+
+export interface ParsedLyrics {
+  lines: LyricLine[];
+  isSynced: boolean;
+  defaultAlignment?: 'left' | 'right';
+}
+
+export async function fetchTextUtf8(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch text: ${res.status}`);
+  }
+  const buf = await res.arrayBuffer();
+  return new TextDecoder("utf-8", { fatal: false }).decode(buf);
+}
+
+/**
+ * Extract parenthesized segments from a lyric line.
+ */
+function extractParenthesized(text: string): { main: string; secondary: string | undefined } {
+  const regex = /\([^)]+\)/g;
+  const parens: string[] = [];
+  const main = text.replace(regex, (match) => {
+    parens.push(match);
+    return '';
+  }).replace(/\s{2,}/g, ' ').trim();
+
+  if (parens.length === 0) return { main: text, secondary: undefined };
+  return { main: main || text, secondary: parens.join(' ') };
+}
+
+/**
+ * Parse time string like "00:30" or "01:25" to seconds
+ */
+function parseTimeStr(str: string): number {
+  const parts = str.trim().split(':');
+  if (parts.length === 2) {
+    return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+  }
+  return parseFloat(str) || 0;
+}
+
+/**
+ * Parse eLRC word-level timestamps from a line text.
+ * eLRC format: <hh:mm:ss.xx>word<hh:mm:ss.xx>word...
+ * Returns the words with their timings, or null if not eLRC.
+ */
+function parseELRCWords(text: string, lineStartTime: number): { word: string; startTime: number; endTime: number }[] | null {
+  // eLRC pattern: text contains inline word timestamps like <00:01.50>word
+  const elrcPattern = /<(\d{1,2}):(\d{2})(?:[.:])(\d{2,3})>/g;
+  const matches = [...text.matchAll(elrcPattern)];
+  
+  if (matches.length < 2) return null; // Need at least 2 timestamps for word-level
+  
+  const words: { word: string; startTime: number; endTime: number }[] = [];
+  
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const minutes = parseInt(match[1], 10);
+    const seconds = parseInt(match[2], 10);
+    const centiseconds = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+    const startTime = minutes * 60 + seconds + centiseconds / 1000;
+    
+    // Get the text between this timestamp and the next
+    const startIdx = match.index! + match[0].length;
+    const endIdx = i < matches.length - 1 ? matches[i + 1].index! : text.length;
+    const wordText = text.slice(startIdx, endIdx).trim();
+    
+    if (wordText) {
+      const nextMatch = matches[i + 1];
+      let endTime: number;
+      if (nextMatch) {
+        const nm = parseInt(nextMatch[1], 10);
+        const ns = parseInt(nextMatch[2], 10);
+        const nc = nextMatch[3] ? parseInt(nextMatch[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+        endTime = nm * 60 + ns + nc / 1000;
+      } else {
+        endTime = startTime + 0.5; // default 500ms for last word
+      }
+      
+      words.push({ word: wordText, startTime, endTime });
+    }
+  }
+  
+  return words.length > 0 ? words : null;
+}
+
+/**
+ * Parse an LRC file content into structured lyrics with timestamps.
+ * Supports: standard LRC, eLRC (word-level), <left>, <right>, <music>start</music>end, <nl>
+ */
+export function parseLRC(content: string): ParsedLyrics {
+  const lines: LyricLine[] = [];
+  const lrcLines = content.replace(/\r\n?/g, "\n").split("\n");
+  
+  const timeRegex = /\[(\d{1,2}):(\d{2})(?:[.:])(\d{2,3})?\]/g;
+  const metadataRegex = /^\[(?:ar|ti|al|by|offset|re|ve|length):/i;
+  
+  let currentAlignment: 'left' | 'right' = 'left';
+  let defaultAlignment: 'left' | 'right' = 'left';
+
+  for (const line of lrcLines) {
+    const trimmedLine = line.trim();
+    
+    if (!trimmedLine || metadataRegex.test(trimmedLine)) {
+      continue;
+    }
+
+    if (trimmedLine === '<left>') {
+      currentAlignment = 'left';
+      defaultAlignment = 'left';
+      continue;
+    }
+    if (trimmedLine === '<right>') {
+      currentAlignment = 'right';
+      defaultAlignment = 'right';
+      continue;
+    }
+
+    const musicMatch = trimmedLine.match(/^<music>([\d:]+)<\/music>([\d:]+)$/);
+    if (musicMatch) {
+      const musicStart = parseTimeStr(musicMatch[1]);
+      const musicEnd = parseTimeStr(musicMatch[2]);
+      lines.push({
+        time: musicStart,
+        text: '♪',
+        isMusic: true,
+        musicEnd,
+        alignment: currentAlignment,
+      });
+      continue;
+    }
+
+    // Find all timestamps in the line
+    const matches: { time: number; index: number }[] = [];
+    let match;
+    
+    while ((match = timeRegex.exec(trimmedLine)) !== null) {
+      const minutes = parseInt(match[1], 10);
+      const seconds = parseInt(match[2], 10);
+      const centiseconds = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+      const time = minutes * 60 + seconds + centiseconds / 1000;
+      matches.push({ time, index: match.index + match[0].length });
+    }
+    
+    timeRegex.lastIndex = 0;
+    
+    if (matches.length > 0) {
+      const lastMatch = matches[matches.length - 1];
+      let text = trimmedLine.slice(lastMatch.index).trim();
+      
+      // Check for <nl> tag at end of text
+      let isNl = false;
+      if (text.endsWith('<nl>')) {
+        isNl = true;
+        text = text.slice(0, -4).trim();
+      }
+      if (text.startsWith('<nl>')) {
+        isNl = true;
+        text = text.slice(4).trim();
+      }
+
+      // Check for inline alignment tags
+      let lineAlignment = currentAlignment;
+      if (text.startsWith('<right>')) {
+        lineAlignment = 'right';
+        text = text.slice(7).trim();
+      } else if (text.startsWith('<left>')) {
+        lineAlignment = 'left';
+        text = text.slice(6).trim();
+      }
+      
+      for (const { time } of matches) {
+        if (text) {
+          // Try to parse eLRC word-level timestamps
+          const elrcWords = parseELRCWords(text, time);
+          
+          // Clean text for display (strip eLRC timestamps)
+          let displayText = text;
+          if (elrcWords) {
+            displayText = elrcWords.map(w => w.word).join(' ');
+          }
+          
+          const { main, secondary } = extractParenthesized(displayText);
+          lines.push({ 
+            time, 
+            text: main, 
+            secondaryText: secondary, 
+            alignment: lineAlignment,
+            isNl,
+            elrcWords: elrcWords || undefined,
+          });
+        }
+      }
+    }
+  }
+  
+  lines.sort((a, b) => a.time - b.time);
+  
+  return {
+    lines,
+    isSynced: lines.length > 0,
+    defaultAlignment,
+  };
+}
+
+/**
+ * Fetch lyrics for a track - first checks database for .lrc file, then falls back to API
+ */
+export async function fetchSyncedLyrics(
+  youtubeId: string | undefined,
+  artist: string,
+  title: string
+): Promise<ParsedLyrics | null> {
+  if (youtubeId) {
+    try {
+      const { data: song } = await supabase
+        .from("songs")
+        .select("lyrics_url, synced_lyrics, plain_lyrics")
+        .eq("youtube_id", youtubeId)
+        .maybeSingle();
+      
+      // Priority 1: lyrics_url (.lrc file)
+      if (song?.lyrics_url) {
+        const content = await fetchTextUtf8(song.lyrics_url);
+        const parsed = parseLRC(content);
+        if (parsed.lines.length > 0) {
+          console.log(`Loaded synced lyrics for ${title} with ${parsed.lines.length} lines`);
+          return parsed;
+        }
+      }
+
+      // Priority 2: synced_lyrics (raw LRC string from LRCLIB)
+      if (song?.synced_lyrics) {
+        const parsed = parseLRC(song.synced_lyrics);
+        if (parsed.lines.length > 0) {
+          console.log(`Loaded synced lyrics from DB for ${title} with ${parsed.lines.length} lines`);
+          return parsed;
+        }
+      }
+
+      // Priority 3: plain_lyrics (unsynced)
+      if (song?.plain_lyrics) {
+        const plainLines = song.plain_lyrics
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0);
+        
+        if (plainLines.length > 0) {
+          return {
+            lines: plainLines.map((text: string) => ({ time: -1, text })),
+            isSynced: false,
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching lyrics from database:", error);
+    }
+  }
+  
+  try {
+    const response = await fetch(
+      `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.lyrics) {
+        const plainLines = data.lyrics
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0);
+        
+        return {
+          lines: plainLines.map((text: string) => ({
+            time: -1,
+            text,
+          })),
+          isSynced: false,
+        };
+      }
+    }
+  } catch (error) {
+    console.error("Failed to fetch lyrics from API:", error);
+  }
+  
+  return null;
+}
+
+/**
+ * Find the current lyric line based on the current playback time
+ */
+export function getCurrentLyricIndex(lyrics: LyricLine[], currentTime: number): number {
+  if (lyrics.length === 0) return -1;
+  
+  if (lyrics[0].time === -1) {
+    return -1;
+  }
+  
+  if (currentTime < lyrics[0].time) {
+    return -1;
+  }
+  
+  let currentIndex = 0;
+  for (let i = 0; i < lyrics.length; i++) {
+    if (lyrics[i].time <= currentTime) {
+      currentIndex = i;
+    } else {
+      break;
+    }
+  }
+  
+  return currentIndex;
+}
