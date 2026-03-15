@@ -1,82 +1,109 @@
-import { Track } from "@/types/music";
-
+// Popular tracks to show in the library when empty
 export interface PopularTrack {
-  id: string;
+  youtubeId: string;
   title: string;
   artist: string;
-  album: string;
-  coverUrl: string;
-  youtubeId: string;
+  thumbnail: string;
   duration: number;
 }
 
 export const popularTracks: PopularTrack[] = [
   {
-    id: "popular-1",
-    title: "Blinding Lights",
-    artist: "The Weeknd",
-    album: "After Hours",
-    coverUrl: "https://i.ytimg.com/vi/4NRXx6U8ABQ/maxresdefault.jpg",
-    youtubeId: "4NRXx6U8ABQ",
-    duration: 200,
+    youtubeId: "dQw4w9WgXcQ",
+    title: "Never Gonna Give You Up",
+    artist: "Rick Astley",
+    thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+    duration: 213,
   },
   {
-    id: "popular-2",
+    youtubeId: "kJQP7kiw5Fk",
+    title: "Despacito",
+    artist: "Luis Fonsi ft. Daddy Yankee",
+    thumbnail: "https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg",
+    duration: 282,
+  },
+  {
+    youtubeId: "JGwWNGJdvx8",
     title: "Shape of You",
     artist: "Ed Sheeran",
-    album: "÷ (Divide)",
-    coverUrl: "https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg",
-    youtubeId: "JGwWNGJdvx8",
-    duration: 234,
+    thumbnail: "https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg",
+    duration: 263,
   },
   {
-    id: "popular-3",
-    title: "Levitating",
-    artist: "Dua Lipa",
-    album: "Future Nostalgia",
-    coverUrl: "https://i.ytimg.com/vi/TUVcZfQe-Kw/maxresdefault.jpg",
-    youtubeId: "TUVcZfQe-Kw",
-    duration: 203,
+    youtubeId: "RgKAFK5djSk",
+    title: "See You Again",
+    artist: "Wiz Khalifa ft. Charlie Puth",
+    thumbnail: "https://img.youtube.com/vi/RgKAFK5djSk/mqdefault.jpg",
+    duration: 237,
   },
   {
-    id: "popular-4",
-    title: "Stay",
-    artist: "The Kid LAROI & Justin Bieber",
-    album: "F*CK LOVE 3",
-    coverUrl: "https://i.ytimg.com/vi/kTJczUoc26U/maxresdefault.jpg",
-    youtubeId: "kTJczUoc26U",
-    duration: 141,
+    youtubeId: "OPf0YbXqDm0",
+    title: "Uptown Funk",
+    artist: "Mark Ronson ft. Bruno Mars",
+    thumbnail: "https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg",
+    duration: 271,
   },
   {
-    id: "popular-5",
-    title: "Peaches",
+    youtubeId: "09R8_2nJtjg",
+    title: "Sugar",
+    artist: "Maroon 5",
+    thumbnail: "https://img.youtube.com/vi/09R8_2nJtjg/mqdefault.jpg",
+    duration: 311,
+  },
+  {
+    youtubeId: "fRh_vgS2dFE",
+    title: "Sorry",
     artist: "Justin Bieber",
-    album: "Justice",
-    coverUrl: "https://i.ytimg.com/vi/tQ0yjYUFKAE/maxresdefault.jpg",
-    youtubeId: "tQ0yjYUFKAE",
-    duration: 198,
+    thumbnail: "https://img.youtube.com/vi/fRh_vgS2dFE/mqdefault.jpg",
+    duration: 201,
   },
   {
-    id: "popular-6",
-    title: "Montero",
-    artist: "Lil Nas X",
-    album: "Montero",
-    coverUrl: "https://i.ytimg.com/vi/6swmTBVI83k/maxresdefault.jpg",
-    youtubeId: "6swmTBVI83k",
-    duration: 137,
+    youtubeId: "60ItHLz5WEA",
+    title: "Hello",
+    artist: "Adele",
+    thumbnail: "https://img.youtube.com/vi/60ItHLz5WEA/mqdefault.jpg",
+    duration: 367,
+  },
+  {
+    youtubeId: "ktvTqknDobU",
+    title: "Radioactive",
+    artist: "Imagine Dragons",
+    thumbnail: "https://img.youtube.com/vi/ktvTqknDobU/mqdefault.jpg",
+    duration: 187,
+  },
+  {
+    youtubeId: "YQHsXMglC9A",
+    title: "Hello",
+    artist: "Adele",
+    thumbnail: "https://img.youtube.com/vi/YQHsXMglC9A/mqdefault.jpg",
+    duration: 364,
+  },
+  {
+    youtubeId: "e-ORhEE9VVg",
+    title: "Blank Space",
+    artist: "Taylor Swift",
+    thumbnail: "https://img.youtube.com/vi/e-ORhEE9VVg/mqdefault.jpg",
+    duration: 272,
+  },
+  {
+    youtubeId: "hT_nvWreIhg",
+    title: "Counting Stars",
+    artist: "OneRepublic",
+    thumbnail: "https://img.youtube.com/vi/hT_nvWreIhg/mqdefault.jpg",
+    duration: 257,
   },
 ];
 
-export function convertPopularToTrack(popular: PopularTrack): Track {
+export function convertPopularToTrack(popular: PopularTrack) {
   return {
-    id: popular.id,
+    id: `yt-${popular.youtubeId}`,
     title: popular.title,
     artist: popular.artist,
-    album: popular.album,
-    artwork: popular.coverUrl,
-    youtubeId: popular.youtubeId,
+    album: "YouTube",
     duration: popular.duration,
-    source: 'youtube',
+    artwork: popular.thumbnail,
+    source: 'youtube' as const,
+    youtubeId: popular.youtubeId,
     addedAt: new Date(),
   };
 }
