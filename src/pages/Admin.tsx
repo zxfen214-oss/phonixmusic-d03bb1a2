@@ -878,6 +878,24 @@ export default function Admin() {
                         )}
                       </div>
 
+                      {/* Audio Upload */}
+                      <div className="space-y-2">
+                        <Label>Audio File (.mp3)</Label>
+                        {editingSong?.audio_url ? (
+                          <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+                            <Music className="h-4 w-4 text-accent" />
+                            <span className="text-sm flex-1 truncate">Audio attached</span>
+                            <Button variant="ghost" size="sm" onClick={handleRemoveAudio} className="text-destructive">Remove</Button>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">{audioFile ? audioFile.name : "Upload .mp3 file"}</span>
+                            <input type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
+                          </label>
+                        )}
+                      </div>
+
                       <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         {isSaving ? "Saving..." : "Save Song"}
