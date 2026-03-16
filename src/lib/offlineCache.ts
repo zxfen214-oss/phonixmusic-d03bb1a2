@@ -100,6 +100,32 @@ export async function isAudioCached(youtubeId: string): Promise<boolean> {
 }
 
 /**
+ * Get cached lyrics for a YouTube ID
+ */
+export async function getCachedLyrics(youtubeId: string): Promise<{ syncedLyrics: string | null; plainLyrics: string | null } | null> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const request = store.get(youtubeId);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedAudio | undefined;
+        if (result) {
+          resolve({ syncedLyrics: result.syncedLyrics || null, plainLyrics: result.plainLyrics || null });
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get cached audio blob for a YouTube ID
  */
 export async function getCachedAudio(youtubeId: string): Promise<Blob | null> {
