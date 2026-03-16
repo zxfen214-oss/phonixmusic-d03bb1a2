@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine } from "@/lib/lyrics";
+import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedLyrics } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
   X, 
