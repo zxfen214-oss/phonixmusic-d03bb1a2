@@ -6,6 +6,7 @@ import {
   getCachedAudio, 
   downloadAndCacheAudio, 
   removeCachedAudio,
+  getCachedLyrics,
   formatBytes 
 } from '@/lib/offlineCache';
 
