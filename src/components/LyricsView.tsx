@@ -620,7 +620,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }
           }
         }
-        const lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+        
+        // If no lyrics from network, try offline cache
+        if (!lyrics?.lines.length && currentTrack.youtubeId) {
+          const cached = await getCachedLyrics(currentTrack.youtubeId);
+          if (cached?.syncedLyrics) {
+            const parsed = parseLRC(cached.syncedLyrics);
+            if (parsed.length > 0) {
+              lyrics = { lines: parsed, isSynced: true };
+            }
+          }
+        }
+
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
         } else {
