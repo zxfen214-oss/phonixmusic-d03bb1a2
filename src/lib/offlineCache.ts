@@ -231,7 +231,9 @@ export async function downloadAndCacheAudio(
   youtubeId: string,
   title: string,
   artist: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  syncedLyrics?: string | null,
+  plainLyrics?: string | null
 ): Promise<boolean> {
   try {
     const response = await fetch(audioUrl);
@@ -266,7 +268,7 @@ export async function downloadAndCacheAudio(
     }
 
     const blob = new Blob(chunks, { type: 'audio/mpeg' });
-    await cacheAudio(youtubeId, blob, title, artist);
+    await cacheAudio(youtubeId, blob, title, artist, syncedLyrics, plainLyrics);
     
     return true;
   } catch (error) {
