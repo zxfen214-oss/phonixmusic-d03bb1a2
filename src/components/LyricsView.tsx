@@ -518,7 +518,7 @@ function LyricsContent({
                 <p
                   dir="auto"
                   style={{
-                    fontSize: isNlPair ? (isMobile ? '24px' : '28px') : fontSize,
+                    fontSize,
                     fontWeight: isActive ? 700 : 600,
                     color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
                     unicodeBidi: "plaintext",
@@ -528,6 +528,11 @@ function LyricsContent({
                 >
                   {text}
                 </p>
+                {nlCompanionText && isActive && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: "rgba(255,255,255,0.85)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
