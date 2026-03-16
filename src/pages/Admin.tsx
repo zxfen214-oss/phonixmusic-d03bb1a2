@@ -39,6 +39,7 @@ interface Song {
   youtube_id: string | null;
   cover_url: string | null;
   lyrics_url: string | null;
+  audio_url: string | null;
   created_at: string;
   needs_metadata: boolean;
   synced_lyrics: string | null;
