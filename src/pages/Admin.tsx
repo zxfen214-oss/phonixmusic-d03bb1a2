@@ -249,6 +249,7 @@ export default function Admin() {
     setCoverPreview(null);
     setCoverFile(null);
     setLyricsFile(null);
+    setAudioFile(null);
     setIsCreating(true);
   };
 
