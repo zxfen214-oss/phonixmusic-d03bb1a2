@@ -189,6 +189,7 @@ export async function getAllCachedInfo(): Promise<CacheInfo[]> {
           cachedAt: new Date(item.cachedAt),
           title: item.title,
           artist: item.artist,
+          hasSyncedLyrics: !!item.syncedLyrics,
         }));
         resolve(results);
       };
