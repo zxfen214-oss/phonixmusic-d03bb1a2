@@ -631,8 +631,14 @@ export default function Admin() {
                                     YouTube
                                   </span>
                                 )}
+                                {song.audio_url && (
+                                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Music className="h-3 w-3" />
+                                    MP3
+                                  </span>
+                                )}
                                 {song.needs_metadata && (
-                                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <RefreshCw className="h-3 w-3" />
                                     Pending
                                   </span>
