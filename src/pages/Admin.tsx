@@ -415,6 +415,23 @@ export default function Admin() {
     }
   };
 
+  const handleRemoveAudio = async () => {
+    if (!editingSong) return;
+
+    const { error } = await supabase
+      .from("songs")
+      .update({ audio_url: null })
+      .eq("id", editingSong.id);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Audio removed" });
+      setEditingSong({ ...editingSong, audio_url: null } as Song);
+      fetchSongs();
+    }
+  };
+
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
