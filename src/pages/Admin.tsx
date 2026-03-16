@@ -293,6 +293,7 @@ export default function Admin() {
     try {
       let coverUrl = editingSong?.cover_url || null;
       let lyricsUrl = editingSong?.lyrics_url || null;
+      let audioUrl = (editingSong as any)?.audio_url || null;
 
       if (coverFile) {
         const url = await uploadFile(coverFile, "covers");
@@ -304,6 +305,11 @@ export default function Admin() {
         if (url) lyricsUrl = url;
       }
 
+      if (audioFile) {
+        const url = await uploadFile(audioFile, "audio");
+        if (url) audioUrl = url;
+      }
+
       const songData = {
         title: formData.title,
         artist: formData.artist,
@@ -312,6 +318,7 @@ export default function Admin() {
         youtube_id: formData.youtube_id || null,
         cover_url: coverUrl,
         lyrics_url: lyricsUrl,
+        audio_url: audioUrl,
       };
 
       if (editingSong) {
