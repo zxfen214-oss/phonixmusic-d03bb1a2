@@ -46,6 +46,7 @@ interface VisibleLyricItem {
   isMusic?: boolean;
   musicEnd?: number;
   isNlPair?: boolean;
+  nlCompanionText?: string; // text from the <nl>-tagged previous line, rendered as sub-line
   elrcWords?: { word: string; startTime: number; endTime: number }[];
 }
 
