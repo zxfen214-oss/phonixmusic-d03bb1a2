@@ -627,8 +627,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           const cached = await getCachedLyrics(currentTrack.youtubeId);
           if (cached?.syncedLyrics) {
             const parsed = parseLRC(cached.syncedLyrics);
-            if (parsed.length > 0) {
-              lyrics = { lines: parsed, isSynced: true };
+            if (parsed.lines.length > 0) {
+              lyrics = parsed;
             }
           }
         }
