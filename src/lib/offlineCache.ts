@@ -67,6 +67,8 @@ export interface CachedAudio {
   cachedAt: Date;
   title: string;
   artist: string;
+  syncedLyrics?: string | null;
+  plainLyrics?: string | null;
 }
 
 export interface CacheInfo {
@@ -75,6 +77,7 @@ export interface CacheInfo {
   cachedAt: Date;
   title: string;
   artist: string;
+  hasSyncedLyrics: boolean;
 }
 
 /**
