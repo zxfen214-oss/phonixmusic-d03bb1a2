@@ -672,18 +672,21 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     const prevLine = currentLineIndex > 0 ? parsedLyrics.lines[currentLineIndex - 1] : null;
     const hasPrevNl = prevLine?.isNl === true;
 
-    // For NL pairs: prev line stays at position 0 alongside current line.
-    // The next line after the pair should start at position 1 (not 0).
-    // This ensures all OTHER lines keep their positions stable.
     for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
       const idx = currentLineIndex + i;
       if (idx >= 0 && idx < parsedLyrics.lines.length) {
         const line = parsedLyrics.lines[idx];
         const next = parsedLyrics.lines[idx + 1];
-        const isNlPair = i === -1 && hasPrevNl;
-        // NL pair: keep at position -1 so it stays where it was (doesn't move to center)
-        const pos = i;
-        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, isNlPair, elrcWords: line.elrcWords });
+
+        // Skip the nl-tagged previous line as a separate item — it's merged into the active line
+        if (i === -1 && hasPrevNl) continue;
+
+        const pos = hasPrevNl && i > -1 ? i : i;
+
+        // If this is the active line and previous had <nl>, attach companion text
+        const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
+
+        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
       }
     }
     return result;
