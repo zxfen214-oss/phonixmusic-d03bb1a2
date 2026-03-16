@@ -128,7 +128,9 @@ export async function cacheAudio(
   youtubeId: string,
   audioBlob: Blob,
   title: string,
-  artist: string
+  artist: string,
+  syncedLyrics?: string | null,
+  plainLyrics?: string | null
 ): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -143,6 +145,8 @@ export async function cacheAudio(
       cachedAt: new Date(),
       title,
       artist,
+      syncedLyrics: syncedLyrics || null,
+      plainLyrics: plainLyrics || null,
     };
     
     const request = store.put(cachedAudio);
