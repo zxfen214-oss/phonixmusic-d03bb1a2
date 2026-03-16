@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine } from "@/lib/lyrics";
+import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedLyrics } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
   X, 
@@ -619,7 +620,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }
           }
         }
-        const lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+        
+        // If no lyrics from network, try offline cache
+        if (!lyrics?.lines.length && currentTrack.youtubeId) {
+          const cached = await getCachedLyrics(currentTrack.youtubeId);
+          if (cached?.syncedLyrics) {
+            const parsed = parseLRC(cached.syncedLyrics);
+            if (parsed.lines.length > 0) {
+              lyrics = parsed;
+            }
+          }
+        }
+
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
         } else {

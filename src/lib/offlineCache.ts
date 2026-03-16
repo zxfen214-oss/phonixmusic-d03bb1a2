@@ -67,6 +67,8 @@ export interface CachedAudio {
   cachedAt: Date;
   title: string;
   artist: string;
+  syncedLyrics?: string | null;
+  plainLyrics?: string | null;
 }
 
 export interface CacheInfo {
@@ -75,6 +77,7 @@ export interface CacheInfo {
   cachedAt: Date;
   title: string;
   artist: string;
+  hasSyncedLyrics: boolean;
 }
 
 /**
@@ -93,6 +96,32 @@ export async function isAudioCached(youtubeId: string): Promise<boolean> {
     });
   } catch {
     return false;
+  }
+}
+
+/**
+ * Get cached lyrics for a YouTube ID
+ */
+export async function getCachedLyrics(youtubeId: string): Promise<{ syncedLyrics: string | null; plainLyrics: string | null } | null> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const request = store.get(youtubeId);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedAudio | undefined;
+        if (result) {
+          resolve({ syncedLyrics: result.syncedLyrics || null, plainLyrics: result.plainLyrics || null });
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -125,7 +154,9 @@ export async function cacheAudio(
   youtubeId: string,
   audioBlob: Blob,
   title: string,
-  artist: string
+  artist: string,
+  syncedLyrics?: string | null,
+  plainLyrics?: string | null
 ): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -140,6 +171,8 @@ export async function cacheAudio(
       cachedAt: new Date(),
       title,
       artist,
+      syncedLyrics: syncedLyrics || null,
+      plainLyrics: plainLyrics || null,
     };
     
     const request = store.put(cachedAudio);
@@ -182,6 +215,7 @@ export async function getAllCachedInfo(): Promise<CacheInfo[]> {
           cachedAt: new Date(item.cachedAt),
           title: item.title,
           artist: item.artist,
+          hasSyncedLyrics: !!item.syncedLyrics,
         }));
         resolve(results);
       };
@@ -223,7 +257,9 @@ export async function downloadAndCacheAudio(
   youtubeId: string,
   title: string,
   artist: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  syncedLyrics?: string | null,
+  plainLyrics?: string | null
 ): Promise<boolean> {
   try {
     const response = await fetch(audioUrl);
@@ -258,7 +294,7 @@ export async function downloadAndCacheAudio(
     }
 
     const blob = new Blob(chunks, { type: 'audio/mpeg' });
-    await cacheAudio(youtubeId, blob, title, artist);
+    await cacheAudio(youtubeId, blob, title, artist, syncedLyrics, plainLyrics);
     
     return true;
   } catch (error) {

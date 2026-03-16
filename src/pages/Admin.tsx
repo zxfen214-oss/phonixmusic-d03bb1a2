@@ -39,6 +39,7 @@ interface Song {
   youtube_id: string | null;
   cover_url: string | null;
   lyrics_url: string | null;
+  audio_url: string | null;
   created_at: string;
   needs_metadata: boolean;
   synced_lyrics: string | null;
@@ -149,6 +150,7 @@ export default function Admin() {
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -248,6 +250,7 @@ export default function Admin() {
     setCoverPreview(null);
     setCoverFile(null);
     setLyricsFile(null);
+    setAudioFile(null);
     setIsCreating(true);
   };
 
@@ -256,6 +259,7 @@ export default function Admin() {
     setIsCreating(false);
     setCoverFile(null);
     setLyricsFile(null);
+    setAudioFile(null);
     setCoverPreview(null);
   };
 
@@ -290,6 +294,7 @@ export default function Admin() {
     try {
       let coverUrl = editingSong?.cover_url || null;
       let lyricsUrl = editingSong?.lyrics_url || null;
+      let audioUrl = (editingSong as any)?.audio_url || null;
 
       if (coverFile) {
         const url = await uploadFile(coverFile, "covers");
@@ -301,6 +306,11 @@ export default function Admin() {
         if (url) lyricsUrl = url;
       }
 
+      if (audioFile) {
+        const url = await uploadFile(audioFile, "audio");
+        if (url) audioUrl = url;
+      }
+
       const songData = {
         title: formData.title,
         artist: formData.artist,
@@ -309,6 +319,7 @@ export default function Admin() {
         youtube_id: formData.youtube_id || null,
         cover_url: coverUrl,
         lyrics_url: lyricsUrl,
+        audio_url: audioUrl,
       };
 
       if (editingSong) {
@@ -401,6 +412,23 @@ export default function Admin() {
     } else {
       toast({ title: "Success", description: "Lyrics removed" });
       setEditingSong({ ...editingSong, lyrics_url: null });
+      fetchSongs();
+    }
+  };
+
+  const handleRemoveAudio = async () => {
+    if (!editingSong) return;
+
+    const { error } = await supabase
+      .from("songs")
+      .update({ audio_url: null })
+      .eq("id", editingSong.id);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Audio removed" });
+      setEditingSong({ ...editingSong, audio_url: null } as Song);
       fetchSongs();
     }
   };
@@ -603,8 +631,14 @@ export default function Admin() {
                                     YouTube
                                   </span>
                                 )}
+                                {song.audio_url && (
+                                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Music className="h-3 w-3" />
+                                    MP3
+                                  </span>
+                                )}
                                 {song.needs_metadata && (
-                                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <RefreshCw className="h-3 w-3" />
                                     Pending
                                   </span>
@@ -840,6 +874,24 @@ export default function Admin() {
                             <Upload className="h-4 w-4" />
                             <span className="text-sm">{lyricsFile ? lyricsFile.name : "Upload .lrc file"}</span>
                             <input type="file" accept=".lrc,.txt" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Audio Upload */}
+                      <div className="space-y-2">
+                        <Label>Audio File (.mp3)</Label>
+                        {editingSong?.audio_url ? (
+                          <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+                            <Music className="h-4 w-4 text-accent" />
+                            <span className="text-sm flex-1 truncate">Audio attached</span>
+                            <Button variant="ghost" size="sm" onClick={handleRemoveAudio} className="text-destructive">Remove</Button>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">{audioFile ? audioFile.name : "Upload .mp3 file"}</span>
+                            <input type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
                           </label>
                         )}
                       </div>

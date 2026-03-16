@@ -6,6 +6,7 @@ import {
   getCachedAudio, 
   downloadAndCacheAudio, 
   removeCachedAudio,
+  getCachedLyrics,
   formatBytes 
 } from '@/lib/offlineCache';
 
@@ -61,13 +62,28 @@ export function useOfflineAudio(track: Track | null) {
     checkStatus();
   }, [track?.youtubeId]);
 
-  // Download audio for offline use
+  // Download audio for offline use (with lyrics bundled)
   const downloadForOffline = useCallback(async () => {
     if (!track?.youtubeId || !status.audioUrl) return false;
 
     setStatus(prev => ({ ...prev, isDownloading: true, downloadProgress: 0 }));
 
     try {
+      // Fetch lyrics from songs table to bundle
+      let syncedLyrics: string | null = null;
+      let plainLyrics: string | null = null;
+      
+      const { data: songData } = await supabase
+        .from('songs')
+        .select('synced_lyrics, plain_lyrics')
+        .eq('youtube_id', track.youtubeId)
+        .maybeSingle();
+      
+      if (songData) {
+        syncedLyrics = songData.synced_lyrics || null;
+        plainLyrics = songData.plain_lyrics || null;
+      }
+
       const success = await downloadAndCacheAudio(
         status.audioUrl,
         track.youtubeId,
@@ -75,7 +91,9 @@ export function useOfflineAudio(track: Track | null) {
         track.artist,
         (progress) => {
           setStatus(prev => ({ ...prev, downloadProgress: progress }));
-        }
+        },
+        syncedLyrics,
+        plainLyrics
       );
 
       if (success) {
