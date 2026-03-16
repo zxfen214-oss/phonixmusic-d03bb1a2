@@ -46,6 +46,7 @@ interface VisibleLyricItem {
   isMusic?: boolean;
   musicEnd?: number;
   isNlPair?: boolean;
+  nlCompanionText?: string; // text from the <nl>-tagged previous line, rendered as sub-line
   elrcWords?: { word: string; startTime: number; endTime: number }[];
 }
 
@@ -471,7 +472,7 @@ function LyricsContent({
       }}
     >
       {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, isNlPair, elrcWords } = item;
+        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, elrcWords } = item;
         const isActive = position === 0;
         const key = isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
@@ -517,7 +518,7 @@ function LyricsContent({
                 <p
                   dir="auto"
                   style={{
-                    fontSize: isNlPair ? (isMobile ? '24px' : '28px') : fontSize,
+                    fontSize,
                     fontWeight: isActive ? 700 : 600,
                     color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
                     unicodeBidi: "plaintext",
@@ -527,6 +528,11 @@ function LyricsContent({
                 >
                   {text}
                 </p>
+                {nlCompanionText && isActive && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: "rgba(255,255,255,0.85)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
@@ -671,18 +677,21 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     const prevLine = currentLineIndex > 0 ? parsedLyrics.lines[currentLineIndex - 1] : null;
     const hasPrevNl = prevLine?.isNl === true;
 
-    // For NL pairs: prev line stays at position 0 alongside current line.
-    // The next line after the pair should start at position 1 (not 0).
-    // This ensures all OTHER lines keep their positions stable.
     for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
       const idx = currentLineIndex + i;
       if (idx >= 0 && idx < parsedLyrics.lines.length) {
         const line = parsedLyrics.lines[idx];
         const next = parsedLyrics.lines[idx + 1];
-        const isNlPair = i === -1 && hasPrevNl;
-        // NL pair: keep at position -1 so it stays where it was (doesn't move to center)
-        const pos = i;
-        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, isNlPair, elrcWords: line.elrcWords });
+
+        // Skip the nl-tagged previous line as a separate item — it's merged into the active line
+        if (i === -1 && hasPrevNl) continue;
+
+        const pos = hasPrevNl && i > -1 ? i : i;
+
+        // If this is the active line and previous had <nl>, attach companion text
+        const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
+
+        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
       }
     }
     return result;

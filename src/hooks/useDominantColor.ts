@@ -149,6 +149,9 @@ export function useDominantColors(imageUrl: string | null | undefined): Dominant
           return `hsl(${Math.round(h)}, ${Math.round(adjustedS)}%, ${Math.round(adjustedL)}%)`;
         };
 
+        const fallbackColor = 'hsl(4, 90%, 55%)';
+        const fallbackPalette = ['hsl(4, 90%, 55%)', 'hsl(220, 70%, 50%)'];
+
         if (picked.length > 0) {
           setResult({
             primary: toHsl(picked[0]),
@@ -156,18 +159,22 @@ export function useDominantColors(imageUrl: string | null | undefined): Dominant
           });
         } else {
           setResult({
-            primary: 'hsl(var(--accent))',
-            palette: ['hsl(var(--accent))'],
+            primary: fallbackColor,
+            palette: fallbackPalette,
           });
         }
       } catch (error) {
         console.error('Error extracting dominant color:', error);
-        setResult({ primary: 'hsl(var(--accent))', palette: ['hsl(var(--accent))'] });
+        const fallbackColor = 'hsl(4, 90%, 55%)';
+        const fallbackPalette = ['hsl(4, 90%, 55%)', 'hsl(220, 70%, 50%)'];
+        setResult({ primary: fallbackColor, palette: fallbackPalette });
       }
     };
 
     img.onerror = () => {
-      setResult({ primary: 'hsl(var(--accent))', palette: ['hsl(var(--accent))'] });
+      const fallbackColor = 'hsl(4, 90%, 55%)';
+      const fallbackPalette = ['hsl(4, 90%, 55%)', 'hsl(220, 70%, 50%)'];
+      setResult({ primary: fallbackColor, palette: fallbackPalette });
     };
 
     img.src = imageUrl;
