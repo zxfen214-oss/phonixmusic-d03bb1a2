@@ -195,6 +195,11 @@ export default function Settings({ embedded = false }: SettingsProps) {
             </motion.div>
           </StaggerItem>
 
+          {/* Offline Downloads Section */}
+          <StaggerItem>
+            <OfflineDownloadsSection />
+          </StaggerItem>
+
           {/* About Section */}
           <StaggerItem>
             <motion.div
