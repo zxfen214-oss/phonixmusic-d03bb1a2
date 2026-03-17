@@ -198,6 +198,10 @@ export default function Settings({ embedded = false }: SettingsProps) {
 
           {/* Offline Downloads Section */}
           <StaggerItem>
+            <OfflineLibraryDownloadCard />
+          </StaggerItem>
+
+          <StaggerItem>
             <OfflineDownloadsSection />
           </StaggerItem>
 
