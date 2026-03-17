@@ -5,6 +5,7 @@ import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { OfflineDownloadsSection } from "@/components/OfflineDownloadsSection";
 import { 
   ArrowLeft, 
   Sun, 
