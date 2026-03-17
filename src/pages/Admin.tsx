@@ -748,6 +748,74 @@ export default function Admin() {
                   </StaggerContainer>
                 </TabsContent>
 
+                {/* Bulk Upload Tab */}
+                <TabsContent value="bulk-upload" className="mt-0">
+                  <div className="p-6 rounded-xl border border-border bg-card space-y-4">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-accent" />
+                      Bulk MP3 Upload
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Upload multiple MP3 files at once. Files will be matched to existing songs by filename, or new entries will be created.
+                    </p>
+                    
+                    <label className="flex flex-col items-center gap-3 p-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent/50 transition-colors">
+                      <Upload className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {bulkFiles.length > 0 ? `${bulkFiles.length} file(s) selected` : 'Click to select MP3 files'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".mp3,audio/mpeg"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => setBulkFiles(Array.from(e.target.files || []))}
+                      />
+                    </label>
+
+                    {bulkFiles.length > 0 && (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {bulkFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm p-2 bg-secondary rounded-lg">
+                            <Music className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate flex-1">{f.name}</span>
+                            <span className="text-xs text-muted-foreground">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {bulkUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Uploading {bulkProgress.current}/{bulkProgress.total}: {bulkProgress.currentFile}</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-2">
+                          <div 
+                            className="bg-accent h-2 rounded-full transition-all" 
+                            style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleBulkUpload}
+                        disabled={bulkFiles.length === 0 || bulkUploading}
+                        className="flex-1 gap-2"
+                      >
+                        {bulkUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {bulkUploading ? 'Uploading...' : `Upload ${bulkFiles.length} File(s)`}
+                      </Button>
+                      {bulkFiles.length > 0 && !bulkUploading && (
+                        <Button variant="outline" onClick={() => setBulkFiles([])}>Clear</Button>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
                 {/* User Library Tab */}
                 <TabsContent value="user-library" className="mt-0">
                   {isLoadingLibrary ? (
