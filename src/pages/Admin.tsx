@@ -265,14 +265,19 @@ export default function Admin() {
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     const fileExt = file.name.split(".").pop();
-    const fileName = `${folder}/${Date.now()}.${fileExt}`;
+    const fileName = `${folder}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
     
     const { error } = await supabase.storage
       .from("song-assets")
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        contentType: file.type || (folder === 'audio' ? 'audio/mpeg' : 'application/octet-stream'),
+        cacheControl: '3600',
+        upsert: false,
+      });
 
     if (error) {
       console.error("Upload error:", error);
+      toast({ title: "Upload Error", description: error.message, variant: "destructive" });
       return null;
     }
 
@@ -281,6 +286,56 @@ export default function Admin() {
       .getPublicUrl(fileName);
 
     return urlData.publicUrl;
+  };
+
+  // Bulk MP3 upload state
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; currentFile: string }>({ current: 0, total: 0, currentFile: '' });
+
+  const handleBulkUpload = async () => {
+    if (bulkFiles.length === 0) return;
+    setBulkUploading(true);
+    let successCount = 0;
+    const total = bulkFiles.length;
+
+    for (let i = 0; i < bulkFiles.length; i++) {
+      const file = bulkFiles[i];
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      setBulkProgress({ current: i + 1, total, currentFile: nameWithoutExt });
+
+      // Upload audio file
+      const audioUrl = await uploadFile(file, 'audio');
+      if (!audioUrl) continue;
+
+      // Try to find existing song by title match
+      const { data: existingSongs } = await supabase
+        .from('songs')
+        .select('id')
+        .ilike('title', `%${nameWithoutExt}%`)
+        .limit(1);
+
+      if (existingSongs && existingSongs.length > 0) {
+        // Update existing song with audio
+        await supabase.from('songs').update({ audio_url: audioUrl }).eq('id', existingSongs[0].id);
+      } else {
+        // Create new song entry
+        await supabase.from('songs').insert({
+          title: nameWithoutExt,
+          artist: 'Unknown',
+          audio_url: audioUrl,
+          duration: 0,
+          created_by: user?.id,
+        });
+      }
+      successCount++;
+    }
+
+    toast({ title: 'Bulk Upload Complete', description: `Uploaded ${successCount}/${total} files` });
+    setBulkFiles([]);
+    setBulkUploading(false);
+    setBulkProgress({ current: 0, total: 0, currentFile: '' });
+    fetchSongs();
   };
 
   const handleSave = async () => {
