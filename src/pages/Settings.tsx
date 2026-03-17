@@ -5,6 +5,7 @@ import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { OfflineDownloadsSection } from "@/components/OfflineDownloadsSection";
 import { 
   ArrowLeft, 
   Sun, 
@@ -192,6 +193,11 @@ export default function Settings({ embedded = false }: SettingsProps) {
                 </div>
               </div>
             </motion.div>
+          </StaggerItem>
+
+          {/* Offline Downloads Section */}
+          <StaggerItem>
+            <OfflineDownloadsSection />
           </StaggerItem>
 
           {/* About Section */}

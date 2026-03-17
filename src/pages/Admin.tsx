@@ -265,14 +265,19 @@ export default function Admin() {
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     const fileExt = file.name.split(".").pop();
-    const fileName = `${folder}/${Date.now()}.${fileExt}`;
+    const fileName = `${folder}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
     
     const { error } = await supabase.storage
       .from("song-assets")
-      .upload(fileName, file);
+      .upload(fileName, file, {
+        contentType: file.type || (folder === 'audio' ? 'audio/mpeg' : 'application/octet-stream'),
+        cacheControl: '3600',
+        upsert: false,
+      });
 
     if (error) {
       console.error("Upload error:", error);
+      toast({ title: "Upload Error", description: error.message, variant: "destructive" });
       return null;
     }
 
@@ -281,6 +286,56 @@ export default function Admin() {
       .getPublicUrl(fileName);
 
     return urlData.publicUrl;
+  };
+
+  // Bulk MP3 upload state
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; currentFile: string }>({ current: 0, total: 0, currentFile: '' });
+
+  const handleBulkUpload = async () => {
+    if (bulkFiles.length === 0) return;
+    setBulkUploading(true);
+    let successCount = 0;
+    const total = bulkFiles.length;
+
+    for (let i = 0; i < bulkFiles.length; i++) {
+      const file = bulkFiles[i];
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      setBulkProgress({ current: i + 1, total, currentFile: nameWithoutExt });
+
+      // Upload audio file
+      const audioUrl = await uploadFile(file, 'audio');
+      if (!audioUrl) continue;
+
+      // Try to find existing song by title match
+      const { data: existingSongs } = await supabase
+        .from('songs')
+        .select('id')
+        .ilike('title', `%${nameWithoutExt}%`)
+        .limit(1);
+
+      if (existingSongs && existingSongs.length > 0) {
+        // Update existing song with audio
+        await supabase.from('songs').update({ audio_url: audioUrl }).eq('id', existingSongs[0].id);
+      } else {
+        // Create new song entry
+        await supabase.from('songs').insert({
+          title: nameWithoutExt,
+          artist: 'Unknown',
+          audio_url: audioUrl,
+          duration: 0,
+          created_by: user?.id,
+        });
+      }
+      successCount++;
+    }
+
+    toast({ title: 'Bulk Upload Complete', description: `Uploaded ${successCount}/${total} files` });
+    setBulkFiles([]);
+    setBulkUploading(false);
+    setBulkProgress({ current: 0, total: 0, currentFile: '' });
+    fetchSongs();
   };
 
   const handleSave = async () => {
@@ -528,6 +583,10 @@ export default function Admin() {
                       <Music className="h-4 w-4" />
                       Songs ({songs.length})
                     </TabsTrigger>
+                    <TabsTrigger value="bulk-upload" className="gap-2">
+                      <Upload className="h-4 w-4" />
+                      Bulk Upload
+                    </TabsTrigger>
                     <TabsTrigger value="user-library" className="gap-2">
                       <Users className="h-4 w-4" />
                       Libraries
@@ -687,6 +746,74 @@ export default function Admin() {
                       </div>
                     )}
                   </StaggerContainer>
+                </TabsContent>
+
+                {/* Bulk Upload Tab */}
+                <TabsContent value="bulk-upload" className="mt-0">
+                  <div className="p-6 rounded-xl border border-border bg-card space-y-4">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-accent" />
+                      Bulk MP3 Upload
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Upload multiple MP3 files at once. Files will be matched to existing songs by filename, or new entries will be created.
+                    </p>
+                    
+                    <label className="flex flex-col items-center gap-3 p-8 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent/50 transition-colors">
+                      <Upload className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {bulkFiles.length > 0 ? `${bulkFiles.length} file(s) selected` : 'Click to select MP3 files'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".mp3,audio/mpeg"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => setBulkFiles(Array.from(e.target.files || []))}
+                      />
+                    </label>
+
+                    {bulkFiles.length > 0 && (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {bulkFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm p-2 bg-secondary rounded-lg">
+                            <Music className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate flex-1">{f.name}</span>
+                            <span className="text-xs text-muted-foreground">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {bulkUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Uploading {bulkProgress.current}/{bulkProgress.total}: {bulkProgress.currentFile}</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-2">
+                          <div 
+                            className="bg-accent h-2 rounded-full transition-all" 
+                            style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleBulkUpload}
+                        disabled={bulkFiles.length === 0 || bulkUploading}
+                        className="flex-1 gap-2"
+                      >
+                        {bulkUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {bulkUploading ? 'Uploading...' : `Upload ${bulkFiles.length} File(s)`}
+                      </Button>
+                      {bulkFiles.length > 0 && !bulkUploading && (
+                        <Button variant="outline" onClick={() => setBulkFiles([])}>Clear</Button>
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* User Library Tab */}
