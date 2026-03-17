@@ -583,6 +583,10 @@ export default function Admin() {
                       <Music className="h-4 w-4" />
                       Songs ({songs.length})
                     </TabsTrigger>
+                    <TabsTrigger value="bulk-upload" className="gap-2">
+                      <Upload className="h-4 w-4" />
+                      Bulk Upload
+                    </TabsTrigger>
                     <TabsTrigger value="user-library" className="gap-2">
                       <Users className="h-4 w-4" />
                       Libraries
