@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Track } from "@/types/music";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadPublicStorageFile } from "@/lib/storageUploads";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,23 +243,17 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   };
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
-    const { error } = await supabase.storage
-      .from("song-assets")
-      .upload(fileName, file);
-
-    if (error) {
+    try {
+      return await uploadPublicStorageFile(file, folder);
+    } catch (error) {
       console.error("Upload error:", error);
+      toast({
+        title: "Upload Error",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
       return null;
     }
-
-    const { data: urlData } = supabase.storage
-      .from("song-assets")
-      .getPublicUrl(fileName);
-
-    return urlData.publicUrl;
   };
 
   const handleSave = async () => {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { OfflineDownloadsSection } from "@/components/OfflineDownloadsSection";
+import { OfflineLibraryDownloadCard } from "@/components/OfflineLibraryDownloadCard";
 import { 
   ArrowLeft, 
   Sun, 
@@ -196,6 +197,10 @@ export default function Settings({ embedded = false }: SettingsProps) {
           </StaggerItem>
 
           {/* Offline Downloads Section */}
+          <StaggerItem>
+            <OfflineLibraryDownloadCard />
+          </StaggerItem>
+
           <StaggerItem>
             <OfflineDownloadsSection />
           </StaggerItem>
