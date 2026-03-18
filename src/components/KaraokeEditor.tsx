@@ -29,16 +29,59 @@ import { parseLRC, fetchSyncedLyrics, fetchTextUtf8, LyricLine } from "@/lib/lyr
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/contexts/PlayerContext";
 
-const SUPPORTS_TEXT_CLIP = (() => {
-  try {
-    return (
-      typeof CSS !== "undefined" &&
-      (CSS.supports("-webkit-background-clip", "text") || CSS.supports("background-clip", "text"))
-    );
-  } catch {
-    return false;
+function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: number }) {
+  const words = text.split(/(\s+)/).filter((part) => part.length > 0);
+  const spokenUnits = words.filter((part) => !/^\s+$/.test(part));
+
+  if (spokenUnits.length === 0) {
+    return <span>{text}</span>;
   }
-})();
+
+  let spokenIndex = -1;
+
+  return (
+    <span dir="auto" className="inline-block" style={{ unicodeBidi: "plaintext" }}>
+      {words.map((part, index) => {
+        if (/^\s+$/.test(part)) {
+          return (
+            <span key={`space-${index}`} style={{ whiteSpace: "pre-wrap" }}>
+              {part}
+            </span>
+          );
+        }
+
+        spokenIndex += 1;
+        const wordStart = spokenIndex / spokenUnits.length;
+        const wordEnd = (spokenIndex + 1) / spokenUnits.length;
+
+        let wordProgress = 0;
+        if (fillProgress >= wordEnd) wordProgress = 1;
+        else if (fillProgress > wordStart) wordProgress = (fillProgress - wordStart) / (wordEnd - wordStart);
+
+        const fillPercent = Math.max(0, Math.min(100, wordProgress * 100));
+
+        return (
+          <span key={`word-${index}`} className="relative inline-block align-baseline">
+            <span style={{ color: "hsl(var(--foreground) / 0.9)" }}>{part}</span>
+            {fillPercent > 0 && (
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none"
+                style={{
+                  width: `${fillPercent}%`,
+                  color: "hsl(var(--accent))",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {part}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 interface KaraokeWord {
   word: string;
