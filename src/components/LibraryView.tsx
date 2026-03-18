@@ -99,6 +99,7 @@ export function LibraryView() {
   const { tracks, isLoading } = useLibrary();
   const { playTrack } = usePlayer();
   const { isAdmin } = useAuth();
+  const cachedIds = useOfflineStatus();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
