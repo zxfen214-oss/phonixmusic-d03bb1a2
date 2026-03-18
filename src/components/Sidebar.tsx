@@ -4,6 +4,7 @@ import { Logo } from "./Logo";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FileImportDialog } from "./FileImportDialog";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { 
   Home,
   Library, 
@@ -15,7 +16,8 @@ import {
   Plus,
   LogOut,
   User,
-  Shield
+  Shield,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
