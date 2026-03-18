@@ -32,7 +32,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function TrackRow({ track, index, tracks }: TrackRowProps) {
+export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, pauseTrack, resumeTrack } = usePlayer();
   const { removeTrack, updateTrackMetadata } = useLibrary();
   const { isAdmin } = useAuth();
