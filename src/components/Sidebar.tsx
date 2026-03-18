@@ -31,6 +31,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, signOut } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const { canInstall, install } = useInstallPrompt();
   const navigate = useNavigate();
 
   const navItems = [
