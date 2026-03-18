@@ -406,8 +406,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
           if (!usedCached) loadYouTubeVideo(nextTrack.youtubeId!);
         });
-      } else if (nextTrack.source === 'local') {
-        loadLocalAudio(nextTrack);
+      } else {
+        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+          if (!usedCached) loadLocalAudio(nextTrack);
+        });
       }
       
       return {
