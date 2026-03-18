@@ -3,6 +3,7 @@ import { useLibrary } from "@/contexts/LibraryContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrackRow } from "./TrackRow";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { AdminSongEditor } from "./AdminSongEditor";
 import { Search, SlidersHorizontal, Music, Play, TrendingUp, MoreHorizontal, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
