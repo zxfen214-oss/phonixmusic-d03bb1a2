@@ -1009,6 +1009,11 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                   <ChevronRight className="h-4 w-4 text-accent" />
                                 )}
                               </div>
+
+                              <WordTimingMarkers
+                                timing={timing}
+                                fillProgress={timing?.fillProgress ?? 0}
+                              />
                             </div>
                           );
                         })}

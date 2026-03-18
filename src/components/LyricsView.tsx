@@ -141,7 +141,9 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.globalAlpha = opacityRef.current;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = opacityRef.current * 0.65;
       ctx.globalCompositeOperation = 'lighter';
 
       blobsRef.current.forEach(b => {
@@ -153,7 +155,7 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
         if (b.y > canvas.height + b.radius) b.y = -b.radius;
 
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-        grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.35)`);
+        grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.18)`);
         grad.addColorStop(1, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0)`);
         ctx.fillStyle = grad;
         ctx.beginPath();
