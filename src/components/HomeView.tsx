@@ -240,13 +240,28 @@ export function HomeView() {
   useEffect(() => {
     async function fetchSongs() {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("songs")
-        .select("id, title, artist, album, cover_url, youtube_id, duration")
-        .eq("needs_metadata", false)
-        .order("updated_at", { ascending: false });
-      if (!error && data) setSongs(data);
-      setIsLoading(false);
+
+      if (!navigator.onLine) {
+        setSongs([]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("songs")
+          .select("id, title, artist, album, cover_url, youtube_id, duration")
+          .eq("needs_metadata", false)
+          .order("updated_at", { ascending: false });
+
+        if (error) throw error;
+        setSongs(data || []);
+      } catch (error) {
+        console.error("Failed to load home songs:", error);
+        setSongs([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchSongs();
   }, []);

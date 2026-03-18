@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { Track, PlayerState } from "@/types/music";
-import { getAudioFile } from "@/lib/database";
+import { getAudioFile, saveAudioFile } from "@/lib/database";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {

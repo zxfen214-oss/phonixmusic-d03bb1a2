@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Track } from "@/types/music";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadPublicStorageFile } from "@/lib/storageUploads";
+import { saveAudioFile } from "@/lib/database";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
