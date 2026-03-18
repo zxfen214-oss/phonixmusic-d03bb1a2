@@ -9,12 +9,16 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
+  const { canInstall, install } = useInstallPrompt();
+  
   const navItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Library },
     { id: "playlists", label: "Playlists", icon: ListMusic },
     { id: "youtube", label: "Search", icon: Search },
-    { id: "settings", label: "Settings", icon: Settings },
+    ...(canInstall
+      ? [{ id: "_install", label: "Install", icon: Download }]
+      : [{ id: "settings", label: "Settings", icon: Settings }]),
   ];
 
   return (
