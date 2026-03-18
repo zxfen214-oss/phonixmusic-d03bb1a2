@@ -47,7 +47,7 @@ interface VisibleLyricItem {
   isMusic?: boolean;
   musicEnd?: number;
   isNlPair?: boolean;
-  nlCompanionText?: string; // text from the <nl>-tagged previous line, rendered as sub-line
+  nlCompanionText?: string;
   elrcWords?: { word: string; startTime: number; endTime: number }[];
 }
 
@@ -61,59 +61,139 @@ function stripBrackets(text: string): string {
   return text.replace(/^\(/, '').replace(/\)$/, '').replace(/\(([^)]*)\)/g, '$1');
 }
 
-// ─── Animated gradient background ───
-function AnimatedGradientBg({ palette, isClosing }: { palette: string[]; isClosing: boolean }) {
-  const colors = palette.length >= 2 ? palette : [palette[0] || 'hsl(0,0%,15%)', 'hsl(0,0%,10%)'];
+// ─── Animated canvas gradient background with artwork-sampled blob colors ───
 
-  const toHsla = (color: string, alpha: number) => {
-    const match = color.match(/hsl\(([^)]+)\)/);
-    if (match) return `hsla(${match[1]}, ${alpha})`;
-    return color;
-  };
+interface Blob {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: [number, number, number];
+}
 
-  const stops = colors.map((c, i) => {
-    const angle = (360 / colors.length) * i;
-    const x = 50 + 35 * Math.cos((angle * Math.PI) / 180);
-    const y = 50 + 35 * Math.sin((angle * Math.PI) / 180);
-    return `radial-gradient(circle at ${x}% ${y}%, ${toHsla(c, 0.55)} 0%, transparent 55%)`;
-  }).join(', ');
+function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | null; isClosing: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const analyzeRef = useRef<HTMLCanvasElement>(null);
+  const blobsRef = useRef<Blob[]>([]);
+  const rafRef = useRef<number>(0);
+  const opacityRef = useRef(0);
+
+  // Sample colors from artwork
+  useEffect(() => {
+    if (!artworkUrl) {
+      // Fallback palette
+      blobsRef.current = createBlobs(canvasRef.current, [
+        [80, 20, 120], [20, 60, 140], [140, 30, 60], [30, 100, 80], [100, 40, 100],
+      ]);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const ac = analyzeRef.current;
+      if (!ac) return;
+      const actx = ac.getContext('2d');
+      if (!actx) return;
+      ac.width = img.width;
+      ac.height = img.height;
+      actx.drawImage(img, 0, 0);
+      const data = actx.getImageData(0, 0, img.width, img.height).data;
+      const colors: [number, number, number][] = [];
+      for (let i = 0; i < 50; i++) {
+        const idx = Math.floor(Math.random() * (data.length / 4)) * 4;
+        colors.push([data[idx], data[idx + 1], data[idx + 2]]);
+      }
+      blobsRef.current = createBlobs(canvasRef.current, colors);
+    };
+    img.onerror = () => {
+      blobsRef.current = createBlobs(canvasRef.current, [
+        [80, 20, 120], [20, 60, 140], [140, 30, 60],
+      ]);
+    };
+    img.src = artworkUrl;
+  }, [artworkUrl]);
+
+  // Resize
+  useEffect(() => {
+    const handleResize = () => {
+      const c = canvasRef.current;
+      if (c) { c.width = window.innerWidth; c.height = window.innerHeight; }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Animation loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      // Fade in
+      if (!isClosing && opacityRef.current < 1) opacityRef.current = Math.min(1, opacityRef.current + 0.02);
+      if (isClosing && opacityRef.current > 0) opacityRef.current = Math.max(0, opacityRef.current - 0.03);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = opacityRef.current;
+      ctx.globalCompositeOperation = 'lighter';
+
+      blobsRef.current.forEach(b => {
+        b.x += b.vx;
+        b.y += b.vy;
+        if (b.x < -b.radius) b.x = canvas.width + b.radius;
+        if (b.x > canvas.width + b.radius) b.x = -b.radius;
+        if (b.y < -b.radius) b.y = canvas.height + b.radius;
+        if (b.y > canvas.height + b.radius) b.y = -b.radius;
+
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+        grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.35)`);
+        grad.addColorStop(1, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isClosing]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: isClosing ? 0 : 1 }}
-      transition={{ duration: 0.6 }}
-      className="absolute inset-0 pointer-events-none overflow-hidden"
-      style={{ zIndex: 0 }}
-    >
-      <div className="absolute inset-0 bg-black" />
-      <div
-        className="absolute"
-        style={{
-          top: '-75%', left: '-75%', width: '250%', height: '250%',
-          background: stops,
-          filter: 'blur(100px)',
-          animation: 'gradientRotate 25s linear infinite',
-          transformOrigin: 'center center',
-        }}
-      />
-      <div className="absolute inset-0" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'repeat',
-      }} />
-      <div className="absolute inset-0" style={{
-        background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)',
-      }} />
-      <div className="absolute inset-0 bg-black/15" />
-      <style>{`
-        @keyframes gradientRotate {
-          0% { transform: rotate(0deg) scale(1.05); }
-          50% { transform: rotate(180deg) scale(1.1); }
-          100% { transform: rotate(360deg) scale(1.05); }
-        }
-      `}</style>
-    </motion.div>
+    <>
+      <canvas ref={canvasRef} className="absolute inset-0" style={{ zIndex: 0 }} />
+      <canvas ref={analyzeRef} style={{ display: 'none' }} />
+    </>
   );
+}
+
+function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, number][]): Blob[] {
+  const w = canvas?.width || window.innerWidth;
+  const h = canvas?.height || window.innerHeight;
+  const blobs: Blob[] = [];
+  for (let i = 0; i < 20; i++) {
+    blobs.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      radius: Math.random() * 280 + 180,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+  return blobs;
 }
 
 // ─── Music indicator ───
@@ -154,12 +234,10 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
   const isDone = progress >= 1;
   const isActive = currentTime >= startTime && currentTime < endTime;
   const wordDuration = endTime - startTime;
-  const isLongWord = wordDuration > 1;
 
   const liftY = isDone ? -1.5 : isActive ? -1.5 * progress : 0;
   const growthFactor = isActive ? Math.min(1.04, 1 + wordDuration * 0.008 * progress) : isDone ? 1.005 : 1;
 
-  // Fade edge width in % of word
   const fadeEdge = isActive ? 15 : 0;
 
   const renderText = (color: string) => {
@@ -177,9 +255,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
         willChange: 'transform',
       }}
     >
-      {/* Base dim text */}
       <span style={{ whiteSpace: 'pre' }}>{renderText("rgba(255, 255, 255, 0.35)")}</span>
-      {/* Bright overlay clipped by width with fading right edge */}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
@@ -215,7 +291,7 @@ function ELRCLine({ words, currentTime, isMobile }: { words: { word: string; sta
   );
 }
 
-// ─── Karaoke line ───
+// ─── Karaoke line (renders for BOTH active and recently-passed lines) ───
 function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
   text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
 }) {
@@ -225,7 +301,11 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  if (lineWords.length > 0 && isCurrentLine) {
+  // Render word-level fill for active line AND for the line that just finished
+  // (so users can see it fully filled as it scrolls up)
+  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
+
+  if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
@@ -249,12 +329,6 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 // Apple Music–style lyrics: fixed-position, CSS-transition based
 // ═══════════════════════════════════════════════════════════════════
 
-/**
- * Computes absolute Y positions for each lyric line based on its "position"
- * relative to the active line (0 = active, negative = past, positive = upcoming).
- * Applies CSS transitions with staggered delays for the cascading effect.
- * DOM order NEVER changes — only transform/opacity/filter are updated.
- */
 function useAppleMusicStyles(
   lineRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
   visibleLyrics: VisibleLyricItem[],
@@ -265,7 +339,6 @@ function useAppleMusicStyles(
   const prevPositionsRef = useRef<Map<string, number>>(new Map());
   const LINE_PADDING = isMobile ? 16 : 16;
   const ACTIVE_OFFSET = 0.22;
-  // lyricsSpeed 0=fastest(0.2s), 1=slowest(0.7s)
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
 
   useLayoutEffect(() => {
@@ -275,11 +348,8 @@ function useAppleMusicStyles(
     const anchorY = containerH * ACTIVE_OFFSET;
 
     const newPositions = new Map<string, number>();
-
-    // Sort by position to compute cumulative heights
     const sorted = [...visibleLyrics].sort((a, b) => a.position - b.position);
 
-    // Measure all element heights (with transitions temporarily disabled for measurement)
     const heights = new Map<string, number>();
     sorted.forEach((item) => {
       const key = item.isIntro ? 'intro' : `lyric-${item.index}`;
@@ -291,17 +361,11 @@ function useAppleMusicStyles(
       }
     });
 
-    // Find the active item (position 0) and compute Y positions relative to it
     const activeKey = sorted.find(s => s.position === 0);
     const activeHeight = activeKey ? (heights.get(activeKey.isIntro ? 'intro' : `lyric-${activeKey.index}`) || 56) : 56;
 
-    // Build a map of position → targetY
-    // Active line starts at anchorY
-    // Lines above: stack upward from anchorY
-    // Lines below: stack downward from anchorY + activeHeight + padding
     const positionYMap = new Map<string, number>();
 
-    // Process from active going up
     let yUp = anchorY;
     for (let i = sorted.length - 1; i >= 0; i--) {
       const item = sorted[i];
@@ -313,13 +377,11 @@ function useAppleMusicStyles(
       }
     }
 
-    // Active line at anchorY
     if (activeKey) {
       const key = activeKey.isIntro ? 'intro' : `lyric-${activeKey.index}`;
       positionYMap.set(key, anchorY);
     }
 
-    // Process from active going down
     let yDown = anchorY + activeHeight + LINE_PADDING;
     for (const item of sorted) {
       const key = item.isIntro ? 'intro' : `lyric-${item.index}`;
@@ -340,11 +402,8 @@ function useAppleMusicStyles(
       const distance = Math.abs(position);
       newPositions.set(key, position);
 
-      // ── Target Y position ──
       const targetY = positionYMap.get(key) ?? (anchorY + position * 68);
 
-      // ── Visual properties ──
-      // On mobile, avoid blur() filter entirely — it's the #1 cause of jank/teleporting
       let opacity: number, blur: number, scale: number;
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
@@ -358,30 +417,24 @@ function useAppleMusicStyles(
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
-      // ── Transition timing with stagger ──
-      // The line moving UPWARD (was active, now position -1) animates FIRST.
-      // Everything else (new active line + other lines) starts 0.2s later.
       const prevPos = prevPositionsRef.current.get(key);
       const isNew = prevPos === undefined;
       const posChanged = prevPos !== undefined && prevPos !== position;
 
-      // Detect the line that just left active (was position 0, now going to -1)
       const isMovingUp = prevPos === 0 && position === -1;
-      // Past lines that were already past move up together with the just-finished line
       const isPastMovingUp = position < 0 && prevPos !== undefined && prevPos < 0 && prevPos !== position;
 
       let delay = 0;
       if (isMovingUp || isPastMovingUp) {
-        delay = 0; // past lyrics moving upward animate FIRST
+        delay = 0;
       } else if (isActive) {
-        delay = 0.05; // new active line follows at 0.05s
+        delay = 0.05;
       } else if (position > 0) {
-        delay = 0.05 + position * 0.04; // upcoming lines stagger after
+        delay = 0.05 + position * 0.04;
       } else if (position < 0) {
-        delay = 0; // other past lines move with the upward group
+        delay = 0;
       }
 
-      // Apple-style spring-like cubic-bezier: fast start, slight overshoot feel, smooth settle
       const easing = isMobile ? 'cubic-bezier(0.25, 0.8, 0.25, 1)' : 'cubic-bezier(0.2, 0.9, 0.3, 1.05)';
       const filterProp = isMobile ? '' : `, filter ${dur}s ${easing} ${delay}s`;
       const transitionStr = `opacity ${dur}s ${easing} ${delay}s${filterProp}, transform ${dur}s ${easing} ${delay}s`;
@@ -393,7 +446,6 @@ function useAppleMusicStyles(
         el.style.transition = 'none';
         el.style.willChange = 'transform, opacity';
         if (isMobile) {
-          // Hide element completely until rAF positions it — prevents "teleport" flash
           el.style.visibility = 'hidden';
           el.style.opacity = '0';
           el.style.transform = makeTransform(targetY, scale);
@@ -433,14 +485,11 @@ function useAppleMusicStyles(
       }
     });
 
-    // Fade out lines no longer visible
     prevPositionsRef.current.forEach((_, key) => {
       if (!newPositions.has(key)) {
         const el = lineRefs.current.get(key);
         if (el) {
           const fadeEasing = isMobile ? 'cubic-bezier(0.25, 0.8, 0.25, 1)' : 'cubic-bezier(0.2, 0.9, 0.3, 1.05)';
-          // Keep the line at its current Y and only fade out.
-          // Moving it to a fixed -100px caused visible "teleport" jumps on mobile.
           el.style.transition = `opacity 0.2s ${fadeEasing}`;
           el.style.opacity = '0';
         }
@@ -496,7 +545,7 @@ function LyricsContent({
           >
             {isMusic && musicEnd ? (
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
-            ) : isActive && !isIntro && elrcWords && elrcWords.length > 0 ? (
+            ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
                 {secondaryText && (
@@ -505,9 +554,9 @@ function LyricsContent({
                   </p>
                 )}
               </>
-            ) : isActive && !isIntro && karaokeEnabled ? (
+            ) : !isIntro && karaokeEnabled ? (
               <>
-                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine isMobile={isMobile} />
+                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
@@ -567,7 +616,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
 
-  const { palette } = useDominantColors(currentTrack?.artwork);
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
   // Smooth time for karaoke
@@ -622,7 +670,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         }
         let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
         
-        // If no lyrics from network, try offline cache
         if (!lyrics?.lines.length && currentTrack.youtubeId) {
           const cached = await getCachedLyrics(currentTrack.youtubeId);
           if (cached?.syncedLyrics) {
@@ -669,7 +716,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setCurrentLineIndex(Math.max(0, Math.min(parsedLyrics.lines.length - 1, Math.floor(smoothTime * lps))));
   }, [smoothTime, parsedLyrics, currentTrack?.duration]);
 
-  // Window: 1 past line (upper), many upcoming
   const LINES_BEFORE = 2;
   const LINES_AFTER = 15;
 
@@ -696,12 +742,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         const line = parsedLyrics.lines[idx];
         const next = parsedLyrics.lines[idx + 1];
 
-        // Skip the nl-tagged previous line as a separate item — it's merged into the active line
         if (i === -1 && hasPrevNl) continue;
 
         const pos = hasPrevNl && i > -1 ? i : i;
 
-        // If this is the active line and previous had <nl>, attach companion text
         const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
 
         result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
@@ -710,7 +754,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
 
-  // Auto-hide mobile controls after 1.5s of no interaction
+  // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {
     setMobileControlsVisible(true);
     if (mobileControlsTimerRef.current) clearTimeout(mobileControlsTimerRef.current);
@@ -729,13 +773,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   }, [isMobile, resetMobileControlsTimer]);
 
   const handleMobileTap = useCallback(() => {
-    if (!mobileControlsVisible) {
-      resetMobileControlsTimer();
-    } else {
-      // If already visible, reset the timer
-      resetMobileControlsTimer();
-    }
-  }, [mobileControlsVisible, resetMobileControlsTimer]);
+    resetMobileControlsTimer();
+  }, [resetMobileControlsTimer]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -763,7 +802,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
-        <AnimatedGradientBg palette={palette} isClosing={isClosing} />
+        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
 
         {/* ═══════════ DESKTOP LAYOUT ═══════════ */}
         <div className="relative h-full hidden md:flex items-center z-10">
@@ -851,7 +890,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         {/* ═══════════ MOBILE LAYOUT ═══════════ */}
         <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
-          {/* Top header - cover art and details */}
           <div
             className="flex items-center gap-3 flex-shrink-0"
             style={{ padding: '32px 24px 10px 24px' }}
@@ -890,7 +928,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </button>
           </div>
 
-          {/* Lyrics area - full remaining space, controls overlay on top */}
           <div
             ref={lyricsContainerRef}
             className="flex-1 relative min-h-0"
@@ -899,7 +936,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <LyricsContent {...lyricsContentProps} isMobile />
           </div>
 
-          {/* Bottom controls - overlays on top of lyrics, doesn't affect layout */}
           <motion.div
             initial={{ opacity: 1, y: 0 }}
             animate={{ 
