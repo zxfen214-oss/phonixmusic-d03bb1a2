@@ -358,8 +358,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           loadYouTubeVideo(track.youtubeId!);
         }
       });
-    } else if (track.source === 'local') {
-      loadLocalAudio(track);
+    } else {
+      loadCachedOrRemoteAudio(track).then(usedCached => {
+        if (!usedCached) {
+          loadLocalAudio(track);
+        }
+      });
     }
   }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio]);
 
