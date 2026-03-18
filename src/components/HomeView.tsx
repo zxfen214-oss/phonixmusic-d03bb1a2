@@ -227,6 +227,7 @@ function OfflineSection() {
 export function HomeView() {
   const { playTrack } = usePlayer();
   const { user } = useAuth();
+  const cachedIds = useOfflineStatus();
   const [songs, setSongs] = useState<SongRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTrial, setShowTrial] = useState(false);
