@@ -919,34 +919,18 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                             >
                               {/* Line text with smooth fill effect */}
                               <div className="relative mb-3">
-                                <p 
+                                <p
                                   dir="auto"
                                   className="text-xl md:text-2xl font-bold transition-all duration-100"
                                   style={{
                                     unicodeBidi: "plaintext",
-                                    ...(SUPPORTS_TEXT_CLIP
-                                      ? {
-                                          backgroundImage: timing
-                                            ? `linear-gradient(90deg, hsl(var(--accent)) 0%, hsl(var(--accent)) ${Math.round(
-                                                (timing.fillProgress ?? 0) * 100
-                                              )}%, hsl(var(--foreground) / 0.9) ${Math.round(
-                                                (timing.fillProgress ?? 0) * 100
-                                              )}%, hsl(var(--foreground) / 0.9) 100%)`
-                                            : `linear-gradient(90deg, hsl(var(--foreground) / 0.9) 0%, hsl(var(--foreground) / 0.9) 100%)`,
-                                          WebkitBackgroundClip: "text",
-                                          backgroundClip: "text",
-                                          color: "transparent",
-                                          WebkitTextFillColor: "transparent",
-                                        }
-                                      : {
-                                          color:
-                                            (timing?.fillProgress ?? 0) > 0
-                                              ? "hsl(var(--accent))"
-                                              : "hsl(var(--foreground) / 0.9)",
-                                        }),
+                                    color: "hsl(var(--foreground) / 0.9)",
                                   }}
                                 >
-                                  {line.text}
+                                  <SyncPreviewLine
+                                    text={line.text}
+                                    fillProgress={timing?.fillProgress ?? 0}
+                                  />
                                 </p>
                               </div>
                               
