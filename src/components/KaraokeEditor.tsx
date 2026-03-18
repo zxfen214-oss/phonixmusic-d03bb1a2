@@ -83,6 +83,63 @@ function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: n
   );
 }
 
+function formatTimingValue(seconds: number, captured: boolean) {
+  if (!captured || seconds <= 0) return "—";
+  return `${seconds.toFixed(2)}s`;
+}
+
+function WordTimingMarkers({ timing, fillProgress }: { timing?: LineTiming; fillProgress: number }) {
+  if (!timing || timing.wordTimings.length === 0) return null;
+
+  const wordCount = timing.wordTimings.length;
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="relative h-2 overflow-hidden rounded-full bg-muted/50">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-accent/30 transition-all duration-100"
+          style={{ width: `${Math.max(0, Math.min(100, fillProgress * 100))}%` }}
+        />
+        {timing.wordTimings.map((wordTiming, index) => {
+          const markerPosition = ((index + 1) / wordCount) * 100;
+          return (
+            <span
+              key={`${wordTiming.word}-${index}`}
+              className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-border"
+              style={{ left: `calc(${markerPosition}% - 0.5px)` }}
+              aria-hidden
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {timing.wordTimings.map((wordTiming, index) => {
+          const isCompleted = fillProgress >= (index + 1) / wordCount;
+          const isStarted = fillProgress > index / wordCount;
+
+          return (
+            <div
+              key={`${wordTiming.word}-${index}`}
+              className={cn(
+                "rounded-md border px-2 py-1 text-[10px] leading-tight transition-colors",
+                isCompleted && "border-accent/50 bg-accent/10",
+                !isCompleted && isStarted && "border-accent/30 bg-secondary/80",
+                !isStarted && "border-border bg-secondary/50"
+              )}
+            >
+              <div className="font-medium text-foreground/90">{wordTiming.word}</div>
+              <div className="text-muted-foreground">
+                {formatTimingValue(wordTiming.startTime, wordTiming.captured)} → {formatTimingValue(wordTiming.endTime, wordTiming.captured)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface KaraokeWord {
   word: string;
   startTime: number;
