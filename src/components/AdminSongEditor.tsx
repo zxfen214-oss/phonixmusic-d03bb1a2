@@ -31,6 +31,7 @@ import {
   Terminal,
   Plus,
   Trash2,
+  Globe,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -495,6 +496,35 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
                   </label>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-xs h-7 mt-1"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`https://theaudiodb.com/api/v1/json/1/searchalbum.php?s=${encodeURIComponent(formData.artist)}&a=${encodeURIComponent(formData.album || '')}`);
+                      const data = await res.json();
+                      const thumb = data?.album?.[0]?.strAlbumThumb;
+                      if (thumb) {
+                        setCoverPreview(thumb);
+                        // Set as cover URL directly
+                        setCoverFile(null);
+                        // Save directly
+                        if (existingSong) {
+                          await supabase.from("songs").update({ cover_url: thumb }).eq("id", existingSong.id);
+                        }
+                        toast({ title: "Cover Found", description: "AudioDB cover art applied" });
+                      } else {
+                        toast({ title: "Not Found", description: "No cover art found on AudioDB", variant: "destructive" });
+                      }
+                    } catch {
+                      toast({ title: "Error", description: "Failed to fetch from AudioDB", variant: "destructive" });
+                    }
+                  }}
+                >
+                  <Globe className="h-3 w-3" />
+                  AudioDB
+                </Button>
 
                 <div className="flex-1 space-y-3">
                   <div className="space-y-1.5">

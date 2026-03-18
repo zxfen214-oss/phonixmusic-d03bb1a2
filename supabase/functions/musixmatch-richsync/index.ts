@@ -10,35 +10,71 @@ const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const BASE_URL = "https://www.musixmatch.com/ws/1.1/";
 
-// ─── HMAC signature helpers (ported from Python) ───
+// ─── HMAC signature helpers ───
 
 let cachedSecret: string | null = null;
+let cachedSecretExpiry = 0;
 
 async function getLatestAppUrl(): Promise<string> {
   const res = await fetch("https://www.musixmatch.com/search", {
     headers: { "User-Agent": USER_AGENT, Cookie: "mxm_bab=AB" },
+    redirect: "follow",
   });
+  if (!res.ok) throw new Error(`MXM search page returned ${res.status}`);
   const html = await res.text();
-  const pattern = /src="([^"]*\/_next\/static\/chunks\/pages\/_app-[^"]+\.js)"/g;
-  const matches = [...html.matchAll(pattern)];
-  if (matches.length === 0) throw new Error("_app URL not found in Musixmatch HTML");
-  return matches[matches.length - 1][1];
+  
+  // Try multiple patterns to find the _app JS bundle
+  const patterns = [
+    /src="([^"]*\/_next\/static\/chunks\/pages\/_app-[^"]+\.js)"/g,
+    /src="([^"]*\/_next\/static\/[^"]*_app[^"]*\.js)"/g,
+    /src="([^"]*\/static\/chunks\/pages\/_app[^"]+\.js)"/g,
+  ];
+  
+  for (const pattern of patterns) {
+    const matches = [...html.matchAll(pattern)];
+    if (matches.length > 0) {
+      return matches[matches.length - 1][1];
+    }
+  }
+  
+  throw new Error("_app URL not found in Musixmatch HTML");
 }
 
 async function getSecret(): Promise<string> {
-  if (cachedSecret) return cachedSecret;
+  // Cache for 1 hour max
+  if (cachedSecret && Date.now() < cachedSecretExpiry) return cachedSecret;
+
   const appUrl = await getLatestAppUrl();
+  console.log("Fetching MXM app JS from:", appUrl.substring(0, 100));
   const res = await fetch(appUrl, { headers: { "User-Agent": USER_AGENT } });
+  if (!res.ok) throw new Error(`Failed to fetch MXM app JS: ${res.status}`);
   const js = await res.text();
 
-  const pattern = /from\(\s*"(.*?)"\s*\.split/;
-  const match = js.match(pattern);
-  if (!match) throw new Error("Secret not found in _app JS bundle");
-
-  const reversed = match[1].split("").reverse().join("");
-  const decoded = atob(reversed);
-  cachedSecret = decoded;
-  return decoded;
+  // Try multiple patterns to extract the secret
+  const patterns = [
+    /from\(\s*"(.*?)"\s*\.split/,
+    /from\(\s*'(.*?)'\s*\.split/,
+    /atob\(\s*"(.*?)"\s*\.split/,
+    /\.from\("([A-Za-z0-9+/=]+)"\.split/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = js.match(pattern);
+    if (match) {
+      try {
+        const reversed = match[1].split("").reverse().join("");
+        const decoded = atob(reversed);
+        cachedSecret = decoded;
+        cachedSecretExpiry = Date.now() + 3600_000; // 1 hour
+        console.log("MXM secret extracted successfully");
+        return decoded;
+      } catch (e) {
+        console.warn("Failed to decode secret candidate:", e);
+      }
+    }
+  }
+  
+  throw new Error("Secret not found in _app JS bundle");
 }
 
 async function generateSignature(url: string): Promise<string> {
@@ -62,7 +98,7 @@ async function generateSignature(url: string): Promise<string> {
   return `&signature=${encodeURIComponent(b64)}&signature_protocol=sha256`;
 }
 
-async function mxmRequest(endpoint: string, retries = 2): Promise<Record<string, unknown>> {
+async function mxmRequest(endpoint: string, retries = 3): Promise<Record<string, unknown>> {
   const cleanEndpoint = endpoint.replace(/%20/g, "+").replace(/ /g, "+");
   const url = BASE_URL + cleanEndpoint;
   
@@ -70,30 +106,50 @@ async function mxmRequest(endpoint: string, retries = 2): Promise<Record<string,
     try {
       const signed = url + (await generateSignature(url));
       console.log(`MXM request (attempt ${attempt + 1}):`, url.substring(0, 120));
-      const res = await fetch(signed, { headers: { "User-Agent": USER_AGENT } });
+      const res = await fetch(signed, { 
+        headers: { 
+          "User-Agent": USER_AGENT,
+          "Cookie": "mxm_bab=AB",
+        },
+        redirect: "follow",
+      });
+      
+      if (!res.ok && attempt < retries) {
+        console.warn(`MXM HTTP ${res.status}, clearing secret cache and retrying...`);
+        cachedSecret = null;
+        cachedSecretExpiry = 0;
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
+        continue;
+      }
+      
       const text = await res.text();
       try {
         const json = JSON.parse(text);
         const statusCode = (json as any)?.message?.header?.status_code;
         if (statusCode && statusCode >= 400 && attempt < retries) {
-          console.warn(`MXM status ${statusCode}, retrying in ${(attempt + 1) * 1000}ms...`);
+          console.warn(`MXM API status ${statusCode}, clearing secret and retrying in ${(attempt + 1) * 1500}ms...`);
           cachedSecret = null;
-          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          cachedSecretExpiry = 0;
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
           continue;
         }
         return json;
       } catch {
         console.error("MXM non-JSON response (first 500 chars):", text.substring(0, 500));
         if (attempt < retries) {
-          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          cachedSecret = null;
+          cachedSecretExpiry = 0;
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
           continue;
         }
         throw new Error(`Musixmatch returned non-JSON response (status ${res.status})`);
       }
     } catch (e) {
       if (attempt < retries) {
-        console.warn(`MXM fetch error, retrying in ${(attempt + 1) * 1000}ms:`, e);
-        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        console.warn(`MXM fetch error (attempt ${attempt + 1}), retrying in ${(attempt + 1) * 1500}ms:`, e);
+        cachedSecret = null;
+        cachedSecretExpiry = 0;
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
         continue;
       }
       throw e;
@@ -190,10 +246,6 @@ function convertRichSync(richsyncBody: string, lines: RichSyncLine[] | null): Ka
   return words;
 }
 
-/**
- * Extract the best album cover URL from Musixmatch track data.
- * Tries album_coverart fields in descending quality.
- */
 function extractCoverUrl(track: any): string | null {
   return (
     track.album_coverart_800x800 ||
@@ -244,7 +296,7 @@ Deno.serve(async (req) => {
 
     console.log(`Searching MXM for: "${cleanArtist}" - "${cleanTitle}" (original: "${artist}" - "${title}")`);
 
-    // Step 1: Search for the track on Musixmatch
+    // Step 1: Search for the track
     let trackList: any[] | null = null;
 
     const searchEndpoint1 = `track.search?app_id=web-desktop-app-v1.0&format=json&q=${encodeURIComponent(cleanArtist + " " + cleanTitle)}&f_has_lyrics=true&page_size=10&page=1`;
@@ -293,10 +345,8 @@ Deno.serve(async (req) => {
 
     console.log(`Found track: ${bestTrack.track_name} by ${bestTrack.artist_name} (track_id: ${trackId})`);
 
-    // Extract cover art from track search result
     let coverUrl = extractCoverUrl(bestTrack);
 
-    // If no cover from search, try fetching album info
     if (!coverUrl && bestTrack.album_id) {
       try {
         const albumEndpoint = `album.get?app_id=web-desktop-app-v1.0&format=json&album_id=${bestTrack.album_id}`;
@@ -334,7 +384,6 @@ Deno.serve(async (req) => {
 
     const richsyncData = (richsyncResult as any)?.message?.body?.richsync;
     if (!richsyncData?.richsync_body) {
-      // Try subtitle (line-level sync) as fallback
       const subtitleEndpoint = `track.subtitle.get?app_id=web-desktop-app-v1.0&format=json&track_id=${trackId}`;
       const subtitleResult = await mxmRequest(subtitleEndpoint);
       const subtitle = (subtitleResult as any)?.message?.body?.subtitle;
@@ -358,7 +407,6 @@ Deno.serve(async (req) => {
           lrcLines = rawBody;
         }
 
-        // Save to DB if song_id provided
         if (song_id) {
           const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
           const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -396,18 +444,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Convert richsync to karaoke words
     const karaokeWords = convertRichSync(richsyncData.richsync_body, null);
 
     if (karaokeWords.length === 0) {
-      console.warn("Richsync returned 0 karaoke words, skipping karaoke save");
+      console.warn("Richsync returned 0 karaoke words");
       return new Response(
         JSON.stringify({ error: "Richsync data contained 0 words", track: `${bestTrack.track_name} by ${bestTrack.artist_name}` }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Generate synced_lyrics LRC from richsync data with <music> tags
     const richLines: RichSyncLine[] = JSON.parse(richsyncData.richsync_body);
     const timedRichLines = richLines.map((l) => ({
       time: l.ts,
@@ -416,7 +462,6 @@ Deno.serve(async (req) => {
     }));
     const lrcFromRich = generateLRC(timedRichLines);
 
-    // Save to DB if song_id provided
     if (song_id) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
