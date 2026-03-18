@@ -142,7 +142,7 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
               {track.title}
             </p>
             {isOffline && (
-              <WifiOff className="h-3 w-3 text-accent flex-shrink-0" title="Available offline" />
+              <span title="Available offline"><WifiOff className="h-3 w-3 text-accent flex-shrink-0" /></span>
             )}
           </div>
           <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
