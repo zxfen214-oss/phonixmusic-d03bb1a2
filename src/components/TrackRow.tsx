@@ -23,6 +23,7 @@ interface TrackRowProps {
   track: Track;
   index: number;
   tracks: Track[];
+  isOffline?: boolean;
 }
 
 function formatTime(seconds: number): string {
