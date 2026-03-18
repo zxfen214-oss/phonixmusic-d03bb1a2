@@ -169,7 +169,10 @@ function SongTile({ track, onPlay, index, allTracks, isOffline }: { track: Track
         </motion.button>
       </div>
       <div className="p-3">
-        <p className="font-semibold text-sm truncate">{track.title}</p>
+        <div className="flex items-center gap-1">
+          <p className="font-semibold text-sm truncate">{track.title}</p>
+          {isOffline && <WifiOff className="h-3 w-3 text-accent flex-shrink-0" />}
+        </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist}</p>
       </div>
     </motion.div>
