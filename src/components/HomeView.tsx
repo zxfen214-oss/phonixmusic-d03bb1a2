@@ -140,7 +140,7 @@ function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (tr
   );
 }
 
-function SongTile({ track, onPlay, index, allTracks }: { track: Track; onPlay: (track: Track, all: Track[]) => void; index: number; allTracks: Track[] }) {
+function SongTile({ track, onPlay, index, allTracks, isOffline }: { track: Track; onPlay: (track: Track, all: Track[]) => void; index: number; allTracks: Track[]; isOffline?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
