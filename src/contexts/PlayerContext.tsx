@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { Track, PlayerState } from "@/types/music";
-import { getAudioFile } from "@/lib/database";
+import { getAudioFile, saveAudioFile } from "@/lib/database";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
@@ -258,25 +259,42 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       objectUrlRef.current = null;
     }
 
-    // Try cached offline audio first (from IndexedDB)
     let audioBlob: Blob | null = null;
+
     if (track.youtubeId) {
       audioBlob = await getCachedAudio(track.youtubeId);
     }
 
-    // If not cached, try fetching audio_url from supabase songs table
-    if (!audioBlob && track.youtubeId) {
+    if (!audioBlob) {
+      const localAudioBlob = await getAudioFile(track.id);
+      if (localAudioBlob) {
+        audioBlob = localAudioBlob;
+      }
+    }
+
+    if (!audioBlob) {
       try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { data } = await supabase
+        let songQuery = supabase
           .from("songs")
           .select("audio_url")
-          .eq("youtube_id", track.youtubeId)
-          .maybeSingle();
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (track.youtubeId) {
+          songQuery = songQuery.eq("youtube_id", track.youtubeId);
+        } else {
+          songQuery = songQuery
+            .eq("title", track.title)
+            .eq("artist", track.artist)
+            .or(`album.eq.${track.album || ""},album.is.null`);
+        }
+
+        const { data } = await songQuery.maybeSingle();
         if (data?.audio_url) {
           const resp = await fetch(data.audio_url);
           if (resp.ok) {
             audioBlob = await resp.blob();
+            await saveAudioFile(track.id, audioBlob, audioBlob.type || "audio/mpeg");
           }
         }
       } catch (e) {
@@ -340,8 +358,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           loadYouTubeVideo(track.youtubeId!);
         }
       });
-    } else if (track.source === 'local') {
-      loadLocalAudio(track);
+    } else {
+      loadCachedOrRemoteAudio(track).then(usedCached => {
+        if (!usedCached) {
+          loadLocalAudio(track);
+        }
+      });
     }
   }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio]);
 
@@ -384,8 +406,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
           if (!usedCached) loadYouTubeVideo(nextTrack.youtubeId!);
         });
-      } else if (nextTrack.source === 'local') {
-        loadLocalAudio(nextTrack);
+      } else {
+        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+          if (!usedCached) loadLocalAudio(nextTrack);
+        });
       }
       
       return {
@@ -412,8 +436,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
           if (!usedCached) loadYouTubeVideo(prevTrack.youtubeId!);
         });
-      } else if (prevTrack.source === 'local') {
-        loadLocalAudio(prevTrack);
+      } else {
+        loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
+          if (!usedCached) loadLocalAudio(prevTrack);
+        });
       }
       
       return {
