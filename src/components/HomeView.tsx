@@ -7,6 +7,7 @@ import { Play, Sparkles, ArrowRight, Music2, X, Download, WifiOff, TrendingUp } 
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
