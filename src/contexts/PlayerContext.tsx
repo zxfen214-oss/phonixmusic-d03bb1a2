@@ -259,25 +259,42 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       objectUrlRef.current = null;
     }
 
-    // Try cached offline audio first (from IndexedDB)
     let audioBlob: Blob | null = null;
+
     if (track.youtubeId) {
       audioBlob = await getCachedAudio(track.youtubeId);
     }
 
-    // If not cached, try fetching audio_url from supabase songs table
-    if (!audioBlob && track.youtubeId) {
+    if (!audioBlob) {
+      const localAudioBlob = await getAudioFile(track.id);
+      if (localAudioBlob) {
+        audioBlob = localAudioBlob;
+      }
+    }
+
+    if (!audioBlob) {
       try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { data } = await supabase
+        let songQuery = supabase
           .from("songs")
           .select("audio_url")
-          .eq("youtube_id", track.youtubeId)
-          .maybeSingle();
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (track.youtubeId) {
+          songQuery = songQuery.eq("youtube_id", track.youtubeId);
+        } else {
+          songQuery = songQuery
+            .eq("title", track.title)
+            .eq("artist", track.artist)
+            .or(`album.eq.${track.album || ""},album.is.null`);
+        }
+
+        const { data } = await songQuery.maybeSingle();
         if (data?.audio_url) {
           const resp = await fetch(data.audio_url);
           if (resp.ok) {
             audioBlob = await resp.blob();
+            await saveAudioFile(track.id, audioBlob, audioBlob.type || "audio/mpeg");
           }
         }
       } catch (e) {

@@ -105,55 +105,75 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   const [showKaraokeEditor, setShowKaraokeEditor] = useState(false);
 
   useEffect(() => {
-    if (isOpen && track.youtubeId) {
+    if (isOpen) {
       checkExistingSong();
     }
-  }, [isOpen, track.youtubeId]);
+  }, [isOpen, track.id, track.youtubeId, track.title, track.artist]);
 
   const checkExistingSong = async () => {
-    if (!track.youtubeId) return;
-    
-    const { data } = await supabase
-      .from("songs")
-      .select("id, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics")
-      .eq("youtube_id", track.youtubeId)
-      .maybeSingle();
-    
-    if (data) {
-      setExistingSong({
-        id: data.id,
-        lyrics_url: data.lyrics_url,
-        lyrics_speed: data.lyrics_speed ?? 0.75,
-        bounce_intensity: (data as any).bounce_intensity ?? 0.5,
-        audio_url: data.audio_url,
-        karaoke_color: data.karaoke_color ?? null,
-        lyric_color: data.lyric_color ?? null,
-        synced_lyrics: data.synced_lyrics ?? null,
-      });
-      setFormData(prev => ({
-        ...prev,
-        lyricsSpeed: data.lyrics_speed ?? 0.75,
-        bounceIntensity: (data as any).bounce_intensity ?? 0.5,
-        karaokeColor: data.karaoke_color || '',
-        lyricColor: data.lyric_color || '',
-      }));
-      
-      // Parse existing special commands from synced_lyrics
-      if (data.synced_lyrics) {
-        parseSpecialCommands(data.synced_lyrics);
+    try {
+      let query = supabase
+        .from("songs")
+        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (track.youtubeId) {
+        query = query.eq("youtube_id", track.youtubeId);
+      } else {
+        query = query
+          .eq("title", track.title)
+          .eq("artist", track.artist)
+          .or(`album.eq.${track.album || ""},album.is.null`);
       }
-    }
-    
-    const { data: libraryData, count } = await supabase
-      .from("user_song_library")
-      .select("user_id, added_at", { count: 'exact' })
-      .eq("song_youtube_id", track.youtubeId);
-    
-    if (libraryData) {
-      setUserLibraryInfo({
-        count: count || libraryData.length,
-        users: libraryData,
-      });
+
+      const { data } = await query.maybeSingle();
+
+      if (data) {
+        setExistingSong({
+          id: data.id,
+          lyrics_url: data.lyrics_url,
+          lyrics_speed: data.lyrics_speed ?? 0.75,
+          bounce_intensity: (data as any).bounce_intensity ?? 0.5,
+          audio_url: data.audio_url,
+          karaoke_color: data.karaoke_color ?? null,
+          lyric_color: data.lyric_color ?? null,
+          synced_lyrics: data.synced_lyrics ?? null,
+        });
+        setFormData(prev => ({
+          ...prev,
+          lyricsSpeed: data.lyrics_speed ?? 0.75,
+          bounceIntensity: (data as any).bounce_intensity ?? 0.5,
+          karaokeColor: data.karaoke_color || '',
+          lyricColor: data.lyric_color || '',
+        }));
+
+        if (data.synced_lyrics) {
+          parseSpecialCommands(data.synced_lyrics);
+        }
+      } else {
+        setExistingSong(null);
+      }
+
+      if (track.youtubeId) {
+        const { data: libraryData, count } = await supabase
+          .from("user_song_library")
+          .select("user_id, added_at", { count: 'exact' })
+          .eq("song_youtube_id", track.youtubeId);
+
+        if (libraryData) {
+          setUserLibraryInfo({
+            count: count || libraryData.length,
+            users: libraryData,
+          });
+        }
+      } else {
+        setUserLibraryInfo({ count: 0, users: [] });
+      }
+    } catch (error) {
+      console.error("Failed to check existing song:", error);
+      setExistingSong(null);
+      setUserLibraryInfo({ count: 0, users: [] });
     }
   };
 
