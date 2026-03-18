@@ -1,7 +1,7 @@
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus } from "lucide-react";
+import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { MetadataEditor } from "./MetadataEditor";
