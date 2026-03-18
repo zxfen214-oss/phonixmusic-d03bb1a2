@@ -4,6 +4,7 @@ import { Logo } from "./Logo";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FileImportDialog } from "./FileImportDialog";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { 
   Home,
   Library, 
@@ -15,7 +16,8 @@ import {
   Plus,
   LogOut,
   User,
-  Shield
+  Shield,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -29,6 +31,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, signOut } = useAuth();
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const { canInstall, install } = useInstallPrompt();
   const navigate = useNavigate();
 
   const navItems = [
@@ -141,6 +144,18 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
             <Settings className="h-5 w-5" />
             <span>Settings</span>
           </button>
+
+          {canInstall && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={install}
+              className="nav-item w-full text-accent"
+            >
+              <Download className="h-5 w-5" />
+              <span>Install App</span>
+            </motion.button>
+          )}
 
           <button 
             onClick={handleSignOut}

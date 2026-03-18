@@ -1,6 +1,7 @@
-import { Home, Library, ListMusic, Search, Settings } from "lucide-react";
+import { Home, Library, ListMusic, Search, Settings, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 
 interface MobileNavProps {
   activeView: string;
@@ -8,12 +9,16 @@ interface MobileNavProps {
 }
 
 export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
+  const { canInstall, install } = useInstallPrompt();
+  
   const navItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Library },
     { id: "playlists", label: "Playlists", icon: ListMusic },
     { id: "youtube", label: "Search", icon: Search },
-    { id: "settings", label: "Settings", icon: Settings },
+    ...(canInstall
+      ? [{ id: "_install", label: "Install", icon: Download }]
+      : [{ id: "settings", label: "Settings", icon: Settings }]),
   ];
 
   return (
@@ -24,7 +29,7 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
           return (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => item.id === "_install" ? install() : onViewChange(item.id)}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[64px]",
                 isActive 

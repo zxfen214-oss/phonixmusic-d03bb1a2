@@ -7,6 +7,7 @@ import { Play, Sparkles, ArrowRight, Music2, X, Download, WifiOff, TrendingUp } 
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
@@ -139,7 +140,7 @@ function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (tr
   );
 }
 
-function SongTile({ track, onPlay, index, allTracks }: { track: Track; onPlay: (track: Track, all: Track[]) => void; index: number; allTracks: Track[] }) {
+function SongTile({ track, onPlay, index, allTracks, isOffline }: { track: Track; onPlay: (track: Track, all: Track[]) => void; index: number; allTracks: Track[]; isOffline?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -168,7 +169,10 @@ function SongTile({ track, onPlay, index, allTracks }: { track: Track; onPlay: (
         </motion.button>
       </div>
       <div className="p-3">
-        <p className="font-semibold text-sm truncate">{track.title}</p>
+        <div className="flex items-center gap-1">
+          <p className="font-semibold text-sm truncate">{track.title}</p>
+          {isOffline && <WifiOff className="h-3 w-3 text-accent flex-shrink-0" />}
+        </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist}</p>
       </div>
     </motion.div>
@@ -223,6 +227,7 @@ function OfflineSection() {
 export function HomeView() {
   const { playTrack } = usePlayer();
   const { user } = useAuth();
+  const cachedIds = useOfflineStatus();
   const [songs, setSongs] = useState<SongRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTrial, setShowTrial] = useState(false);
@@ -333,7 +338,7 @@ export function HomeView() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
               {tracks.map((track, idx) => (
-                <SongTile key={track.id} track={track} onPlay={handlePlay} index={idx} allTracks={tracks} />
+                <SongTile key={track.id} track={track} onPlay={handlePlay} index={idx} allTracks={tracks} isOffline={!!track.youtubeId && cachedIds.has(track.youtubeId)} />
               ))}
             </div>
           </motion.section>

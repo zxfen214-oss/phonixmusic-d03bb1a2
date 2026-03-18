@@ -3,6 +3,7 @@ import { useLibrary } from "@/contexts/LibraryContext";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrackRow } from "./TrackRow";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { AdminSongEditor } from "./AdminSongEditor";
 import { Search, SlidersHorizontal, Music, Play, TrendingUp, MoreHorizontal, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,7 @@ export function LibraryView() {
   const { tracks, isLoading } = useLibrary();
   const { playTrack } = usePlayer();
   const { isAdmin } = useAuth();
+  const cachedIds = useOfflineStatus();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
@@ -313,6 +315,7 @@ export function LibraryView() {
                       track={track}
                       index={index}
                       tracks={filteredAndSortedTracks}
+                      isOffline={!!track.youtubeId && cachedIds.has(track.youtubeId)}
                     />
                   ))}
                 </motion.div>

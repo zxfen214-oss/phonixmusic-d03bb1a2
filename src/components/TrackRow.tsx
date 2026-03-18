@@ -1,7 +1,7 @@
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus } from "lucide-react";
+import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { MetadataEditor } from "./MetadataEditor";
@@ -23,6 +23,7 @@ interface TrackRowProps {
   track: Track;
   index: number;
   tracks: Track[];
+  isOffline?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -31,7 +32,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function TrackRow({ track, index, tracks }: TrackRowProps) {
+export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, pauseTrack, resumeTrack } = usePlayer();
   const { removeTrack, updateTrackMetadata } = useLibrary();
   const { isAdmin } = useAuth();
@@ -133,12 +134,17 @@ export function TrackRow({ track, index, tracks }: TrackRowProps) {
 
         {/* Track Info */}
         <div className="flex-1 min-w-0">
-          <p className={cn(
-            "truncate text-sm font-medium",
-            isCurrentTrack && "text-accent"
-          )}>
-            {track.title}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={cn(
+              "truncate text-sm font-medium",
+              isCurrentTrack && "text-accent"
+            )}>
+              {track.title}
+            </p>
+            {isOffline && (
+              <span title="Available offline"><WifiOff className="h-3 w-3 text-accent flex-shrink-0" /></span>
+            )}
+          </div>
           <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
         </div>
 
