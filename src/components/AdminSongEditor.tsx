@@ -303,7 +303,10 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
       if (audioFile) {
         const url = await uploadFile(audioFile, "audio");
-        if (url) audioUrl = url;
+        if (url) {
+          audioUrl = url;
+          await saveAudioFile(track.id, audioFile, audioFile.type || "audio/mpeg");
+        }
       }
 
       const songData = {
@@ -345,6 +348,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       };
 
       onSave?.(updatedTrack);
+      await checkExistingSong();
       onClose();
     } catch (error) {
       console.error("Save error:", error);
