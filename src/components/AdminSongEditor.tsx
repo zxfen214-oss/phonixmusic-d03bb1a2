@@ -31,6 +31,7 @@ import {
   Terminal,
   Plus,
   Trash2,
+  Globe,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
