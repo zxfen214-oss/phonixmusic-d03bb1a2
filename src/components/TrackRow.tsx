@@ -134,12 +134,17 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
 
         {/* Track Info */}
         <div className="flex-1 min-w-0">
-          <p className={cn(
-            "truncate text-sm font-medium",
-            isCurrentTrack && "text-accent"
-          )}>
-            {track.title}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className={cn(
+              "truncate text-sm font-medium",
+              isCurrentTrack && "text-accent"
+            )}>
+              {track.title}
+            </p>
+            {isOffline && (
+              <WifiOff className="h-3 w-3 text-accent flex-shrink-0" title="Available offline" />
+            )}
+          </div>
           <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
         </div>
 

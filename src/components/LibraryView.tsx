@@ -315,6 +315,7 @@ export function LibraryView() {
                       track={track}
                       index={index}
                       tracks={filteredAndSortedTracks}
+                      isOffline={!!track.youtubeId && cachedIds.has(track.youtubeId)}
                     />
                   ))}
                 </motion.div>

@@ -145,6 +145,18 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
             <span>Settings</span>
           </button>
 
+          {canInstall && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={install}
+              className="nav-item w-full text-accent"
+            >
+              <Download className="h-5 w-5" />
+              <span>Install App</span>
+            </motion.button>
+          )}
+
           <button 
             onClick={handleSignOut}
             className="nav-item w-full text-destructive hover:text-destructive"

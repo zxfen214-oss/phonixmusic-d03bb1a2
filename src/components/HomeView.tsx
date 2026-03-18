@@ -338,7 +338,7 @@ export function HomeView() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
               {tracks.map((track, idx) => (
-                <SongTile key={track.id} track={track} onPlay={handlePlay} index={idx} allTracks={tracks} />
+                <SongTile key={track.id} track={track} onPlay={handlePlay} index={idx} allTracks={tracks} isOffline={!!track.youtubeId && cachedIds.has(track.youtubeId)} />
               ))}
             </div>
           </motion.section>
