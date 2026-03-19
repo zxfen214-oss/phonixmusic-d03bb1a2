@@ -824,43 +824,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setTimeout(onClose, 300);
   };
 
-  const renderLyricsNavigator = (mobile: boolean) => {
-    if (!parsedLyrics?.lines.length) return null;
-
-    return (
-      <div className="rounded-2xl border border-border/40 bg-background/20 backdrop-blur-md">
-        <div className={cn("overflow-y-auto px-2 py-2", mobile ? "max-h-36" : "max-h-52")}>
-          {parsedLyrics.lines.map((line, index) => {
-            const isActive = index === currentLineIndex;
-            return (
-              <button
-                key={`${line.time}-${index}`}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLyricSeek(index);
-                  if (mobile) resetMobileControlsTimer();
-                }}
-                className={cn(
-                  "w-full rounded-xl px-3 py-2 text-left transition-colors",
-                  isActive ? "bg-accent/20 text-foreground" : "text-foreground/72 hover:bg-background/30 hover:text-foreground"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 shrink-0 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">
-                    {line.time >= 0 ? formatTime(line.time) : `#${index + 1}`}
-                  </span>
-                  <span dir="auto" className="flex-1 text-sm leading-6 md:text-[15px]" style={{ unicodeBidi: "plaintext" }}>
-                    {line.text}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
 
   if (!currentTrack) return null;
 
