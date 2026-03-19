@@ -504,97 +504,133 @@ function useAppleMusicStyles(
 
 // ─── Lyrics content (shared between desktop & mobile) ───
 function LyricsContent({
-  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment,
+  visibleLyrics,
+  currentLineIndex,
+  karaokeEnabled,
+  karaokeWords,
+  smoothTime,
+  isLoadingLyrics,
+  isMobile,
+  defaultAlignment,
+  onLyricSelect,
 }: {
-  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right';
+  visibleLyrics: VisibleLyricItem[];
+  currentLineIndex: number;
+  karaokeEnabled: boolean;
+  karaokeWords: KaraokeWord[];
+  smoothTime: number;
+  isLoadingLyrics: boolean;
+  isMobile: boolean;
+  defaultAlignment?: 'left' | 'right';
+  onLyricSelect: (lineIndex: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
-  useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
-
+  const lineRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const fontSize = isMobile ? '36px' : '40px';
+
+  useEffect(() => {
+    const activeItem = visibleLyrics.find((item) => (
+      currentLineIndex === item.index || (item.isNlPair && currentLineIndex === item.index + 1)
+    ));
+
+    if (!activeItem) return;
+
+    lineRefs.current.get(activeItem.index)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [currentLineIndex, visibleLyrics]);
+
+  if (isLoadingLyrics && visibleLyrics.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center px-6">
+        <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+      </div>
+    );
+  }
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden"
+      className="h-full overflow-y-auto overscroll-contain"
       style={{
-        maskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%)',
+        maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 84%, transparent 100%)',
       }}
     >
-      {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, elrcWords } = item;
-        const isActive = position === 0;
-        const key = isIntro ? 'intro' : `lyric-${index}`;
-        const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
-        const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
+      <div className={cn("mx-auto flex min-h-full w-full flex-col", isMobile ? "px-6 py-[28vh]" : "max-w-3xl py-[24vh]")}>
+        {visibleLyrics.map((item) => {
+          const { text, index, lineTime, nextLineTime, secondaryText, alignment, isMusic, musicEnd, isNlPair, nlCompanionText, elrcWords } = item;
+          const isActive = currentLineIndex === index || (isNlPair && currentLineIndex === index + 1);
+          const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
+          const textAlignClass = lineAlign === 'right' ? 'text-right items-end' : 'text-left items-start';
+          const secondaryColor = isActive ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.34)';
+          const companionColor = isActive ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.42)';
 
-        return (
-          <div
-            key={key}
-            ref={(el) => {
-              if (el) lineRefs.current.set(key, el);
-              else lineRefs.current.delete(key);
-            }}
-            className={cn("absolute left-0 right-0 transform-gpu", textAlignClass)}
-            style={{
-              willChange: "opacity, filter, transform",
-              paddingLeft: isMobile ? '24px' : '0',
-              paddingRight: isMobile ? '24px' : '0',
-              top: 0,
-            }}
-          >
-            {isMusic && musicEnd ? (
-              <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
-            ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
-              <>
-                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
-                {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
+          return (
+            <button
+              key={`lyric-${index}`}
+              type="button"
+              ref={(el) => {
+                if (el) lineRefs.current.set(index, el);
+                else lineRefs.current.delete(index);
+              }}
+              onClick={() => onLyricSelect(index)}
+              className={cn(
+                "w-full border-0 bg-transparent py-4 transition-all duration-200 focus:outline-none",
+                textAlignClass,
+                isActive ? "opacity-100" : "opacity-90 hover:opacity-100"
+              )}
+            >
+              <div className={cn("flex w-full flex-col", textAlignClass)}>
+                {isMusic && musicEnd ? (
+                  <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
+                ) : !isNlPair && elrcWords && elrcWords.length > 0 ? (
+                  <>
+                    <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                    {secondaryText && (
+                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
+                        {stripBrackets(secondaryText)}
+                      </p>
+                    )}
+                  </>
+                ) : !isNlPair && karaokeEnabled ? (
+                  <>
+                    <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                    {secondaryText && (
+                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
+                        {stripBrackets(secondaryText)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p
+                      dir="auto"
+                      style={{
+                        fontSize,
+                        fontWeight: isActive ? 700 : 600,
+                        color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.42)',
+                        unicodeBidi: 'plaintext',
+                        lineHeight: 1.4,
+                        margin: 0,
+                      }}
+                    >
+                      {text}
+                    </p>
+                    {secondaryText && (
+                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
+                        {stripBrackets(secondaryText)}
+                      </p>
+                    )}
+                    {nlCompanionText && (
+                      <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: companionColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '6px' }}>
+                        {nlCompanionText}
+                      </p>
+                    )}
+                  </>
                 )}
-              </>
-            ) : !isIntro && karaokeEnabled ? (
-              <>
-                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
-                {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <p
-                  dir="auto"
-                  style={{
-                    fontSize,
-                    fontWeight: isActive ? 700 : 600,
-                    color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
-                    unicodeBidi: "plaintext",
-                    lineHeight: 1.4,
-                    margin: 0,
-                  }}
-                >
-                  {text}
-                </p>
-                {nlCompanionText && isActive && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: "rgba(255,255,255,0.85)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {nlCompanionText}
-                  </p>
-                )}
-                {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
