@@ -829,13 +829,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const lyricsContentProps = {
     visibleLyrics,
+    currentLineIndex,
     karaokeEnabled,
     karaokeWords,
     smoothTime,
-    lyricsSpeed,
-    bounceIntensity,
     isLoadingLyrics,
     defaultAlignment: parsedLyrics?.defaultAlignment,
+    onLyricSelect: handleLyricSeek,
   };
 
   return (
@@ -923,11 +923,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           <div style={{ width: '160px' }} className="flex-shrink-0" />
 
           <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
-            <div className="flex h-full flex-col gap-6 py-10">
-              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                <LyricsContent {...lyricsContentProps} isMobile={false} />
-              </div>
-              {renderLyricsNavigator(false)}
+            <div className="flex h-full flex-col py-10">
+              <LyricsContent {...lyricsContentProps} isMobile={false} />
             </div>
           </div>
         </div>
@@ -972,15 +969,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
-            <div
-              ref={lyricsContainerRef}
-              className="relative flex-1 min-h-0"
-              style={{ overflow: 'hidden' }}
-            >
+            <div className="relative flex-1 min-h-0">
               <LyricsContent {...lyricsContentProps} isMobile />
-            </div>
-            <div className="px-4 pb-28 pt-3">
-              {renderLyricsNavigator(true)}
             </div>
           </div>
 
