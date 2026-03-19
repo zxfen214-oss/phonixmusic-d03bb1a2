@@ -867,7 +867,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                     </motion.div>
                   )}
 
-                  {/* SYNCING state - line sliders */}
+                  {/* SYNCING state - single-line workflow */}
                   {syncMode === "syncing" && (
                     <motion.div
                       key="syncing"
@@ -875,9 +875,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                       animate={{ opacity: 1 }}
                       className="flex-1 flex flex-col gap-4 overflow-hidden"
                     >
-                      {/* Controls */}
                       <div className="flex flex-wrap items-center gap-3 bg-secondary rounded-lg p-3">
-                        {/* Play/Pause */}
                         <Button
                           variant="outline"
                           size="icon"
@@ -886,14 +884,12 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                         >
                           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                         </Button>
-                        
-                        {/* Previous line button */}
+
                         <Button
                           variant="outline"
                           size="icon"
                           onClick={() => {
                             if (activeLineIndex > 0) {
-                              // Reset current line and go back
                               setLineTimings(prev => {
                                 const updated = [...prev];
                                 if (updated[activeLineIndex]) {
@@ -922,16 +918,15 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                         >
                           <SkipBack className="h-4 w-4" />
                         </Button>
-                        
+
                         <div className="font-mono text-lg font-bold">
                           {formatDisplayTime(currentTime)}
                         </div>
-                        <div className="flex items-center gap-2 px-2 py-1 bg-accent/20 rounded text-xs font-medium text-accent">
+                        <div className="flex items-center gap-2 rounded bg-accent/20 px-2 py-1 text-xs font-medium text-accent">
                           <Gauge className="h-3 w-3" />
                           {Math.round(syncSpeed * 100)}%
                         </div>
 
-                        {/* Real-time speed control while syncing */}
                         <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[180px]">
                           <Slider
                             value={[syncSpeed * 100]}
@@ -954,69 +949,92 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                         </Button>
                       </div>
 
-                      {/* Lines with sliders */}
-                      <div 
+                      <div
                         ref={lyricsContainerRef}
-                        className="flex-1 overflow-y-auto space-y-4 bg-black/50 rounded-xl p-6"
+                        className="flex-1 rounded-2xl border border-border/60 bg-background/40 p-4 md:p-8"
                       >
-                      {getVisibleLines().map(({ line, index, position }) => {
-                          const timing = lineTimings[index];
-                          const isActive = index === activeLineIndex;
-                          const isCurrent = position === 0;
-                          
-                          return (
-                            <div
-                              key={index}
-                              className={cn(
-                                "p-4 rounded-lg transition-colors",
-                                isActive && "ring-2 ring-accent bg-accent/10",
-                                isCurrent && !isActive && "bg-white/5",
-                                !isCurrent && "opacity-40"
-                              )}
-                            >
-                              {/* Line text with smooth fill effect */}
-                              <div className="relative mb-3">
-                                <p
-                                  dir="auto"
-                                  className="text-xl md:text-2xl font-bold transition-all duration-100"
-                                  style={{
-                                    unicodeBidi: "plaintext",
-                                    color: "hsl(var(--foreground) / 0.9)",
-                                  }}
-                                >
-                                  <SyncPreviewLine
-                                    text={line.text}
-                                    fillProgress={timing?.fillProgress ?? 0}
-                                  />
-                                </p>
-                              </div>
-                              
-                              {/* Slider for this line */}
-                              <div className="flex items-center gap-3">
-                                <Slider
-                                  value={[timing?.fillProgress ?? 0]}
-                                  min={0}
-                                  max={1}
-                                  step={0.01}
-                                  onValueChange={([value]) => handleLineFillChange(index, value)}
-                                  onValueCommit={([value]) => handleLineFillCommit(index, value)}
-                                  className="flex-1"
-                                />
-                                <span className="text-xs text-muted-foreground w-12 text-right font-mono">
-                                  {Math.round((timing?.fillProgress ?? 0) * 100)}%
-                                </span>
-                                {timing?.fillProgress >= 1 && (
-                                  <ChevronRight className="h-4 w-4 text-accent" />
-                                )}
-                              </div>
-
-                              <WordTimingMarkers
-                                timing={timing}
-                                fillProgress={timing?.fillProgress ?? 0}
-                              />
+                        {lyricsLines[activeLineIndex] && (
+                          <div className="flex h-full flex-col justify-center gap-6">
+                            <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+                              <span>Karaoke production</span>
+                              <span>Line {activeLineIndex + 1}</span>
                             </div>
-                          );
-                        })}
+
+                            <AnimatePresence mode="wait" initial={false}>
+                              <motion.div
+                                key={`sync-line-${activeLineIndex}`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.12, ease: "easeOut" }}
+                                className="space-y-6"
+                              >
+                                <div className="rounded-2xl border border-border/50 bg-secondary/50 px-4 py-8 md:px-8 md:py-12">
+                                  <div className="overflow-hidden">
+                                    <div
+                                      className="transition-transform duration-100 ease-linear will-change-transform"
+                                      style={{
+                                        transform: `translateX(-${Math.min(24, (lineTimings[activeLineIndex]?.fillProgress ?? 0) * 24)}%)`,
+                                      }}
+                                    >
+                                      <p
+                                        dir="auto"
+                                        className="min-h-[4rem] text-3xl font-bold leading-tight md:min-h-[5rem] md:text-5xl"
+                                        style={{
+                                          unicodeBidi: "plaintext",
+                                          color: "hsl(var(--foreground) / 0.92)",
+                                        }}
+                                      >
+                                        <SyncPreviewLine
+                                          text={lyricsLines[activeLineIndex].text}
+                                          fillProgress={lineTimings[activeLineIndex]?.fillProgress ?? 0}
+                                        />
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <Slider
+                                    value={[lineTimings[activeLineIndex]?.fillProgress ?? 0]}
+                                    min={0}
+                                    max={1}
+                                    step={0.005}
+                                    onValueChange={([value]) => handleLineFillChange(activeLineIndex, value)}
+                                    onValueCommit={([value]) => handleLineFillCommit(activeLineIndex, value)}
+                                    className="w-full [&>span:first-child]:h-4 [&_[role=slider]]:h-7 [&_[role=slider]]:w-7"
+                                  />
+                                  <div className="flex items-center justify-between text-xs md:text-sm">
+                                    <span className="text-muted-foreground">Drag with the singer, then the next line appears instantly.</span>
+                                    <span className="font-mono font-semibold text-foreground">
+                                      {Math.round((lineTimings[activeLineIndex]?.fillProgress ?? 0) * 100)}%
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <WordTimingMarkers
+                                  timing={lineTimings[activeLineIndex]}
+                                  fillProgress={lineTimings[activeLineIndex]?.fillProgress ?? 0}
+                                />
+
+                                {lyricsLines[activeLineIndex + 1] && (
+                                  <div className="rounded-xl border border-border/40 bg-secondary/30 p-4">
+                                    <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                      Up next
+                                    </div>
+                                    <p
+                                      dir="auto"
+                                      className="text-base font-medium text-muted-foreground md:text-lg"
+                                      style={{ unicodeBidi: "plaintext" }}
+                                    >
+                                      {lyricsLines[activeLineIndex + 1].text}
+                                    </p>
+                                  </div>
+                                )}
+                              </motion.div>
+                            </AnimatePresence>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
