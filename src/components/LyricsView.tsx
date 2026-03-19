@@ -764,42 +764,38 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [parsedLyrics, currentTrack, seekTo]);
 
-  const LINES_BEFORE = 2;
-  const LINES_AFTER = 15;
-
   const visibleLyrics = useMemo(() => {
     if (!parsedLyrics) return [];
+
     const result: VisibleLyricItem[] = [];
 
-    if (currentLineIndex === -1) {
-      result.push({ text: "...", index: -1, position: 0, lineTime: 0, nextLineTime: parsedLyrics.lines[0]?.time ?? 10, isIntro: true });
-      for (let i = 0; i < LINES_AFTER && i < parsedLyrics.lines.length; i++) {
-        const line = parsedLyrics.lines[i];
-        const next = parsedLyrics.lines[i + 1];
-        result.push({ text: line.text, index: i, position: i + 1, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, elrcWords: line.elrcWords });
-      }
-      return result;
-    }
+    for (let i = 0; i < parsedLyrics.lines.length; i += 1) {
+      const line = parsedLyrics.lines[i];
+      const companion = line.isNl ? parsedLyrics.lines[i + 1] : undefined;
+      const nextLine = parsedLyrics.lines[i + (companion ? 2 : 1)];
 
-    const prevLine = currentLineIndex > 0 ? parsedLyrics.lines[currentLineIndex - 1] : null;
-    const hasPrevNl = prevLine?.isNl === true;
+      result.push({
+        text: line.text,
+        index: i,
+        position: i,
+        lineTime: line.time,
+        nextLineTime: nextLine?.time ?? (companion?.time ?? line.time) + 10,
+        secondaryText: line.secondaryText,
+        alignment: line.alignment,
+        isMusic: line.isMusic,
+        musicEnd: line.musicEnd,
+        isNlPair: Boolean(companion),
+        nlCompanionText: companion?.text,
+        elrcWords: line.elrcWords,
+      });
 
-    for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
-      const idx = currentLineIndex + i;
-      if (idx >= 0 && idx < parsedLyrics.lines.length) {
-        const line = parsedLyrics.lines[idx];
-        const next = parsedLyrics.lines[idx + 1];
-
-        if (i === -1 && hasPrevNl) continue;
-
-        const pos = hasPrevNl && i > -1 ? i : i;
-        const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
-
-        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
+      if (companion) {
+        i += 1;
       }
     }
+
     return result;
-  }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
+  }, [parsedLyrics]);
 
   // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {
