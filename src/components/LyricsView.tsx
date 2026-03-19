@@ -646,7 +646,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(-1);
   const [isClosing, setIsClosing] = useState(false);
-  const lyricsContainerRef = useRef<HTMLDivElement>(null);
+  
   const [karaokeEnabled, setKaraokeEnabled] = useState(false);
   const [karaokeWords, setKaraokeWords] = useState<KaraokeWord[]>([]);
   const [lyricsSpeed, setLyricsSpeed] = useState(0.75);
