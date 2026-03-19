@@ -504,133 +504,97 @@ function useAppleMusicStyles(
 
 // ─── Lyrics content (shared between desktop & mobile) ───
 function LyricsContent({
-  visibleLyrics,
-  currentLineIndex,
-  karaokeEnabled,
-  karaokeWords,
-  smoothTime,
-  isLoadingLyrics,
-  isMobile,
-  defaultAlignment,
-  onLyricSelect,
+  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment,
 }: {
-  visibleLyrics: VisibleLyricItem[];
-  currentLineIndex: number;
-  karaokeEnabled: boolean;
-  karaokeWords: KaraokeWord[];
-  smoothTime: number;
-  isLoadingLyrics: boolean;
-  isMobile: boolean;
-  defaultAlignment?: 'left' | 'right';
-  onLyricSelect: (lineIndex: number) => void;
+  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right';
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const lineRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
+
   const fontSize = isMobile ? '36px' : '40px';
-
-  useEffect(() => {
-    const activeItem = visibleLyrics.find((item) => (
-      currentLineIndex === item.index || (item.isNlPair && currentLineIndex === item.index + 1)
-    ));
-
-    if (!activeItem) return;
-
-    lineRefs.current.get(activeItem.index)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [currentLineIndex, visibleLyrics]);
-
-  if (isLoadingLyrics && visibleLyrics.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center px-6">
-        <Loader2 className="h-8 w-8 animate-spin text-white/70" />
-      </div>
-    );
-  }
 
   return (
     <div
       ref={containerRef}
-      className="h-full overflow-y-auto overscroll-contain"
+      className="relative w-full h-full overflow-hidden"
       style={{
-        maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 84%, transparent 100%)',
+        maskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%)',
       }}
     >
-      <div className={cn("mx-auto flex min-h-full w-full flex-col", isMobile ? "px-6 py-[28vh]" : "max-w-3xl py-[24vh]")}>
-        {visibleLyrics.map((item) => {
-          const { text, index, lineTime, nextLineTime, secondaryText, alignment, isMusic, musicEnd, isNlPair, nlCompanionText, elrcWords } = item;
-          const isActive = currentLineIndex === index || (isNlPair && currentLineIndex === index + 1);
-          const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
-          const textAlignClass = lineAlign === 'right' ? 'text-right items-end' : 'text-left items-start';
-          const secondaryColor = isActive ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.34)';
-          const companionColor = isActive ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.42)';
+      {visibleLyrics.map((item) => {
+        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, elrcWords } = item;
+        const isActive = position === 0;
+        const key = isIntro ? 'intro' : `lyric-${index}`;
+        const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
+        const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
-          return (
-            <button
-              key={`lyric-${index}`}
-              type="button"
-              ref={(el) => {
-                if (el) lineRefs.current.set(index, el);
-                else lineRefs.current.delete(index);
-              }}
-              onClick={() => onLyricSelect(index)}
-              className={cn(
-                "w-full border-0 bg-transparent py-4 transition-all duration-200 focus:outline-none",
-                textAlignClass,
-                isActive ? "opacity-100" : "opacity-90 hover:opacity-100"
-              )}
-            >
-              <div className={cn("flex w-full flex-col", textAlignClass)}>
-                {isMusic && musicEnd ? (
-                  <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
-                ) : !isNlPair && elrcWords && elrcWords.length > 0 ? (
-                  <>
-                    <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
-                    {secondaryText && (
-                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
-                        {stripBrackets(secondaryText)}
-                      </p>
-                    )}
-                  </>
-                ) : !isNlPair && karaokeEnabled ? (
-                  <>
-                    <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
-                    {secondaryText && (
-                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
-                        {stripBrackets(secondaryText)}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p
-                      dir="auto"
-                      style={{
-                        fontSize,
-                        fontWeight: isActive ? 700 : 600,
-                        color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.42)',
-                        unicodeBidi: 'plaintext',
-                        lineHeight: 1.4,
-                        margin: 0,
-                      }}
-                    >
-                      {text}
-                    </p>
-                    {secondaryText && (
-                      <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: secondaryColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '4px' }}>
-                        {stripBrackets(secondaryText)}
-                      </p>
-                    )}
-                    {nlCompanionText && (
-                      <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: companionColor, unicodeBidi: 'plaintext', lineHeight: 1.4, marginTop: '6px' }}>
-                        {nlCompanionText}
-                      </p>
-                    )}
-                  </>
+        return (
+          <div
+            key={key}
+            ref={(el) => {
+              if (el) lineRefs.current.set(key, el);
+              else lineRefs.current.delete(key);
+            }}
+            className={cn("absolute left-0 right-0 transform-gpu", textAlignClass)}
+            style={{
+              willChange: "opacity, filter, transform",
+              paddingLeft: isMobile ? '24px' : '0',
+              paddingRight: isMobile ? '24px' : '0',
+              top: 0,
+            }}
+          >
+            {isMusic && musicEnd ? (
+              <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
+            ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
+              <>
+                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                {secondaryText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {stripBrackets(secondaryText)}
+                  </p>
                 )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+              </>
+            ) : !isIntro && karaokeEnabled ? (
+              <>
+                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                {secondaryText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {stripBrackets(secondaryText)}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p
+                  dir="auto"
+                  style={{
+                    fontSize,
+                    fontWeight: isActive ? 700 : 600,
+                    color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
+                    unicodeBidi: "plaintext",
+                    lineHeight: 1.4,
+                    margin: 0,
+                  }}
+                >
+                  {text}
+                </p>
+                {nlCompanionText && isActive && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: "rgba(255,255,255,0.85)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
+                {secondaryText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {stripBrackets(secondaryText)}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -646,7 +610,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(-1);
   const [isClosing, setIsClosing] = useState(false);
-  
+  const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const [karaokeEnabled, setKaraokeEnabled] = useState(false);
   const [karaokeWords, setKaraokeWords] = useState<KaraokeWord[]>([]);
   const [lyricsSpeed, setLyricsSpeed] = useState(0.75);
@@ -764,38 +728,42 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [parsedLyrics, currentTrack, seekTo]);
 
+  const LINES_BEFORE = 2;
+  const LINES_AFTER = 15;
+
   const visibleLyrics = useMemo(() => {
     if (!parsedLyrics) return [];
-
     const result: VisibleLyricItem[] = [];
 
-    for (let i = 0; i < parsedLyrics.lines.length; i += 1) {
-      const line = parsedLyrics.lines[i];
-      const companion = line.isNl ? parsedLyrics.lines[i + 1] : undefined;
-      const nextLine = parsedLyrics.lines[i + (companion ? 2 : 1)];
-
-      result.push({
-        text: line.text,
-        index: i,
-        position: i,
-        lineTime: line.time,
-        nextLineTime: nextLine?.time ?? (companion?.time ?? line.time) + 10,
-        secondaryText: line.secondaryText,
-        alignment: line.alignment,
-        isMusic: line.isMusic,
-        musicEnd: line.musicEnd,
-        isNlPair: Boolean(companion),
-        nlCompanionText: companion?.text,
-        elrcWords: line.elrcWords,
-      });
-
-      if (companion) {
-        i += 1;
+    if (currentLineIndex === -1) {
+      result.push({ text: "...", index: -1, position: 0, lineTime: 0, nextLineTime: parsedLyrics.lines[0]?.time ?? 10, isIntro: true });
+      for (let i = 0; i < LINES_AFTER && i < parsedLyrics.lines.length; i++) {
+        const line = parsedLyrics.lines[i];
+        const next = parsedLyrics.lines[i + 1];
+        result.push({ text: line.text, index: i, position: i + 1, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, elrcWords: line.elrcWords });
       }
+      return result;
     }
 
+    const prevLine = currentLineIndex > 0 ? parsedLyrics.lines[currentLineIndex - 1] : null;
+    const hasPrevNl = prevLine?.isNl === true;
+
+    for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
+      const idx = currentLineIndex + i;
+      if (idx >= 0 && idx < parsedLyrics.lines.length) {
+        const line = parsedLyrics.lines[idx];
+        const next = parsedLyrics.lines[idx + 1];
+
+        if (i === -1 && hasPrevNl) continue;
+
+        const pos = hasPrevNl && i > -1 ? i : i;
+        const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
+
+        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
+      }
+    }
     return result;
-  }, [parsedLyrics]);
+  }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
 
   // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {
@@ -824,18 +792,55 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setTimeout(onClose, 300);
   };
 
+  const renderLyricsNavigator = (mobile: boolean) => {
+    if (!parsedLyrics?.lines.length) return null;
+
+    return (
+      <div className="rounded-2xl border border-border/40 bg-background/20 backdrop-blur-md">
+        <div className={cn("overflow-y-auto px-2 py-2", mobile ? "max-h-36" : "max-h-52")}>
+          {parsedLyrics.lines.map((line, index) => {
+            const isActive = index === currentLineIndex;
+            return (
+              <button
+                key={`${line.time}-${index}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLyricSeek(index);
+                  if (mobile) resetMobileControlsTimer();
+                }}
+                className={cn(
+                  "w-full rounded-xl px-3 py-2 text-left transition-colors",
+                  isActive ? "bg-accent/20 text-foreground" : "text-foreground/72 hover:bg-background/30 hover:text-foreground"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 shrink-0 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">
+                    {line.time >= 0 ? formatTime(line.time) : `#${index + 1}`}
+                  </span>
+                  <span dir="auto" className="flex-1 text-sm leading-6 md:text-[15px]" style={{ unicodeBidi: "plaintext" }}>
+                    {line.text}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   if (!currentTrack) return null;
 
   const lyricsContentProps = {
     visibleLyrics,
-    currentLineIndex,
     karaokeEnabled,
     karaokeWords,
     smoothTime,
+    lyricsSpeed,
+    bounceIntensity,
     isLoadingLyrics,
     defaultAlignment: parsedLyrics?.defaultAlignment,
-    onLyricSelect: handleLyricSeek,
   };
 
   return (
@@ -923,8 +928,11 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           <div style={{ width: '160px' }} className="flex-shrink-0" />
 
           <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
-            <div className="flex h-full flex-col py-10">
-              <LyricsContent {...lyricsContentProps} isMobile={false} />
+            <div className="flex h-full flex-col gap-6 py-10">
+              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                <LyricsContent {...lyricsContentProps} isMobile={false} />
+              </div>
+              {renderLyricsNavigator(false)}
             </div>
           </div>
         </div>
@@ -969,8 +977,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="relative flex-1 min-h-0">
+            <div
+              ref={lyricsContainerRef}
+              className="relative flex-1 min-h-0"
+              style={{ overflow: 'hidden' }}
+            >
               <LyricsContent {...lyricsContentProps} isMobile />
+            </div>
+            <div className="px-4 pb-28 pt-3">
+              {renderLyricsNavigator(true)}
             </div>
           </div>
 
