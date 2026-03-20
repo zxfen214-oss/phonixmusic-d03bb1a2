@@ -599,9 +599,269 @@ function LyricsContent({
   );
 }
 
-// ═══════════════════════════════════════════════════
-// MAIN LYRICS VIEW
-// ═══════════════════════════════════════════════════
+// ─── Mobile Player View with tabs ───
+function MobilePlayerView({
+  currentTrack, isPlaying, progress, currentTime, smoothTime, isClosing,
+  parsedLyrics, currentLineIndex, lyricsContentProps, lyricsContainerRef,
+  handleClose, handleLyricSeek, seekTo, previousTrack, nextTrack, pauseTrack, resumeTrack,
+}: {
+  currentTrack: Track;
+  isPlaying: boolean;
+  progress: number;
+  currentTime: number;
+  smoothTime: number;
+  isClosing: boolean;
+  parsedLyrics: ParsedLyrics | null;
+  currentLineIndex: number;
+  lyricsContentProps: any;
+  lyricsContainerRef: React.RefObject<HTMLDivElement | null>;
+  handleClose: () => void;
+  handleLyricSeek: (index: number) => void;
+  seekTo: (progress: number) => void;
+  previousTrack: () => void;
+  nextTrack: () => void;
+  pauseTrack: () => void;
+  resumeTrack: () => void;
+}) {
+  const [mobileTab, setMobileTab] = useState<'lyrics' | 'player' | 'utility'>('player');
+  const [localVolume, setLocalVolume] = useState(70);
+  const [showLyricsMenu, setShowLyricsMenu] = useState(false);
+  const { setVolume: setPlayerVolume } = usePlayer();
+
+  const hasLyrics = parsedLyrics && parsedLyrics.lines.length > 0 && !(parsedLyrics.lines[0].text === '♪ ♪ ♪' && !parsedLyrics.isSynced);
+
+  const handleVolumeChange = ([v]: number[]) => {
+    setLocalVolume(v);
+    setPlayerVolume(v);
+  };
+
+  return (
+    <div className="relative h-full flex flex-col md:hidden z-10" style={{ background: '#000000' }}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-5 pt-3 pb-1 flex-shrink-0">
+        <button onClick={handleClose} className="p-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+          <X className="text-white" style={{ width: 16, height: 16 }} />
+        </button>
+        <button
+          onClick={() => setShowLyricsMenu(!showLyricsMenu)}
+          className="p-1.5 rounded-full"
+          style={{ background: 'rgba(255,255,255,0.08)' }}
+        >
+          <MoreHorizontal className="text-white" style={{ width: 16, height: 16 }} />
+        </button>
+      </div>
+
+      {/* 3-dot menu dropdown */}
+      <AnimatePresence>
+        {showLyricsMenu && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute right-5 top-12 z-30 rounded-xl overflow-hidden"
+            style={{ background: 'rgba(40,40,40,0.95)', backdropFilter: 'blur(20px)', minWidth: 180 }}
+          >
+            {hasLyrics && (
+              <button
+                onClick={() => { setMobileTab('lyrics'); setShowLyricsMenu(false); }}
+                className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+              >
+                <Quote style={{ width: 16, height: 16 }} />
+                Show Lyrics
+              </button>
+            )}
+            <button
+              onClick={() => setShowLyricsMenu(false)}
+              className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+            >
+              <Heart style={{ width: 16, height: 16 }} />
+              Add to Favorites
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tab content */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5">
+        <AnimatePresence mode="wait">
+          {mobileTab === 'player' && (
+            <motion.div
+              key="player-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full flex flex-col items-center"
+            >
+              {/* Album Art */}
+              <div
+                className="overflow-hidden mx-auto"
+                style={{
+                  width: '62vw',
+                  maxWidth: 300,
+                  aspectRatio: '1/1',
+                  borderRadius: 14,
+                  boxShadow: '0 20px 60px -15px rgba(0,0,0,0.6)',
+                }}
+              >
+                <img
+                  src={currentTrack.artwork || "/placeholder.svg"}
+                  alt={currentTrack.album}
+                  className="object-cover object-center w-full h-full"
+                />
+              </div>
+
+              {/* Song Info */}
+              <div className="w-full mt-6" style={{ paddingLeft: 4 }}>
+                <h2 className="text-white truncate" style={{ fontSize: 17, fontWeight: 500 }}>
+                  {currentTrack.title}
+                </h2>
+                <p className="truncate" style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
+                  {currentTrack.artist}
+                </p>
+              </div>
+
+              {/* Progress Bar Row */}
+              <div className="w-full mt-3 flex items-center gap-3">
+                <div className="flex-1">
+                  <Slider
+                    value={[progress]}
+                    max={100}
+                    step={0.1}
+                    onValueChange={([v]) => seekTo(v)}
+                    className="[&_[role=slider]]:h-[11px] [&_[role=slider]]:w-[11px] [&_[data-orientation=horizontal]]:h-[3px]"
+                  />
+                  <div className="flex justify-between mt-1" style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(currentTrack.duration)}</span>
+                  </div>
+                </div>
+                {hasLyrics && (
+                  <button
+                    onClick={() => setMobileTab('lyrics')}
+                    className="flex-shrink-0 flex items-center justify-center rounded-full"
+                    style={{ width: 30, height: 30, background: '#ffffff' }}
+                  >
+                    <Quote style={{ width: 13, height: 13, color: '#FF3B3B' }} />
+                  </button>
+                )}
+              </div>
+
+              {/* Playback Controls */}
+              <div className="flex items-center justify-center gap-10 mt-5 w-full">
+                <button onClick={previousTrack} className="p-2">
+                  <SkipBack style={{ width: 23, height: 23, color: '#ffffff' }} />
+                </button>
+                <button onClick={isPlaying ? pauseTrack : resumeTrack} className="p-2">
+                  {isPlaying
+                    ? <Pause style={{ width: 32, height: 32, color: '#ffffff' }} />
+                    : <Play style={{ width: 32, height: 32, color: '#ffffff', marginLeft: 2 }} />
+                  }
+                </button>
+                <button onClick={nextTrack} className="p-2">
+                  <SkipForward style={{ width: 23, height: 23, color: '#ffffff' }} />
+                </button>
+              </div>
+
+              {/* Volume Row */}
+              <div className="flex items-center gap-3 mt-5 w-full" style={{ maxWidth: 280 }}>
+                <VolumeX style={{ width: 17, height: 17, color: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+                <Slider
+                  value={[localVolume]}
+                  max={100}
+                  step={1}
+                  onValueChange={handleVolumeChange}
+                  className="flex-1 [&_[role=slider]]:h-[10px] [&_[role=slider]]:w-[10px] [&_[data-orientation=horizontal]]:h-[3px]"
+                />
+                <Volume2 style={{ width: 17, height: 17, color: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+              </div>
+            </motion.div>
+          )}
+
+          {mobileTab === 'lyrics' && (
+            <motion.div
+              key="lyrics-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full h-full flex flex-col"
+            >
+              <div ref={lyricsContainerRef} className="relative flex-1 min-h-0" style={{ overflow: 'hidden' }}>
+                <LyricsContent {...lyricsContentProps} isMobile />
+              </div>
+              {parsedLyrics && parsedLyrics.lines.length > 0 && (
+                <div className="mt-2 rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="overflow-y-auto max-h-32 px-2 py-2" style={{ WebkitOverflowScrolling: 'touch' as any }}>
+                    {parsedLyrics.lines.map((line, index) => {
+                      const isActive = index === currentLineIndex;
+                      return (
+                        <button
+                          key={`${line.time}-${index}`}
+                          type="button"
+                          onClick={() => handleLyricSeek(index)}
+                          className={cn(
+                            "w-full rounded-xl px-3 py-2 text-left transition-colors",
+                            isActive ? "bg-white/10 text-white" : "text-white/50 active:bg-white/5"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="mt-0.5 shrink-0 text-[10px] font-medium text-white/40">
+                              {line.time >= 0 ? formatTime(line.time) : `#${index + 1}`}
+                            </span>
+                            <span dir="auto" className="flex-1 text-sm leading-6" style={{ unicodeBidi: "plaintext" }}>
+                              {line.text}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {mobileTab === 'utility' && (
+            <motion.div
+              key="utility-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full flex flex-col items-center justify-center gap-4"
+            >
+              <Radio style={{ width: 40, height: 40, color: 'rgba(255,255,255,0.3)' }} />
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Coming soon</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div
+        className="flex-shrink-0 flex items-center justify-around"
+        style={{
+          height: 65,
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        <button onClick={() => setMobileTab('lyrics')} className="flex flex-col items-center justify-center gap-1 px-6 py-2">
+          <Quote style={{ width: 21, height: 21, color: mobileTab === 'lyrics' ? '#FF3B3B' : 'rgba(255,255,255,0.5)' }} />
+        </button>
+        <button onClick={() => setMobileTab('player')} className="flex flex-col items-center justify-center gap-1 px-6 py-2">
+          <Music style={{ width: 21, height: 21, color: mobileTab === 'player' ? '#FF3B3B' : 'rgba(255,255,255,0.5)' }} />
+        </button>
+        <button onClick={() => setMobileTab('utility')} className="flex flex-col items-center justify-center gap-1 px-6 py-2">
+          <Radio style={{ width: 21, height: 21, color: mobileTab === 'utility' ? '#FF3B3B' : 'rgba(255,255,255,0.5)' }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export function LyricsView({ onClose }: LyricsViewProps) {
   const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo } = usePlayer();
   const isMobile = useIsMobile();
