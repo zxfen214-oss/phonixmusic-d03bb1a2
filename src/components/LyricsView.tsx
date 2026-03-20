@@ -513,7 +513,7 @@ function LyricsContent({
 
   useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
 
-  const fontSize = isMobile ? '36px' : '40px';
+  const fontSize = isMobile ? '28px' : '40px';
 
   return (
     <div
