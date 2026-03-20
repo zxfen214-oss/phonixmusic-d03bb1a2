@@ -270,37 +270,31 @@ export async function fetchSyncedLyrics(
     }
   }
   
-  // Fallback: try lyrics.ovh API with retry
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await fetch(
-        `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
-      );
+  try {
+    const response = await fetch(
+      `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
       
-      if (response.ok) {
-        const data = await response.json();
+      if (data.lyrics) {
+        const plainLines = data.lyrics
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.length > 0);
         
-        if (data.lyrics) {
-          const plainLines = data.lyrics
-            .split('\n')
-            .map((line: string) => line.trim())
-            .filter((line: string) => line.length > 0);
-          
-          return {
-            lines: plainLines.map((text: string) => ({
-              time: -1,
-              text,
-            })),
-            isSynced: false,
-          };
-        }
+        return {
+          lines: plainLines.map((text: string) => ({
+            time: -1,
+            text,
+          })),
+          isSynced: false,
+        };
       }
-      break; // Don't retry on non-network errors
-    } catch (error) {
-      console.error(`Lyrics API attempt ${attempt + 1} failed:`, error);
-      if (attempt === 1) break;
-      await new Promise(r => setTimeout(r, 1000));
     }
+  } catch (error) {
+    console.error("Failed to fetch lyrics from API:", error);
   }
   
   return null;
