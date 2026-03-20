@@ -13,7 +13,13 @@ import {
   Heart,
   Loader2,
   MoreHorizontal,
+  Volume2,
+  VolumeX,
+  Music,
+  Quote,
+  Radio,
 } from "lucide-react";
+import { Track } from "@/types/music";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
