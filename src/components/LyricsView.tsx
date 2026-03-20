@@ -282,7 +282,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean }) {
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '28px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
           <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} />
