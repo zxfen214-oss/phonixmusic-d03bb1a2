@@ -1046,7 +1046,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLyricSeek(index);
-                  if (mobile) resetMobileControlsTimer();
                 }}
                 className={cn(
                   "w-full rounded-xl px-3 py-2 text-left transition-colors",
