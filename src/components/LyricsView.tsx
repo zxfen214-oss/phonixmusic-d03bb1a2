@@ -1023,27 +1023,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
 
-  // Auto-hide mobile controls
-  const resetMobileControlsTimer = useCallback(() => {
-    setMobileControlsVisible(true);
-    if (mobileControlsTimerRef.current) clearTimeout(mobileControlsTimerRef.current);
-    mobileControlsTimerRef.current = window.setTimeout(() => {
-      setMobileControlsVisible(false);
-    }, 1500);
-  }, []);
 
-  useEffect(() => {
-    if (isMobile) {
-      resetMobileControlsTimer();
-    }
-    return () => {
-      if (mobileControlsTimerRef.current) clearTimeout(mobileControlsTimerRef.current);
-    };
-  }, [isMobile, resetMobileControlsTimer]);
 
-  const handleMobileTap = useCallback(() => {
-    resetMobileControlsTimer();
-  }, [resetMobileControlsTimer]);
 
   const handleClose = () => {
     setIsClosing(true);
