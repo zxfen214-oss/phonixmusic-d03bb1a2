@@ -875,8 +875,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [karaokeWords, setKaraokeWords] = useState<KaraokeWord[]>([]);
   const [lyricsSpeed, setLyricsSpeed] = useState(0.75);
   const [bounceIntensity, setBounceIntensity] = useState(0.5);
-  const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
-  const mobileControlsTimerRef = useRef<number | null>(null);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
