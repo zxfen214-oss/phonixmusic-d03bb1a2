@@ -227,34 +227,55 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Karaoke word span with gradient fill and fading edge ───
-function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: string; startTime: number; endTime: number; currentTime: number }) {
+function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number }) {
   const safeDuration = Math.max(endTime - startTime, 0.001);
   let progress = 0;
   if (currentTime >= endTime) progress = 1;
   else if (currentTime > startTime) progress = (currentTime - startTime) / safeDuration;
 
-  const wordDuration = Math.max(endTime - startTime, 0);
+  // Smoothly bridge gaps between words: if done but next word hasn't started,
+  // keep showing 100% so there's no visual pause between words.
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
-  const isDone = progress >= 1;
+  const wordDuration = endTime - startTime;
   const isActive = currentTime >= startTime && currentTime < endTime;
+  const isDone = progress >= 1;
+  const isLongWord = wordDuration >= 1.5;
 
-  // Keep short words smooth, but when a line appears already completed,
-  // use a very short catch-up so it doesn't feel delayed or teleport.
-  const transitionMs = isDone && !isActive
-    ? 120
-    : wordDuration < 0.1
-      ? 140
-      : Math.min(70, wordDuration * 160);
+  // Drive fill directly from rAF-updated currentTime — no CSS transition
+  // so the sweep flows continuously across words without pausing.
 
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
         display: 'inline-block',
-        willChange: 'contents',
       }}
     >
-      <span style={{ whiteSpace: 'pre' }}><span style={{ color: "rgba(255, 255, 255, 0.35)" }}>{word}</span></span>
+      {/* Base (dim) text — for long words, render per-letter with emphasis */}
+      {isLongWord && isActive ? (
+        <span style={{ whiteSpace: 'pre' }}>
+          {word.split('').map((ch, ci) => {
+            const letterProgress = progress * word.length;
+            const dist = Math.abs(letterProgress - ci);
+            const pulse = dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+            const scale = 1 + pulse * 0.18;
+            return (
+              <span
+                key={ci}
+                style={{
+                  display: 'inline-block',
+                  color: "rgba(255, 255, 255, 0.35)",
+                  transform: `scale(${scale})`,
+                  transformOrigin: 'bottom center',
+                  transition: 'transform 80ms ease-out',
+                }}
+              >{ch}</span>
+            );
+          })}
+        </span>
+      ) : (
+        <span style={{ whiteSpace: 'pre' }}><span style={{ color: "rgba(255, 255, 255, 0.35)" }}>{word}</span></span>
+      )}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
@@ -262,10 +283,33 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
           width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          transition: `width ${transitionMs}ms linear`,
         }}
       >
-        <span style={{ whiteSpace: 'pre' }}><span style={{ color: "#ffffff" }}>{word}</span></span>
+        {/* Filled (bright) text — also per-letter emphasis for long words */}
+        {isLongWord && isActive ? (
+          <span style={{ whiteSpace: 'pre' }}>
+            {word.split('').map((ch, ci) => {
+              const letterProgress = progress * word.length;
+              const dist = Math.abs(letterProgress - ci);
+              const pulse = dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+              const scale = 1 + pulse * 0.18;
+              return (
+                <span
+                  key={ci}
+                  style={{
+                    display: 'inline-block',
+                    color: '#ffffff',
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'bottom center',
+                    transition: 'transform 80ms ease-out',
+                  }}
+                >{ch}</span>
+              );
+            })}
+          </span>
+        ) : (
+          <span style={{ whiteSpace: 'pre' }}><span style={{ color: "#ffffff" }}>{word}</span></span>
+        )}
       </span>
     </span>
   );
@@ -277,7 +321,7 @@ function ELRCLine({ words, currentTime, isMobile }: { words: { word: string; sta
     <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
-          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} />
+          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} />
           {idx < words.length - 1 ? " " : null}
         </Fragment>
       ))}
@@ -304,7 +348,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
-            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} />
+            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} />
             {idx < lineWords.length - 1 ? " " : null}
           </Fragment>
         ))}
