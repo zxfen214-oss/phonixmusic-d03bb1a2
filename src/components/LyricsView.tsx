@@ -228,20 +228,13 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: string; startTime: number; endTime: number; currentTime: number }) {
-  const prevFillRef = useRef(0);
-  
   let progress = 0;
   if (currentTime >= endTime) progress = 1;
   else if (currentTime > startTime) progress = (currentTime - startTime) / (endTime - startTime);
 
-  // Smooth: never jump backwards, and enforce minimum animation duration
   const wordDuration = endTime - startTime;
-  const minTransitionMs = Math.max(180, Math.min(wordDuration * 1000, 400));
-  
-  // If progress jumped ahead (e.g. LRC popped line already done), animate smoothly
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   
-  // Track for lift/scale
   const isDone = progress >= 1;
   const isActive = currentTime >= startTime && currentTime < endTime;
 
@@ -251,8 +244,14 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
   const fadeEdge = isActive ? 15 : 0;
   const fillWidth = Math.min(100, fillPercent + fadeEdge);
 
-  // Transition duration: use word duration but clamp to minimum for very short words
-  const transitionDuration = `${minTransitionMs}ms`;
+  // Short words (<0.15s): use minimum 150ms smooth transition so they don't teleport.
+  // Already-done words (line appeared late): animate catch-up over 250ms.
+  // Normal words: responsive 80ms max transition to avoid perceptible delay.
+  const transitionMs = isDone && !isActive
+    ? 250
+    : wordDuration < 0.15
+      ? 150
+      : Math.min(80, wordDuration * 200);
 
   return (
     <span
@@ -261,7 +260,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
         display: 'inline-block',
         transformOrigin: 'bottom center',
         transform: `translateY(${liftY}px) scale(${growthFactor})`,
-        transition: `transform ${minTransitionMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+        transition: `transform ${Math.max(100, transitionMs)}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
         willChange: 'transform',
       }}
     >
@@ -273,7 +272,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
           width: `${fillWidth}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          transition: `width ${transitionDuration} linear`,
+          transition: `width ${transitionMs}ms linear`,
           maskImage: isActive && fillPercent < 95
             ? `linear-gradient(to right, black 0%, black ${Math.max(0, (fillPercent / (fillPercent + fadeEdge)) * 100 - 5)}%, transparent 100%)`
             : 'none',
