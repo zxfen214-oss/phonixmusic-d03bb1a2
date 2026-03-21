@@ -719,7 +719,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] max-w-[95vw] sm:w-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mic2 className="h-5 w-5 text-accent" />
