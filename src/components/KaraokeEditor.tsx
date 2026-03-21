@@ -71,6 +71,7 @@ function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: n
                   width: `${fillPercent}%`,
                   color: "hsl(var(--accent))",
                   whiteSpace: "nowrap",
+                  transition: "width 120ms linear",
                 }}
               >
                 {part}
