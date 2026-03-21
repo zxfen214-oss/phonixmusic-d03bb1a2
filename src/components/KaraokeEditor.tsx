@@ -719,7 +719,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] max-w-[95vw] sm:w-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mic2 className="h-5 w-5 text-accent" />
@@ -875,19 +875,21 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                       animate={{ opacity: 1 }}
                       className="flex-1 flex flex-col gap-4 overflow-hidden"
                     >
-                      <div className="flex flex-wrap items-center gap-3 bg-secondary rounded-lg p-3">
+                      <div className="flex flex-wrap items-center gap-2 bg-secondary rounded-lg p-2 md:p-3 md:gap-3">
                         <Button
                           variant="outline"
                           size="icon"
+                          className="h-8 w-8 md:h-9 md:w-9"
                           onClick={() => isPlaying ? pauseTrack() : resumeTrack()}
                           title={isPlaying ? "Pause (Space)" : "Play (Space)"}
                         >
-                          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                          {isPlaying ? <Pause className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Play className="h-3.5 w-3.5 md:h-4 md:w-4" />}
                         </Button>
 
                         <Button
                           variant="outline"
                           size="icon"
+                          className="h-8 w-8 md:h-9 md:w-9"
                           onClick={() => {
                             if (activeLineIndex > 0) {
                               setLineTimings(prev => {
@@ -916,18 +918,18 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                           disabled={activeLineIndex === 0}
                           title="Go to previous line"
                         >
-                          <SkipBack className="h-4 w-4" />
+                          <SkipBack className="h-3.5 w-3.5 md:h-4 md:w-4" />
                         </Button>
 
-                        <div className="font-mono text-lg font-bold">
+                        <div className="font-mono text-sm md:text-lg font-bold">
                           {formatDisplayTime(currentTime)}
                         </div>
-                        <div className="flex items-center gap-2 rounded bg-accent/20 px-2 py-1 text-xs font-medium text-accent">
+                        <div className="flex items-center gap-1 rounded bg-accent/20 px-1.5 py-0.5 text-[10px] md:text-xs font-medium text-accent md:gap-2 md:px-2 md:py-1">
                           <Gauge className="h-3 w-3" />
                           {Math.round(syncSpeed * 100)}%
                         </div>
 
-                        <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[180px]">
+                        <div className="flex items-center gap-2 flex-1 min-w-[100px] md:min-w-[180px]">
                           <Slider
                             value={[syncSpeed * 100]}
                             min={30}
@@ -941,17 +943,17 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                             className="flex-1"
                           />
                         </div>
-                        <div className="text-center text-sm text-muted-foreground whitespace-nowrap">
+                        <div className="text-center text-xs md:text-sm text-muted-foreground whitespace-nowrap">
                           {activeLineIndex + 1}/{lyricsLines.length}
                         </div>
-                        <Button onClick={finishSyncing} variant="secondary" size="sm">
+                        <Button onClick={finishSyncing} variant="secondary" size="sm" className="text-xs md:text-sm h-7 md:h-8">
                           Done
                         </Button>
                       </div>
 
                       <div
                         ref={lyricsContainerRef}
-                        className="flex-1 rounded-2xl border border-border/60 bg-background/40 p-4 md:p-8"
+                        className="flex-1 rounded-2xl border border-border/60 bg-background/40 p-3 md:p-8 overflow-y-auto"
                       >
                         {lyricsLines[activeLineIndex] && (
                           <div className="flex h-full flex-col justify-center gap-6">
@@ -977,9 +979,9 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                         transform: `translateX(-${Math.min(24, (lineTimings[activeLineIndex]?.fillProgress ?? 0) * 24)}%)`,
                                       }}
                                     >
-                                      <p
+                                       <p
                                         dir="auto"
-                                        className="min-h-[4rem] text-3xl font-bold leading-tight md:min-h-[5rem] md:text-5xl"
+                                        className="min-h-[3rem] text-xl font-bold leading-tight sm:text-3xl sm:min-h-[4rem] md:min-h-[5rem] md:text-5xl"
                                         style={{
                                           unicodeBidi: "plaintext",
                                           color: "hsl(var(--foreground) / 0.92)",
@@ -1002,7 +1004,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                     step={0.005}
                                     onValueChange={([value]) => handleLineFillChange(activeLineIndex, value)}
                                     onValueCommit={([value]) => handleLineFillCommit(activeLineIndex, value)}
-                                    className="w-full [&>span:first-child]:h-4 [&_[role=slider]]:h-7 [&_[role=slider]]:w-7"
+                                    className="w-full [&>span:first-child]:h-3 [&_[role=slider]]:h-6 [&_[role=slider]]:w-6 md:[&>span:first-child]:h-4 md:[&_[role=slider]]:h-7 md:[&_[role=slider]]:w-7"
                                   />
                                   <div className="flex items-center justify-between text-xs md:text-sm">
                                     <span className="text-muted-foreground">Drag with the singer, then the next line appears instantly.</span>

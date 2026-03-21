@@ -228,20 +228,13 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: string; startTime: number; endTime: number; currentTime: number }) {
-  const prevFillRef = useRef(0);
-  
   let progress = 0;
   if (currentTime >= endTime) progress = 1;
   else if (currentTime > startTime) progress = (currentTime - startTime) / (endTime - startTime);
 
-  // Smooth: never jump backwards, and enforce minimum animation duration
   const wordDuration = endTime - startTime;
-  const minTransitionMs = Math.max(180, Math.min(wordDuration * 1000, 400));
-  
-  // If progress jumped ahead (e.g. LRC popped line already done), animate smoothly
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   
-  // Track for lift/scale
   const isDone = progress >= 1;
   const isActive = currentTime >= startTime && currentTime < endTime;
 
@@ -251,8 +244,14 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
   const fadeEdge = isActive ? 15 : 0;
   const fillWidth = Math.min(100, fillPercent + fadeEdge);
 
-  // Transition duration: use word duration but clamp to minimum for very short words
-  const transitionDuration = `${minTransitionMs}ms`;
+  // Short words (<0.15s): use minimum 150ms smooth transition so they don't teleport.
+  // Already-done words (line appeared late): animate catch-up over 250ms.
+  // Normal words: responsive 80ms max transition to avoid perceptible delay.
+  const transitionMs = isDone && !isActive
+    ? 250
+    : wordDuration < 0.15
+      ? 150
+      : Math.min(80, wordDuration * 200);
 
   return (
     <span
@@ -261,7 +260,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
         display: 'inline-block',
         transformOrigin: 'bottom center',
         transform: `translateY(${liftY}px) scale(${growthFactor})`,
-        transition: `transform ${minTransitionMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+        transition: `transform ${Math.max(100, transitionMs)}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
         willChange: 'transform',
       }}
     >
@@ -273,7 +272,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
           width: `${fillWidth}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          transition: `width ${transitionDuration} linear`,
+          transition: `width ${transitionMs}ms linear`,
           maskImage: isActive && fillPercent < 95
             ? `linear-gradient(to right, black 0%, black ${Math.max(0, (fillPercent / (fillPercent + fadeEdge)) * 100 - 5)}%, transparent 100%)`
             : 'none',
@@ -801,43 +800,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setTimeout(onClose, 300);
   };
 
-  const renderLyricsNavigator = (mobile: boolean) => {
-    if (!parsedLyrics?.lines.length) return null;
-
-    return (
-      <div className="rounded-2xl border border-border/40 bg-background/20 backdrop-blur-md">
-        <div className={cn("overflow-y-auto px-2 py-2", mobile ? "max-h-36" : "max-h-52")}>
-          {parsedLyrics.lines.map((line, index) => {
-            const isActive = index === currentLineIndex;
-            return (
-              <button
-                key={`${line.time}-${index}`}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLyricSeek(index);
-                  if (mobile) resetMobileControlsTimer();
-                }}
-                className={cn(
-                  "w-full rounded-xl px-3 py-2 text-left transition-colors",
-                  isActive ? "bg-accent/20 text-foreground" : "text-foreground/72 hover:bg-background/30 hover:text-foreground"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 shrink-0 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">
-                    {line.time >= 0 ? formatTime(line.time) : `#${index + 1}`}
-                  </span>
-                  <span dir="auto" className="flex-1 text-sm leading-6 md:text-[15px]" style={{ unicodeBidi: "plaintext" }}>
-                    {line.text}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  // Lyrics navigator removed
 
   if (!currentTrack) return null;
 
@@ -941,7 +904,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                 <LyricsContent {...lyricsContentProps} isMobile={false} />
               </div>
-              {renderLyricsNavigator(false)}
+              
             </div>
           </div>
         </div>
@@ -992,9 +955,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               style={{ overflow: 'hidden' }}
             >
               <LyricsContent {...lyricsContentProps} isMobile />
-            </div>
-            <div className="px-4 pb-28 pt-3">
-              {renderLyricsNavigator(true)}
             </div>
           </div>
 
