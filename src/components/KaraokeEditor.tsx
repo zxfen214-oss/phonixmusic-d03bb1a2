@@ -979,9 +979,9 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                         transform: `translateX(-${Math.min(24, (lineTimings[activeLineIndex]?.fillProgress ?? 0) * 24)}%)`,
                                       }}
                                     >
-                                      <p
+                                       <p
                                         dir="auto"
-                                        className="min-h-[4rem] text-3xl font-bold leading-tight md:min-h-[5rem] md:text-5xl"
+                                        className="min-h-[3rem] text-xl font-bold leading-tight sm:text-3xl sm:min-h-[4rem] md:min-h-[5rem] md:text-5xl"
                                         style={{
                                           unicodeBidi: "plaintext",
                                           color: "hsl(var(--foreground) / 0.92)",
