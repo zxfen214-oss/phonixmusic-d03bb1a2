@@ -1004,7 +1004,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                     step={0.005}
                                     onValueChange={([value]) => handleLineFillChange(activeLineIndex, value)}
                                     onValueCommit={([value]) => handleLineFillCommit(activeLineIndex, value)}
-                                    className="w-full [&>span:first-child]:h-4 [&_[role=slider]]:h-7 [&_[role=slider]]:w-7"
+                                    className="w-full [&>span:first-child]:h-3 [&_[role=slider]]:h-6 [&_[role=slider]]:w-6 md:[&>span:first-child]:h-4 md:[&_[role=slider]]:h-7 md:[&_[role=slider]]:w-7"
                                   />
                                   <div className="flex items-center justify-between text-xs md:text-sm">
                                     <span className="text-muted-foreground">Drag with the singer, then the next line appears instantly.</span>

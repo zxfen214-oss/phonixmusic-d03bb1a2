@@ -957,9 +957,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             >
               <LyricsContent {...lyricsContentProps} isMobile />
             </div>
-            <div className="px-4 pb-28 pt-3">
-              {renderLyricsNavigator(true)}
-            </div>
           </div>
 
           <motion.div
