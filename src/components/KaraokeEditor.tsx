@@ -953,7 +953,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
                       <div
                         ref={lyricsContainerRef}
-                        className="flex-1 rounded-2xl border border-border/60 bg-background/40 p-4 md:p-8"
+                        className="flex-1 rounded-2xl border border-border/60 bg-background/40 p-3 md:p-8 overflow-y-auto"
                       >
                         {lyricsLines[activeLineIndex] && (
                           <div className="flex h-full flex-col justify-center gap-6">
