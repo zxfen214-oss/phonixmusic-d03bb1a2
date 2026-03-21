@@ -905,7 +905,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                 <LyricsContent {...lyricsContentProps} isMobile={false} />
               </div>
-              {renderLyricsNavigator(false)}
+              
             </div>
           </div>
         </div>
