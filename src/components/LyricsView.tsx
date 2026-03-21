@@ -228,23 +228,31 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: string; startTime: number; endTime: number; currentTime: number }) {
+  const prevFillRef = useRef(0);
+  
   let progress = 0;
   if (currentTime >= endTime) progress = 1;
   else if (currentTime > startTime) progress = (currentTime - startTime) / (endTime - startTime);
 
+  // Smooth: never jump backwards, and enforce minimum animation duration
+  const wordDuration = endTime - startTime;
+  const minTransitionMs = Math.max(180, Math.min(wordDuration * 1000, 400));
+  
+  // If progress jumped ahead (e.g. LRC popped line already done), animate smoothly
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
+  
+  // Track for lift/scale
   const isDone = progress >= 1;
   const isActive = currentTime >= startTime && currentTime < endTime;
-  const wordDuration = endTime - startTime;
 
   const liftY = isDone ? -1.5 : isActive ? -1.5 * progress : 0;
   const growthFactor = isActive ? Math.min(1.04, 1 + wordDuration * 0.008 * progress) : isDone ? 1.005 : 1;
 
   const fadeEdge = isActive ? 15 : 0;
+  const fillWidth = Math.min(100, fillPercent + fadeEdge);
 
-  const renderText = (color: string) => {
-    return <span style={{ color }}>{word}</span>;
-  };
+  // Transition duration: use word duration but clamp to minimum for very short words
+  const transitionDuration = `${minTransitionMs}ms`;
 
   return (
     <span
@@ -253,18 +261,19 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
         display: 'inline-block',
         transformOrigin: 'bottom center',
         transform: `translateY(${liftY}px) scale(${growthFactor})`,
-        transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        transition: `transform ${minTransitionMs}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
         willChange: 'transform',
       }}
     >
-      <span style={{ whiteSpace: 'pre' }}>{renderText("rgba(255, 255, 255, 0.35)")}</span>
+      <span style={{ whiteSpace: 'pre' }}><span style={{ color: "rgba(255, 255, 255, 0.35)" }}>{word}</span></span>
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
         style={{
-          width: `${Math.min(100, fillPercent + fadeEdge)}%`,
+          width: `${fillWidth}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
+          transition: `width ${transitionDuration} linear`,
           maskImage: isActive && fillPercent < 95
             ? `linear-gradient(to right, black 0%, black ${Math.max(0, (fillPercent / (fillPercent + fadeEdge)) * 100 - 5)}%, transparent 100%)`
             : 'none',
@@ -273,7 +282,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime }: { word: stri
             : 'none',
         }}
       >
-        <span style={{ whiteSpace: 'pre' }}>{renderText("#ffffff")}</span>
+        <span style={{ whiteSpace: 'pre' }}><span style={{ color: "#ffffff" }}>{word}</span></span>
       </span>
     </span>
   );
