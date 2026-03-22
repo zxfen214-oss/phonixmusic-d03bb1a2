@@ -310,7 +310,13 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
-        style={{ width: `${fillPercent}%`, whiteSpace: 'nowrap', overflow: 'hidden' }}
+        style={{
+          width: `${fillPercent}%`,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+        }}
       >
         <span style={{ whiteSpace: 'pre', color: "#ffffff" }}>{word}</span>
       </span>
