@@ -794,22 +794,30 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       return result;
     }
 
-    const prevLine = currentLineIndex > 0 ? parsedLyrics.lines[currentLineIndex - 1] : null;
-    const hasPrevNl = prevLine?.isNl === true;
+    // For <nl> handling: nl-tagged lines are skipped from rendering
+    // and their text is attached as nlCompanionText to the following line.
+    const nlIndices = new Set<number>();
+    for (let i = 0; i < parsedLyrics.lines.length; i++) {
+      if (parsedLyrics.lines[i].isNl) nlIndices.add(i);
+    }
 
+    // Build visible list, skipping nl lines and re-indexing positions
+    let pos = 0;
     for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
       const idx = currentLineIndex + i;
-      if (idx >= 0 && idx < parsedLyrics.lines.length) {
-        const line = parsedLyrics.lines[idx];
-        const next = parsedLyrics.lines[idx + 1];
+      if (idx < 0 || idx >= parsedLyrics.lines.length) continue;
 
-        if (i === -1 && hasPrevNl) continue;
+      // Skip nl-tagged lines (they render as companion on the next line)
+      if (nlIndices.has(idx)) continue;
 
-        const pos = hasPrevNl && i > -1 ? i : i;
-        const nlCompanionText = (i === 0 && hasPrevNl && prevLine) ? prevLine.text : undefined;
+      const line = parsedLyrics.lines[idx];
+      const next = parsedLyrics.lines[idx + 1];
 
-        result.push({ text: line.text, index: idx, position: pos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
-      }
+      // Attach companion text if previous line was nl-tagged
+      const prevIsNl = idx > 0 && nlIndices.has(idx - 1);
+      const nlCompanionText = prevIsNl ? parsedLyrics.lines[idx - 1].text : undefined;
+
+      result.push({ text: line.text, index: idx, position: i, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
     }
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
