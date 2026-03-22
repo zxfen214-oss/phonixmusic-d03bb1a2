@@ -316,8 +316,10 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
           width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+          ...(isDone ? {} : {
+            maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+          }),
         }}
       >
         <span style={{ whiteSpace: 'pre', color: "#ffffff" }}>{word}</span>
