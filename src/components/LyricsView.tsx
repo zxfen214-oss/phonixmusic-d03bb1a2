@@ -233,31 +233,24 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
   if (currentTime >= endTime) progress = 1;
   else if (currentTime > startTime) progress = (currentTime - startTime) / safeDuration;
 
-  // Smoothly bridge gaps between words: if done but next word hasn't started,
-  // keep showing 100% so there's no visual pause between words.
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
   const isActive = currentTime >= startTime && currentTime < endTime;
   const isDone = progress >= 1;
   const isLongWord = wordDuration >= 1.5;
 
-  // Drive fill directly from rAF-updated currentTime — no CSS transition
-  // so the sweep flows continuously across words without pausing.
-
-  return (
-    <span
-      className="relative inline-block align-baseline"
-      style={{
-        display: 'inline-block',
-      }}
-    >
-      {/* Base (dim) text — for long words, render per-letter with emphasis */}
-      {isLongWord && isActive ? (
+  // For long words, always render per-letter to avoid DOM structure changes
+  // that cause visual "teleporting" when transitioning between active/inactive
+  if (isLongWord) {
+    const letters = word.split('');
+    return (
+      <span className="relative inline-block align-baseline">
+        {/* Base (dim) per-letter layer */}
         <span style={{ whiteSpace: 'pre' }}>
-          {word.split('').map((ch, ci) => {
-            const letterProgress = progress * word.length;
+          {letters.map((ch, ci) => {
+            const letterProgress = progress * letters.length;
             const dist = Math.abs(letterProgress - ci);
-            const pulse = dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+            const pulse = isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
             const scale = 1 + pulse * 0.18;
             return (
               <span
@@ -267,31 +260,23 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
                   color: "rgba(255, 255, 255, 0.35)",
                   transform: `scale(${scale})`,
                   transformOrigin: 'bottom center',
-                  transition: 'transform 80ms ease-out',
+                  transition: 'transform 120ms ease-out',
                 }}
               >{ch}</span>
             );
           })}
         </span>
-      ) : (
-        <span style={{ whiteSpace: 'pre' }}><span style={{ color: "rgba(255, 255, 255, 0.35)" }}>{word}</span></span>
-      )}
-      <span
-        aria-hidden
-        className="absolute left-0 top-0 bottom-0 pointer-events-none"
-        style={{
-          width: `${fillPercent}%`,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Filled (bright) text — also per-letter emphasis for long words */}
-        {isLongWord && isActive ? (
+        {/* Filled (bright) overlay clipped to progress */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 pointer-events-none"
+          style={{ width: `${fillPercent}%`, whiteSpace: 'nowrap', overflow: 'hidden' }}
+        >
           <span style={{ whiteSpace: 'pre' }}>
-            {word.split('').map((ch, ci) => {
-              const letterProgress = progress * word.length;
+            {letters.map((ch, ci) => {
+              const letterProgress = progress * letters.length;
               const dist = Math.abs(letterProgress - ci);
-              const pulse = dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+              const pulse = isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
               const scale = 1 + pulse * 0.18;
               return (
                 <span
@@ -301,15 +286,27 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
                     color: '#ffffff',
                     transform: `scale(${scale})`,
                     transformOrigin: 'bottom center',
-                    transition: 'transform 80ms ease-out',
+                    transition: 'transform 120ms ease-out',
                   }}
                 >{ch}</span>
               );
             })}
           </span>
-        ) : (
-          <span style={{ whiteSpace: 'pre' }}><span style={{ color: "#ffffff" }}>{word}</span></span>
-        )}
+        </span>
+      </span>
+    );
+  }
+
+  // Short/normal words: simple fill without per-letter rendering
+  return (
+    <span className="relative inline-block align-baseline">
+      <span style={{ whiteSpace: 'pre', color: "rgba(255, 255, 255, 0.35)" }}>{word}</span>
+      <span
+        aria-hidden
+        className="absolute left-0 top-0 bottom-0 pointer-events-none"
+        style={{ width: `${fillPercent}%`, whiteSpace: 'nowrap', overflow: 'hidden' }}
+      >
+        <span style={{ whiteSpace: 'pre', color: "#ffffff" }}>{word}</span>
       </span>
     </span>
   );
