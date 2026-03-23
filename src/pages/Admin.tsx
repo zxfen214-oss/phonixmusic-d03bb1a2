@@ -143,7 +143,75 @@ export default function Admin() {
   const [fetchingMetadata, setFetchingMetadata] = useState<string | null>(null);
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  
+
+  // Admin management state
+  interface AdminUser {
+    id: string;
+    email: string;
+    display_name: string | null;
+    is_admin: boolean;
+  }
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+
+  const fetchAdminUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Get all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .order('created_at', { ascending: false });
+      if (profilesError) throw profilesError;
+
+      // Get all admin role entries
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'admin');
+
+      const adminIds = new Set((roles || []).map(r => r.user_id));
+
+      setAdminUsers((profiles || []).map(p => ({
+        id: p.id,
+        email: '', // email not accessible from profiles
+        display_name: p.display_name,
+        is_admin: adminIds.has(p.id),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast({ title: 'Error', description: 'Failed to load users', variant: 'destructive' });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const toggleAdminRole = async (targetUserId: string, grantAdmin: boolean) => {
+    if (targetUserId === user?.id) {
+      toast({ title: 'Error', description: "You can't revoke your own admin role", variant: 'destructive' });
+      return;
+    }
+    setTogglingAdmin(targetUserId);
+    try {
+      if (grantAdmin) {
+        const { error } = await supabase.from('user_roles').insert({ user_id: targetUserId, role: 'admin' });
+        if (error) throw error;
+        toast({ title: 'Admin Granted', description: 'User is now an admin' });
+      } else {
+        const { error } = await supabase.from('user_roles').delete().eq('user_id', targetUserId).eq('role', 'admin');
+        if (error) throw error;
+        toast({ title: 'Admin Revoked', description: 'User is no longer an admin' });
+      }
+      fetchAdminUsers();
+    } catch (error) {
+      console.error('Toggle admin error:', error);
+      toast({ title: 'Error', description: 'Failed to update admin role', variant: 'destructive' });
+    } finally {
+      setTogglingAdmin(null);
+    }
+  };
+
   const [formData, setFormData] = useState({
     title: "",
     artist: "",
