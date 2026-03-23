@@ -994,6 +994,84 @@ export default function Admin() {
                 <TabsContent value="duplicates" className="mt-0">
                   <DuplicatesView songs={songs} onDelete={handleDelete} />
                 </TabsContent>
+
+                {/* Admin Users Tab */}
+                <TabsContent value="admin-users" className="mt-0">
+                  {isLoadingUsers ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Grant or revoke admin access for users. Admins can manage songs, lyrics, and other admins.
+                      </p>
+                      {adminUsers.map((au) => (
+                        <motion.div
+                          key={au.id}
+                          layout
+                          className={`p-4 rounded-xl border transition-colors ${
+                            au.is_admin ? "border-accent/50 bg-accent/5" : "border-border bg-card"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              au.is_admin ? 'bg-accent/20' : 'bg-secondary'
+                            }`}>
+                              {au.is_admin ? (
+                                <ShieldCheck className="h-5 w-5 text-accent" />
+                              ) : (
+                                <Users className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium truncate">
+                                {au.display_name || 'Unnamed User'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground truncate">
+                                ID: {au.id.slice(0, 12)}...
+                                {au.id === user?.id && ' (You)'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {au.is_admin ? (
+                                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Admin</span>
+                              ) : (
+                                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">User</span>
+                              )}
+                              <Button
+                                variant={au.is_admin ? "destructive" : "default"}
+                                size="sm"
+                                disabled={togglingAdmin === au.id || au.id === user?.id}
+                                onClick={() => toggleAdminRole(au.id, !au.is_admin)}
+                                className="gap-1"
+                              >
+                                {togglingAdmin === au.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : au.is_admin ? (
+                                  <ShieldX className="h-3 w-3" />
+                                ) : (
+                                  <ShieldCheck className="h-3 w-3" />
+                                )}
+                                {au.is_admin ? 'Revoke' : 'Grant'}
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                      {adminUsers.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No users found.</p>
+                          <Button variant="outline" onClick={fetchAdminUsers} className="mt-4 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Load Users
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </FadeIn>
           </div>
