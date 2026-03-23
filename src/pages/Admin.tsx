@@ -26,6 +26,9 @@ import {
   RefreshCw,
   Copy,
   CheckSquare,
+  Shield,
+  ShieldCheck,
+  ShieldX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
