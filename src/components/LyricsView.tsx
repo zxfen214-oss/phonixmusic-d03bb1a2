@@ -594,6 +594,11 @@ function LyricsContent({
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                {nlCompanionText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
@@ -603,6 +608,11 @@ function LyricsContent({
             ) : !isIntro && karaokeEnabled ? (
               <>
                 <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                {nlCompanionText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
