@@ -244,7 +244,10 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
   if (isLongWord) {
     const letters = word.split('');
     return (
-      <span className="relative inline-block align-baseline">
+      <span className="relative inline-block align-baseline" style={{
+        transform: isDone ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'transform 0.3s ease-out',
+      }}>
         {/* Base (dim) per-letter layer */}
         <span style={{ whiteSpace: 'pre' }}>
           {letters.map((ch, ci) => {
