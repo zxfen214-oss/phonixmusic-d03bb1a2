@@ -244,7 +244,10 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
   if (isLongWord) {
     const letters = word.split('');
     return (
-      <span className="relative inline-block align-baseline">
+      <span className="relative inline-block align-baseline" style={{
+        transform: isDone ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'transform 0.3s ease-out',
+      }}>
         {/* Base (dim) per-letter layer */}
         <span style={{ whiteSpace: 'pre' }}>
           {letters.map((ch, ci) => {
@@ -307,7 +310,10 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
 
   // Short/normal words: simple fill without per-letter rendering
   return (
-    <span className="relative inline-block align-baseline">
+    <span className="relative inline-block align-baseline" style={{
+      transform: isDone ? 'translateY(-2px)' : 'translateY(0)',
+      transition: 'transform 0.3s ease-out',
+    }}>
       <span style={{ whiteSpace: 'pre', color: "rgba(255, 255, 255, 0.35)" }}>{word}</span>
       <span
         aria-hidden
