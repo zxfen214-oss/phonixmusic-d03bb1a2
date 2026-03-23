@@ -801,23 +801,34 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       if (parsedLyrics.lines[i].isNl) nlIndices.add(i);
     }
 
-    // Build visible list, skipping nl lines and re-indexing positions
-    let pos = 0;
-    for (let i = -LINES_BEFORE; i <= LINES_AFTER; i++) {
-      const idx = currentLineIndex + i;
+    // If currentLineIndex points to an nl line, treat the next non-nl line as active
+    let effectiveCurrentIndex = currentLineIndex;
+    while (nlIndices.has(effectiveCurrentIndex) && effectiveCurrentIndex < parsedLyrics.lines.length - 1) {
+      effectiveCurrentIndex++;
+    }
+
+    // Build visible list, skipping nl lines and using continuous positions
+    const candidates: { idx: number; line: LyricLine; nlCompanionText?: string }[] = [];
+    for (let i = -LINES_BEFORE - 5; i <= LINES_AFTER + 5; i++) {
+      const idx = effectiveCurrentIndex + i;
       if (idx < 0 || idx >= parsedLyrics.lines.length) continue;
-
-      // Skip nl-tagged lines (they render as companion on the next line)
       if (nlIndices.has(idx)) continue;
-
       const line = parsedLyrics.lines[idx];
-      const next = parsedLyrics.lines[idx + 1];
-
-      // Attach companion text if previous line was nl-tagged
       const prevIsNl = idx > 0 && nlIndices.has(idx - 1);
       const nlCompanionText = prevIsNl ? parsedLyrics.lines[idx - 1].text : undefined;
+      candidates.push({ idx, line, nlCompanionText });
+    }
 
-      result.push({ text: line.text, index: idx, position: i, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
+    // Find the active candidate (the one matching effectiveCurrentIndex)
+    const activeIdx = candidates.findIndex(c => c.idx === effectiveCurrentIndex);
+
+    // Assign continuous positions relative to active
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const relPos = ci - activeIdx;
+      if (relPos < -LINES_BEFORE || relPos > LINES_AFTER) continue;
+      const { idx, line, nlCompanionText } = candidates[ci];
+      const next = parsedLyrics.lines[idx + 1];
+      result.push({ text: line.text, index: idx, position: relPos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
     }
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);

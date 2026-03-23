@@ -26,6 +26,9 @@ import {
   RefreshCw,
   Copy,
   CheckSquare,
+  Shield,
+  ShieldCheck,
+  ShieldX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -140,7 +143,75 @@ export default function Admin() {
   const [fetchingMetadata, setFetchingMetadata] = useState<string | null>(null);
   const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  
+
+  // Admin management state
+  interface AdminUser {
+    id: string;
+    email: string;
+    display_name: string | null;
+    is_admin: boolean;
+  }
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+
+  const fetchAdminUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Get all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .order('created_at', { ascending: false });
+      if (profilesError) throw profilesError;
+
+      // Get all admin role entries
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'admin');
+
+      const adminIds = new Set((roles || []).map(r => r.user_id));
+
+      setAdminUsers((profiles || []).map(p => ({
+        id: p.id,
+        email: '', // email not accessible from profiles
+        display_name: p.display_name,
+        is_admin: adminIds.has(p.id),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast({ title: 'Error', description: 'Failed to load users', variant: 'destructive' });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const toggleAdminRole = async (targetUserId: string, grantAdmin: boolean) => {
+    if (targetUserId === user?.id) {
+      toast({ title: 'Error', description: "You can't revoke your own admin role", variant: 'destructive' });
+      return;
+    }
+    setTogglingAdmin(targetUserId);
+    try {
+      if (grantAdmin) {
+        const { error } = await supabase.from('user_roles').insert({ user_id: targetUserId, role: 'admin' });
+        if (error) throw error;
+        toast({ title: 'Admin Granted', description: 'User is now an admin' });
+      } else {
+        const { error } = await supabase.from('user_roles').delete().eq('user_id', targetUserId).eq('role', 'admin');
+        if (error) throw error;
+        toast({ title: 'Admin Revoked', description: 'User is no longer an admin' });
+      }
+      fetchAdminUsers();
+    } catch (error) {
+      console.error('Toggle admin error:', error);
+      toast({ title: 'Error', description: 'Failed to update admin role', variant: 'destructive' });
+    } finally {
+      setTogglingAdmin(null);
+    }
+  };
+
   const [formData, setFormData] = useState({
     title: "",
     artist: "",
@@ -595,6 +666,10 @@ export default function Admin() {
                       <Copy className="h-4 w-4" />
                       Duplicates
                     </TabsTrigger>
+                    <TabsTrigger value="admin-users" className="gap-2" onClick={() => { if (adminUsers.length === 0) fetchAdminUsers(); }}>
+                      <Shield className="h-4 w-4" />
+                      Admins
+                    </TabsTrigger>
                   </TabsList>
                   {activeTab === "songs" && (
                     <div className="flex gap-2 flex-wrap">
@@ -918,6 +993,84 @@ export default function Admin() {
                 {/* Duplicates Tab */}
                 <TabsContent value="duplicates" className="mt-0">
                   <DuplicatesView songs={songs} onDelete={handleDelete} />
+                </TabsContent>
+
+                {/* Admin Users Tab */}
+                <TabsContent value="admin-users" className="mt-0">
+                  {isLoadingUsers ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Grant or revoke admin access for users. Admins can manage songs, lyrics, and other admins.
+                      </p>
+                      {adminUsers.map((au) => (
+                        <motion.div
+                          key={au.id}
+                          layout
+                          className={`p-4 rounded-xl border transition-colors ${
+                            au.is_admin ? "border-accent/50 bg-accent/5" : "border-border bg-card"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              au.is_admin ? 'bg-accent/20' : 'bg-secondary'
+                            }`}>
+                              {au.is_admin ? (
+                                <ShieldCheck className="h-5 w-5 text-accent" />
+                              ) : (
+                                <Users className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium truncate">
+                                {au.display_name || 'Unnamed User'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground truncate">
+                                ID: {au.id.slice(0, 12)}...
+                                {au.id === user?.id && ' (You)'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {au.is_admin ? (
+                                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Admin</span>
+                              ) : (
+                                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">User</span>
+                              )}
+                              <Button
+                                variant={au.is_admin ? "destructive" : "default"}
+                                size="sm"
+                                disabled={togglingAdmin === au.id || au.id === user?.id}
+                                onClick={() => toggleAdminRole(au.id, !au.is_admin)}
+                                className="gap-1"
+                              >
+                                {togglingAdmin === au.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : au.is_admin ? (
+                                  <ShieldX className="h-3 w-3" />
+                                ) : (
+                                  <ShieldCheck className="h-3 w-3" />
+                                )}
+                                {au.is_admin ? 'Revoke' : 'Grant'}
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                      {adminUsers.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No users found.</p>
+                          <Button variant="outline" onClick={fetchAdminUsers} className="mt-4 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Load Users
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </FadeIn>
