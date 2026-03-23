@@ -227,94 +227,62 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Karaoke word span with gradient fill and fading edge ───
-function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number }) {
+function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
   const safeDuration = Math.max(endTime - startTime, 0.001);
   let progress = 0;
-  if (currentTime >= endTime) progress = 1;
-  else if (currentTime > startTime) progress = (currentTime - startTime) / safeDuration;
+  if (frozen) {
+    progress = 1; // freeze at fully filled when line scrolls up
+  } else if (currentTime >= endTime) {
+    progress = 1;
+  } else if (currentTime > startTime) {
+    progress = (currentTime - startTime) / safeDuration;
+  }
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
-  const isActive = currentTime >= startTime && currentTime < endTime;
+  const isActive = !frozen && currentTime >= startTime && currentTime < endTime;
   const isDone = progress >= 1;
   const isLongWord = wordDuration >= 1.5;
 
-  // For long words, always render per-letter to avoid DOM structure changes
-  // that cause visual "teleporting" when transitioning between active/inactive
-  if (isLongWord) {
-    const letters = word.split('');
-    return (
-      <span className="relative inline-block align-baseline" style={{
-        transform: isDone ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'transform 0.3s ease-out',
-      }}>
-        {/* Base (dim) per-letter layer */}
-        <span style={{ whiteSpace: 'pre' }}>
-          {letters.map((ch, ci) => {
-            const letterProgress = progress * letters.length;
-            const dist = Math.abs(letterProgress - ci);
-            const pulse = isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
-            const scale = 1 + pulse * 0.18;
-            return (
-              <span
-                key={ci}
-                style={{
-                  display: 'inline-block',
-                  color: "rgba(255, 255, 255, 0.35)",
-                  transform: `scale(${scale})`,
-                  transformOrigin: 'bottom center',
-                  transition: 'transform 120ms ease-out',
-                }}
-              >{ch}</span>
-            );
-          })}
-        </span>
-        {/* Filled (bright) overlay clipped to progress with right fade */}
-        <span
-          aria-hidden
-          className="absolute left-0 top-0 bottom-0 pointer-events-none"
-          style={{
-            width: `${fillPercent}%`,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            ...(isDone ? {} : {
-              maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-            }),
-          }}
-        >
-          <span style={{ whiteSpace: 'pre' }}>
-            {letters.map((ch, ci) => {
-              const letterProgress = progress * letters.length;
-              const dist = Math.abs(letterProgress - ci);
-              const pulse = isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
-              const scale = 1 + pulse * 0.18;
-              return (
-                <span
-                  key={ci}
-                  style={{
-                    display: 'inline-block',
-                    color: '#ffffff',
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'bottom center',
-                    transition: 'transform 120ms ease-out',
-                  }}
-                >{ch}</span>
-              );
-            })}
-          </span>
-        </span>
-      </span>
-    );
-  }
+  // All words now render per-letter for the uplift effect
+  const letters = word.split('');
 
-  // Short/normal words: simple fill without per-letter rendering
+  // Per-letter uplift: each letter lifts slightly as it gets filled
+  const getLetterLift = (ci: number) => {
+    const letterProgress = progress * letters.length;
+    const letterDone = letterProgress >= ci + 1;
+    const letterActive = letterProgress > ci && letterProgress < ci + 1;
+    const letterFrac = letterActive ? (letterProgress - ci) : 0;
+    if (letterDone) return -2; // stay lifted
+    if (letterActive) return -2 * letterFrac; // smooth lift
+    return 0;
+  };
+
   return (
-    <span className="relative inline-block align-baseline" style={{
-      transform: isDone ? 'translateY(-2px)' : 'translateY(0)',
-      transition: 'transform 0.3s ease-out',
-    }}>
-      <span style={{ whiteSpace: 'pre', color: "rgba(255, 255, 255, 0.35)" }}>{word}</span>
+    <span className="relative inline-block align-baseline">
+      {/* Base (dim) per-letter layer */}
+      <span style={{ whiteSpace: 'pre' }}>
+        {letters.map((ch, ci) => {
+          const lift = getLetterLift(ci);
+          const letterProgress = progress * letters.length;
+          const dist = Math.abs(letterProgress - ci);
+          const pulse = isLongWord && isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+          const scale = 1 + pulse * 0.18;
+          return (
+            <span
+              key={ci}
+              style={{
+                display: 'inline-block',
+                color: "rgba(255, 255, 255, 0.35)",
+                transform: `translateY(${lift}px) scale(${scale})`,
+                transformOrigin: 'bottom center',
+                transition: 'transform 150ms ease-out',
+              }}
+            >{ch}</span>
+          );
+        })}
+      </span>
+      {/* Filled (bright) overlay clipped to progress with right fade */}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
@@ -328,7 +296,27 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart 
           }),
         }}
       >
-        <span style={{ whiteSpace: 'pre', color: "#ffffff" }}>{word}</span>
+        <span style={{ whiteSpace: 'pre' }}>
+          {letters.map((ch, ci) => {
+            const lift = getLetterLift(ci);
+            const letterProgress = progress * letters.length;
+            const dist = Math.abs(letterProgress - ci);
+            const pulse = isLongWord && isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
+            const scale = 1 + pulse * 0.18;
+            return (
+              <span
+                key={ci}
+                style={{
+                  display: 'inline-block',
+                  color: '#ffffff',
+                  transform: `translateY(${lift}px) scale(${scale})`,
+                  transformOrigin: 'bottom center',
+                  transition: 'transform 150ms ease-out',
+                }}
+              >{ch}</span>
+            );
+          })}
+        </span>
       </span>
     </span>
   );
@@ -361,13 +349,14 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   // Render word-level fill for active line AND for the line that just finished
   // (so users can see it fully filled as it scrolls up)
   const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
+  const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
-            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} />
+            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
             {idx < lineWords.length - 1 ? " " : null}
           </Fragment>
         ))}
@@ -605,6 +594,11 @@ function LyricsContent({
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                {nlCompanionText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
@@ -614,6 +608,11 @@ function LyricsContent({
             ) : !isIntro && karaokeEnabled ? (
               <>
                 <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                {nlCompanionText && (
+                  <p dir="auto" style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
+                    {nlCompanionText}
+                  </p>
+                )}
                 {secondaryText && (
                   <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
                     {stripBrackets(secondaryText)}
