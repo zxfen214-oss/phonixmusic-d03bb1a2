@@ -666,6 +666,10 @@ export default function Admin() {
                       <Copy className="h-4 w-4" />
                       Duplicates
                     </TabsTrigger>
+                    <TabsTrigger value="admin-users" className="gap-2" onClick={() => { if (adminUsers.length === 0) fetchAdminUsers(); }}>
+                      <Shield className="h-4 w-4" />
+                      Admins
+                    </TabsTrigger>
                   </TabsList>
                   {activeTab === "songs" && (
                     <div className="flex gap-2 flex-wrap">
