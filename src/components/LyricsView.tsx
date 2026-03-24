@@ -838,9 +838,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     for (let ci = 0; ci < candidates.length; ci++) {
       const relPos = ci - activeIdx;
       if (relPos < -LINES_BEFORE || relPos > LINES_AFTER) continue;
-      const { idx, line, nlCompanionText } = candidates[ci];
+      const { idx, line, nlCompanionText, nlCompanionLine } = candidates[ci];
       const next = parsedLyrics.lines[idx + 1];
-      result.push({ text: line.text, index: idx, position: relPos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
+      const nlNextLine = nlCompanionLine ? parsedLyrics.lines[idx + 2] : undefined;
+      result.push({
+        text: line.text, index: idx, position: relPos, lineTime: line.time,
+        nextLineTime: next?.time ?? (line.time + 10),
+        secondaryText: line.secondaryText, alignment: line.alignment,
+        isMusic: line.isMusic, musicEnd: line.musicEnd,
+        nlCompanionText,
+        nlCompanionTime: nlCompanionLine?.time,
+        nlCompanionEndTime: nlNextLine?.time ?? (nlCompanionLine ? nlCompanionLine.time + 10 : undefined),
+        nlCompanionElrcWords: nlCompanionLine?.elrcWords,
+        elrcWords: line.elrcWords,
+      });
     }
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
