@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLibrary } from "@/contexts/LibraryContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Track } from "@/types/music";
-import { Play, Sparkles, ArrowRight, Music2, X, Download, WifiOff, TrendingUp } from "lucide-react";
+import { Play, Sparkles, ArrowRight, Music2, X, Download, WifiOff, TrendingUp, Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
+import { toast } from "sonner";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
