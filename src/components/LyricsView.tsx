@@ -799,28 +799,31 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       return result;
     }
 
-    // For <nl> handling: nl-tagged lines are skipped from rendering
-    // and their text is attached as nlCompanionText to the following line.
-    const nlIndices = new Set<number>();
+    // For <nl> handling: the line WITH isNl is the MAIN line (A).
+    // The NEXT line after it (B) is the secondary/companion that renders below A.
+    // So we skip B (the line after an nl line) and attach B's text as nlCompanionText to A.
+    const nlSkipIndices = new Set<number>();
     for (let i = 0; i < parsedLyrics.lines.length; i++) {
-      if (parsedLyrics.lines[i].isNl) nlIndices.add(i);
+      if (parsedLyrics.lines[i].isNl && i + 1 < parsedLyrics.lines.length) {
+        nlSkipIndices.add(i + 1); // skip the line AFTER the nl-tagged line
+      }
     }
 
-    // If currentLineIndex points to an nl line, treat the next non-nl line as active
+    // If currentLineIndex points to a skipped companion line, use the nl line (previous) as active
     let effectiveCurrentIndex = currentLineIndex;
-    while (nlIndices.has(effectiveCurrentIndex) && effectiveCurrentIndex < parsedLyrics.lines.length - 1) {
-      effectiveCurrentIndex++;
+    if (nlSkipIndices.has(effectiveCurrentIndex) && effectiveCurrentIndex > 0) {
+      effectiveCurrentIndex = effectiveCurrentIndex - 1;
     }
 
-    // Build visible list, skipping nl lines and using continuous positions
+    // Build visible list, skipping companion lines and using continuous positions
     const candidates: { idx: number; line: LyricLine; nlCompanionText?: string }[] = [];
     for (let i = -LINES_BEFORE - 5; i <= LINES_AFTER + 5; i++) {
       const idx = effectiveCurrentIndex + i;
       if (idx < 0 || idx >= parsedLyrics.lines.length) continue;
-      if (nlIndices.has(idx)) continue;
+      if (nlSkipIndices.has(idx)) continue;
       const line = parsedLyrics.lines[idx];
-      const prevIsNl = idx > 0 && nlIndices.has(idx - 1);
-      const nlCompanionText = prevIsNl ? parsedLyrics.lines[idx - 1].text : undefined;
+      const hasNlCompanion = line.isNl && idx + 1 < parsedLyrics.lines.length;
+      const nlCompanionText = hasNlCompanion ? parsedLyrics.lines[idx + 1].text : undefined;
       candidates.push({ idx, line, nlCompanionText });
     }
 
