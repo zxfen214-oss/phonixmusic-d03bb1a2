@@ -242,10 +242,13 @@ function OfflineSection() {
 export function HomeView() {
   const { playTrack } = usePlayer();
   const { user } = useAuth();
+  const { tracks: libraryTracks, addTrack } = useLibrary();
   const cachedIds = useOfflineStatus();
   const [songs, setSongs] = useState<SongRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTrial, setShowTrial] = useState(false);
+
+  const libraryTrackIds = useMemo(() => new Set(libraryTracks.map(t => t.id)), [libraryTracks]);
 
   useEffect(() => {
     const key = user ? `${TRIAL_DISMISSED_KEY}_${user.id}` : TRIAL_DISMISSED_KEY;
@@ -308,6 +311,15 @@ export function HomeView() {
   const handlePlay = (track: Track, allTracks: Track[]) => {
     incrementPlayCount(track.id);
     playTrack(track, allTracks);
+  };
+
+  const handleAddToLibrary = async (track: Track) => {
+    try {
+      await addTrack(track);
+      toast.success(`Added "${track.title}" to your library`);
+    } catch (error) {
+      toast.error("Failed to add song to library");
+    }
   };
 
   const handleDismissTrial = () => {
