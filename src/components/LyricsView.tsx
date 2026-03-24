@@ -253,8 +253,8 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
     const letterDone = letterProgress >= ci + 1;
     const letterActive = letterProgress > ci && letterProgress < ci + 1;
     const letterFrac = letterActive ? (letterProgress - ci) : 0;
-    if (letterDone) return -2; // stay lifted
-    if (letterActive) return -2 * letterFrac; // smooth lift
+    if (letterDone) return -1; // stay lifted
+    if (letterActive) return -1 * letterFrac; // smooth lift
     return 0;
   };
 
