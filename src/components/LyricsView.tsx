@@ -48,6 +48,9 @@ interface VisibleLyricItem {
   musicEnd?: number;
   isNlPair?: boolean;
   nlCompanionText?: string;
+  nlCompanionTime?: number;
+  nlCompanionEndTime?: number;
+  nlCompanionElrcWords?: { word: string; startTime: number; endTime: number }[];
   elrcWords?: { word: string; startTime: number; endTime: number }[];
 }
 
@@ -568,7 +571,7 @@ function LyricsContent({
       }}
     >
       {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, elrcWords } = item;
+        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords } = item;
         const isActive = position === 0;
         const key = isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
@@ -594,8 +597,12 @@ function LyricsContent({
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
-                {nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px', margin: 0 }}>
+                {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
+                  <div style={{ marginTop: '12px' }}>
+                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                  </div>
+                ) : nlCompanionText && (
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -608,8 +615,12 @@ function LyricsContent({
             ) : !isIntro && karaokeEnabled ? (
               <>
                 <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
-                {nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px', margin: 0 }}>
+                {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
+                  <div style={{ marginTop: '12px' }}>
+                    <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                  </div>
+                ) : nlCompanionText && (
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -635,7 +646,7 @@ function LyricsContent({
                   {text}
                 </p>
                 {nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px', margin: 0 }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -816,7 +827,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     }
 
     // Build visible list, skipping companion lines and using continuous positions
-    const candidates: { idx: number; line: LyricLine; nlCompanionText?: string }[] = [];
+    const candidates: { idx: number; line: LyricLine; nlCompanionText?: string; nlCompanionLine?: LyricLine }[] = [];
     for (let i = -LINES_BEFORE - 5; i <= LINES_AFTER + 5; i++) {
       const idx = effectiveCurrentIndex + i;
       if (idx < 0 || idx >= parsedLyrics.lines.length) continue;
@@ -824,7 +835,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       const line = parsedLyrics.lines[idx];
       const hasNlCompanion = line.isNl && idx + 1 < parsedLyrics.lines.length;
       const nlCompanionText = hasNlCompanion ? parsedLyrics.lines[idx + 1].text : undefined;
-      candidates.push({ idx, line, nlCompanionText });
+      const nlCompanionLine = hasNlCompanion ? parsedLyrics.lines[idx + 1] : undefined;
+      candidates.push({ idx, line, nlCompanionText, nlCompanionLine });
     }
 
     // Find the active candidate (the one matching effectiveCurrentIndex)
@@ -834,9 +846,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     for (let ci = 0; ci < candidates.length; ci++) {
       const relPos = ci - activeIdx;
       if (relPos < -LINES_BEFORE || relPos > LINES_AFTER) continue;
-      const { idx, line, nlCompanionText } = candidates[ci];
+      const { idx, line, nlCompanionText, nlCompanionLine } = candidates[ci];
       const next = parsedLyrics.lines[idx + 1];
-      result.push({ text: line.text, index: idx, position: relPos, lineTime: line.time, nextLineTime: next?.time ?? (line.time + 10), secondaryText: line.secondaryText, alignment: line.alignment, isMusic: line.isMusic, musicEnd: line.musicEnd, nlCompanionText, elrcWords: line.elrcWords });
+      const nlNextLine = nlCompanionLine ? parsedLyrics.lines[idx + 2] : undefined;
+      result.push({
+        text: line.text, index: idx, position: relPos, lineTime: line.time,
+        nextLineTime: next?.time ?? (line.time + 10),
+        secondaryText: line.secondaryText, alignment: line.alignment,
+        isMusic: line.isMusic, musicEnd: line.musicEnd,
+        nlCompanionText,
+        nlCompanionTime: nlCompanionLine?.time,
+        nlCompanionEndTime: nlNextLine?.time ?? (nlCompanionLine ? nlCompanionLine.time + 10 : undefined),
+        nlCompanionElrcWords: nlCompanionLine?.elrcWords,
+        elrcWords: line.elrcWords,
+      });
     }
     return result;
   }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
