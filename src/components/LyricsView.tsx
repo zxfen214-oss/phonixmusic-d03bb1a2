@@ -48,6 +48,9 @@ interface VisibleLyricItem {
   musicEnd?: number;
   isNlPair?: boolean;
   nlCompanionText?: string;
+  nlCompanionTime?: number;
+  nlCompanionEndTime?: number;
+  nlCompanionElrcWords?: { word: string; startTime: number; endTime: number }[];
   elrcWords?: { word: string; startTime: number; endTime: number }[];
 }
 
