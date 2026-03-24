@@ -142,7 +142,7 @@ function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (tr
   );
 }
 
-function SongTile({ track, onPlay, index, allTracks, isOffline }: { track: Track; onPlay: (track: Track, all: Track[]) => void; index: number; allTracks: Track[]; isOffline?: boolean }) {
+function SongTile({ track, onPlay, onAdd, index, allTracks, isOffline, isInLibrary }: { track: Track; onPlay: (track: Track, all: Track[]) => void; onAdd: (track: Track) => void; index: number; allTracks: Track[]; isOffline?: boolean; isInLibrary?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -168,6 +168,19 @@ function SongTile({ track, onPlay, index, allTracks, isOffline }: { track: Track
           className="absolute bottom-3 right-3 h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg"
         >
           <Play className="h-4 w-4 ml-0.5" />
+        </motion.button>
+        <motion.button
+          className={cn(
+            "absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg",
+            isInLibrary ? "bg-accent text-accent-foreground" : "bg-black/50 hover:bg-accent text-white hover:text-accent-foreground"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isInLibrary) onAdd(track);
+          }}
+          whileTap={{ scale: 0.85 }}
+        >
+          {isInLibrary ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         </motion.button>
       </div>
       <div className="p-3">
