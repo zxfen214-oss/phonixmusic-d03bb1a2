@@ -819,7 +819,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     }
 
     // Build visible list, skipping companion lines and using continuous positions
-    const candidates: { idx: number; line: LyricLine; nlCompanionText?: string }[] = [];
+    const candidates: { idx: number; line: LyricLine; nlCompanionText?: string; nlCompanionLine?: LyricLine }[] = [];
     for (let i = -LINES_BEFORE - 5; i <= LINES_AFTER + 5; i++) {
       const idx = effectiveCurrentIndex + i;
       if (idx < 0 || idx >= parsedLyrics.lines.length) continue;
@@ -827,7 +827,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       const line = parsedLyrics.lines[idx];
       const hasNlCompanion = line.isNl && idx + 1 < parsedLyrics.lines.length;
       const nlCompanionText = hasNlCompanion ? parsedLyrics.lines[idx + 1].text : undefined;
-      candidates.push({ idx, line, nlCompanionText });
+      const nlCompanionLine = hasNlCompanion ? parsedLyrics.lines[idx + 1] : undefined;
+      candidates.push({ idx, line, nlCompanionText, nlCompanionLine });
     }
 
     // Find the active candidate (the one matching effectiveCurrentIndex)
