@@ -646,7 +646,7 @@ function LyricsContent({
                   {text}
                 </p>
                 {nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px', margin: 0 }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
