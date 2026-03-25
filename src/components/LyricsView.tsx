@@ -810,12 +810,25 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       : (currentTrack.duration * lineIndex) / Math.max(1, parsedLyrics.lines.length - 1);
     const nextProgress = currentTrack.duration > 0 ? (targetTime / currentTrack.duration) * 100 : 0;
 
+    // Lock smooth time to the seek target for 600ms to prevent bounce-back
+    seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
     baseTimeRef.current = targetTime;
     baseTsRef.current = performance.now();
     setSmoothTime(targetTime);
     setCurrentLineIndex(lineIndex);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [parsedLyrics, currentTrack, seekTo]);
+
+  // Seek handler for the progress slider — also uses seek lock
+  const handleSliderSeek = useCallback((value: number) => {
+    if (!currentTrack) return;
+    const targetTime = (value / 100) * currentTrack.duration;
+    seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
+    baseTimeRef.current = targetTime;
+    baseTsRef.current = performance.now();
+    setSmoothTime(targetTime);
+    seekTo(value);
+  }, [currentTrack, seekTo]);
 
   const LINES_BEFORE = 2;
   const LINES_AFTER = 15;
