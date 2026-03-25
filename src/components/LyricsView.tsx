@@ -685,16 +685,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
-  // Smooth time for karaoke
+  // Smooth time for karaoke — resilient to seek bouncing
   const [smoothTime, setSmoothTime] = useState(0);
   const baseTimeRef = useRef(0);
   const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const seekLockRef = useRef<{ time: number; until: number } | null>(null);
 
   const playbackRateRef = useRef(playbackRate);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
+  // When currentTime updates from the progress interval, sync the base —
+  // BUT ignore updates that would "bounce back" right after a seek.
   useEffect(() => {
+    const now = performance.now();
+    if (seekLockRef.current && now < seekLockRef.current.until) {
+      // We recently seeked — only accept if value is close to our seek target
+      const diff = Math.abs(currentTime - seekLockRef.current.time);
+      if (diff > 1.5) return; // stale bounce, ignore
+      seekLockRef.current = null; // values converged, unlock
+    }
     baseTimeRef.current = currentTime;
     baseTsRef.current = performance.now();
     setSmoothTime(currentTime);
@@ -709,6 +719,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     if (!currentTrack) return;
     const tick = () => {
       const now = performance.now();
+      // If seek-locked, hold at the seek target
+      if (seekLockRef.current && now < seekLockRef.current.until) {
+        setSmoothTime(seekLockRef.current.time);
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
       const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
       const next = isPlaying ? baseTimeRef.current + elapsed * (playbackRate || 1) : baseTimeRef.current;
       setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
