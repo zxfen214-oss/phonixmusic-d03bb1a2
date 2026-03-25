@@ -71,7 +71,7 @@ function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: n
                   width: `${fillPercent}%`,
                   color: "hsl(var(--accent))",
                   whiteSpace: "nowrap",
-                  transition: "width 120ms linear",
+                  transition: "width 200ms cubic-bezier(0.25, 0.1, 0.25, 1)",
                 }}
               >
                 {part}
@@ -922,6 +922,36 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                           <SkipBack className="h-3.5 w-3.5 md:h-4 md:w-4" />
                         </Button>
 
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 md:h-9 md:w-9"
+                          onClick={() => {
+                            // Seek to 1 second before the active line's start time
+                            const lineTime = lyricsLines[activeLineIndex]?.time ?? 0;
+                            const targetTime = Math.max(0, lineTime - 1);
+                            const targetProgress = track.duration > 0 ? (targetTime / track.duration) * 100 : 0;
+                            seekTo(targetProgress);
+                            // Reset current line's fill
+                            setLineTimings(prev => {
+                              const updated = [...prev];
+                              if (updated[activeLineIndex]) {
+                                updated[activeLineIndex] = {
+                                  ...updated[activeLineIndex],
+                                  fillProgress: 0,
+                                  capturedStart: false,
+                                  capturedEnd: false,
+                                  wordTimings: updated[activeLineIndex].wordTimings.map(w => ({ ...w, startTime: 0, endTime: 0, captured: false })),
+                                };
+                              }
+                              return updated;
+                            });
+                          }}
+                          title="Replay current line (1s before)"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                        </Button>
+
                         <div className="font-mono text-sm md:text-lg font-bold">
                           {formatDisplayTime(currentTime)}
                         </div>
@@ -972,14 +1002,9 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                                 transition={{ duration: 0.12, ease: "easeOut" }}
                                 className="space-y-6"
                               >
-                                <div className="rounded-2xl border border-border/50 bg-secondary/50 px-4 py-8 md:px-8 md:py-12">
-                                  <div className="overflow-hidden">
-                                    <div
-                                      className="transition-transform duration-100 ease-linear will-change-transform"
-                                      style={{
-                                        transform: `translateX(-${Math.min(24, (lineTimings[activeLineIndex]?.fillProgress ?? 0) * 24)}%)`,
-                                      }}
-                                    >
+                                  <div className="rounded-2xl border border-border/50 bg-secondary/50 px-4 py-8 md:px-8 md:py-12">
+                                    <div className="overflow-hidden">
+                                      <div>
                                        <p
                                         dir="auto"
                                         className="min-h-[3rem] text-xl font-bold leading-tight sm:text-3xl sm:min-h-[4rem] md:min-h-[5rem] md:text-5xl"
