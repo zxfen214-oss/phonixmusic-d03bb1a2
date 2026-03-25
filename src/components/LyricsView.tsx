@@ -996,7 +996,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   value={[progress]}
                   max={100}
                   step={0.1}
-                  onValueChange={([value]) => seekTo(value)}
+                  onValueChange={([value]) => handleSliderSeek(value)}
                   className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
@@ -1106,7 +1106,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 value={[progress]}
                 max={100}
                 step={0.1}
-                onValueChange={([value]) => { seekTo(value); resetMobileControlsTimer(); }}
+                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
                 className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
               />
               <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
