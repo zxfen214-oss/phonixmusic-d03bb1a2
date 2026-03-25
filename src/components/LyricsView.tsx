@@ -598,11 +598,11 @@ function LyricsContent({
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
-                  <div style={{ marginTop: '12px' }}>
+                  <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
                     <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} />
                   </div>
                 ) : nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -616,11 +616,11 @@ function LyricsContent({
               <>
                 <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
-                  <div style={{ marginTop: '12px' }}>
+                  <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
                     <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
                   </div>
                 ) : nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -646,7 +646,7 @@ function LyricsContent({
                   {text}
                 </p>
                 {nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {nlCompanionText}
                   </p>
                 )}
@@ -691,11 +691,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
 
+  const playbackRateRef = useRef(playbackRate);
+  useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
+
   useEffect(() => {
     baseTimeRef.current = currentTime;
     baseTsRef.current = performance.now();
     setSmoothTime(currentTime);
   }, [currentTime]);
+
+  // Reset base when playbackRate changes to avoid time jumps
+  useEffect(() => {
+    baseTsRef.current = performance.now();
+  }, [playbackRate]);
 
   useEffect(() => {
     if (!currentTrack) return;
