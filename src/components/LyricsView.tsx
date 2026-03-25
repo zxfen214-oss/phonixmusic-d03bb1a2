@@ -685,16 +685,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
-  // Smooth time for karaoke
+  // Smooth time for karaoke — resilient to seek bouncing
   const [smoothTime, setSmoothTime] = useState(0);
   const baseTimeRef = useRef(0);
   const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const seekLockRef = useRef<{ time: number; until: number } | null>(null);
 
   const playbackRateRef = useRef(playbackRate);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
+  // When currentTime updates from the progress interval, sync the base —
+  // BUT ignore updates that would "bounce back" right after a seek.
   useEffect(() => {
+    const now = performance.now();
+    if (seekLockRef.current && now < seekLockRef.current.until) {
+      // We recently seeked — only accept if value is close to our seek target
+      const diff = Math.abs(currentTime - seekLockRef.current.time);
+      if (diff > 1.5) return; // stale bounce, ignore
+      seekLockRef.current = null; // values converged, unlock
+    }
     baseTimeRef.current = currentTime;
     baseTsRef.current = performance.now();
     setSmoothTime(currentTime);
@@ -709,6 +719,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     if (!currentTrack) return;
     const tick = () => {
       const now = performance.now();
+      // If seek-locked, hold at the seek target
+      if (seekLockRef.current && now < seekLockRef.current.until) {
+        setSmoothTime(seekLockRef.current.time);
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
       const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
       const next = isPlaying ? baseTimeRef.current + elapsed * (playbackRate || 1) : baseTimeRef.current;
       setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
@@ -794,12 +810,25 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       : (currentTrack.duration * lineIndex) / Math.max(1, parsedLyrics.lines.length - 1);
     const nextProgress = currentTrack.duration > 0 ? (targetTime / currentTrack.duration) * 100 : 0;
 
+    // Lock smooth time to the seek target for 600ms to prevent bounce-back
+    seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
     baseTimeRef.current = targetTime;
     baseTsRef.current = performance.now();
     setSmoothTime(targetTime);
     setCurrentLineIndex(lineIndex);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [parsedLyrics, currentTrack, seekTo]);
+
+  // Seek handler for the progress slider — also uses seek lock
+  const handleSliderSeek = useCallback((value: number) => {
+    if (!currentTrack) return;
+    const targetTime = (value / 100) * currentTrack.duration;
+    seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
+    baseTimeRef.current = targetTime;
+    baseTsRef.current = performance.now();
+    setSmoothTime(targetTime);
+    seekTo(value);
+  }, [currentTrack, seekTo]);
 
   const LINES_BEFORE = 2;
   const LINES_AFTER = 15;
@@ -967,7 +996,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   value={[progress]}
                   max={100}
                   step={0.1}
-                  onValueChange={([value]) => seekTo(value)}
+                  onValueChange={([value]) => handleSliderSeek(value)}
                   className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
@@ -1077,7 +1106,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 value={[progress]}
                 max={100}
                 step={0.1}
-                onValueChange={([value]) => { seekTo(value); resetMobileControlsTimer(); }}
+                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
                 className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
               />
               <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
