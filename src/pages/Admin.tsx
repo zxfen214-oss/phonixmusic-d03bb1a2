@@ -154,6 +154,8 @@ export default function Admin() {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+  const [addAdminEmail, setAddAdminEmail] = useState("");
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
 
   const fetchAdminUsers = async () => {
     setIsLoadingUsers(true);
