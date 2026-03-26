@@ -245,12 +245,16 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
   const wordDuration = endTime - startTime;
   const isActive = !frozen && currentTime >= startTime && currentTime < endTime;
   const isDone = progress >= 1;
-  const isLongWord = wordDuration >= 1.5;
+  
+  // Tiered emphasis: 0.8-1s = small, 1-1.5s = medium, 1.5s+ = strong
+  const emphasisScale = wordDuration >= 1.5 ? 0.18 : wordDuration >= 1.0 ? 0.12 : wordDuration >= 0.8 ? 0.06 : 0;
+  const hasEmphasis = emphasisScale > 0;
 
   // All words now render per-letter for the uplift effect
   const letters = word.split('');
 
   // Per-letter uplift: each letter lifts slightly as it gets filled
+  // Letter emphasis happens AFTER the letter is filled (delayed)
   const getLetterLift = (ci: number) => {
     const letterProgress = progress * letters.length;
     const letterDone = letterProgress >= ci + 1;
@@ -261,16 +265,27 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
     return 0;
   };
 
+  // Emphasis pulse happens AFTER the letter karaoke finishes (delayed by ~0.3 letters)
+  const getLetterPulse = (ci: number) => {
+    if (!hasEmphasis || !isActive) return 1;
+    const letterProgress = progress * letters.length;
+    // Pulse starts when letter is done (ci+1), peaks at ci+1.3, fades by ci+2
+    const pulseProgress = letterProgress - (ci + 1);
+    if (pulseProgress < 0) return 1; // not done yet
+    if (pulseProgress > 1) return 1; // pulse over
+    // Bell curve: grows then shrinks
+    const t = pulseProgress;
+    const pulse = Math.sin(t * Math.PI);
+    return 1 + pulse * emphasisScale;
+  };
+
   return (
     <span className="relative inline-block align-baseline">
       {/* Base (dim) per-letter layer */}
       <span style={{ whiteSpace: 'pre' }}>
         {letters.map((ch, ci) => {
           const lift = getLetterLift(ci);
-          const letterProgress = progress * letters.length;
-          const dist = Math.abs(letterProgress - ci);
-          const pulse = isLongWord && isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
-          const scale = 1 + pulse * 0.18;
+          const scale = getLetterPulse(ci);
           return (
             <span
               key={ci}
@@ -302,10 +317,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
         <span style={{ whiteSpace: 'pre' }}>
           {letters.map((ch, ci) => {
             const lift = getLetterLift(ci);
-            const letterProgress = progress * letters.length;
-            const dist = Math.abs(letterProgress - ci);
-            const pulse = isLongWord && isActive && dist < 1.2 ? Math.max(0, 1 - dist / 1.2) : 0;
-            const scale = 1 + pulse * 0.18;
+            const scale = getLetterPulse(ci);
             return (
               <span
                 key={ci}
