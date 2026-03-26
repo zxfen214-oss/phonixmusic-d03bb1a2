@@ -154,6 +154,8 @@ export default function Admin() {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null);
+  const [addAdminEmail, setAddAdminEmail] = useState("");
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
 
   const fetchAdminUsers = async () => {
     setIsLoadingUsers(true);
@@ -209,6 +211,56 @@ export default function Admin() {
       toast({ title: 'Error', description: 'Failed to update admin role', variant: 'destructive' });
     } finally {
       setTogglingAdmin(null);
+    }
+  };
+
+  const addAdminByEmail = async () => {
+    const email = addAdminEmail.trim().toLowerCase();
+    if (!email) return;
+    setIsAddingAdmin(true);
+    try {
+      // Look up user by email via profiles table (which may have email) or auth admin
+      // We'll use a different approach: search profiles by matching auth users
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .ilike('email', email)
+        .limit(1);
+
+      let userId: string | null = null;
+      if (profiles && profiles.length > 0) {
+        userId = profiles[0].id;
+      }
+
+      if (!userId) {
+        toast({ title: 'User not found', description: `No user found with email "${email}". Make sure they have signed up first.`, variant: 'destructive' });
+        return;
+      }
+
+      // Check if already admin
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (existingRole) {
+        toast({ title: 'Already admin', description: 'This user is already an admin.' });
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('user_roles').insert({ user_id: userId, role: 'admin' });
+      if (insertError) throw insertError;
+
+      toast({ title: 'Admin Granted', description: `Admin access granted to ${email}` });
+      setAddAdminEmail('');
+      fetchAdminUsers();
+    } catch (error) {
+      console.error('Add admin by email error:', error);
+      toast({ title: 'Error', description: 'Failed to grant admin access', variant: 'destructive' });
+    } finally {
+      setIsAddingAdmin(false);
     }
   };
 
@@ -1004,8 +1056,33 @@ export default function Admin() {
                   ) : (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Grant or revoke admin access for users. Admins can manage songs, lyrics, and other admins.
+                        Grant or revoke admin access for users. You can also add a new admin by email.
                       </p>
+                      
+                      {/* Add admin by email */}
+                      <div className="flex gap-2 items-end p-4 rounded-xl border border-dashed border-border bg-secondary/30">
+                        <div className="flex-1 space-y-1.5">
+                          <Label htmlFor="admin-email" className="text-xs">Add admin by email</Label>
+                          <Input
+                            id="admin-email"
+                            type="email"
+                            placeholder="user@example.com"
+                            value={addAdminEmail}
+                            onChange={(e) => setAddAdminEmail(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addAdminByEmail()}
+                            className="bg-background"
+                          />
+                        </div>
+                        <Button
+                          onClick={addAdminByEmail}
+                          disabled={isAddingAdmin || !addAdminEmail.trim()}
+                          size="sm"
+                          className="gap-1"
+                        >
+                          {isAddingAdmin ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />}
+                          Grant
+                        </Button>
+                      </div>
                       {adminUsers.map((au) => (
                         <motion.div
                           key={au.id}
