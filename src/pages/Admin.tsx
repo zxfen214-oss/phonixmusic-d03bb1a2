@@ -262,7 +262,7 @@ export default function Admin() {
     } finally {
       setIsAddingAdmin(false);
     }
-  
+  };
 
   const [formData, setFormData] = useState({
     title: "",
