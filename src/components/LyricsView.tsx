@@ -13,11 +13,15 @@ import {
   Heart,
   Loader2,
   MoreHorizontal,
+  Repeat,
+  Repeat1,
+  ListPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import React from "react";
 
 interface LyricsViewProps {
