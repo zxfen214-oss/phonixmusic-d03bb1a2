@@ -29,6 +29,7 @@ interface PlayerContextType extends PlayerState {
   addToQueue: (track: Track) => void;
   playbackRate: number;
   speedPreset: SpeedPreset;
+  isLossless: boolean;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
