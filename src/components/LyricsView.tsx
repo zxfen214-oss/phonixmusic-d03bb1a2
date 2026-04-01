@@ -237,7 +237,7 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Karaoke word span with gradient fill and fading edge ───
-function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
+function KaraokeWordSpan({ word, startTime, endTime, frozen }: { word: string; startTime: number; endTime: number; frozen?: boolean }) {
   const timeRef = useContext(SmoothTimeRefContext);
   const fillRef = useRef<HTMLSpanElement>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
@@ -248,15 +248,13 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
   const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
   const hasEmphasis = emphasisScale > 0;
 
-  // Direct DOM update loop — no React re-renders
   useEffect(() => {
     if (frozen) {
-      // Set frozen state directly
       if (fillRef.current) {
-        fillRef.current.style.width = '100%';
         fillRef.current.style.opacity = '0.35';
-        fillRef.current.style.maskImage = 'none';
-        fillRef.current.style.webkitMaskImage = 'none';
+        fillRef.current.style.transform = 'translateZ(0) scaleX(1)';
+        fillRef.current.style.setProperty('mask-image', 'none');
+        fillRef.current.style.setProperty('-webkit-mask-image', 'none');
       }
       if (wrapRef.current) {
         wrapRef.current.style.transform = 'translateY(-1px) scale(1)';
@@ -265,46 +263,38 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
       return;
     }
 
-    let raf: number;
+    let raf = 0;
     const tick = () => {
       const ct = timeRef.current;
-      let progress = 0;
-      if (ct >= endTime) {
-        progress = 1;
-      } else if (ct > startTime) {
-        progress = (ct - startTime) / safeDuration;
-      }
-
-      const fillPercent = Math.min(100, Math.max(0, progress * 100));
-      const isDone = progress >= 1;
+      const progress = ct >= endTime ? 1 : ct > startTime ? (ct - startTime) / safeDuration : 0;
+      const clamped = Math.min(1, Math.max(0, progress));
+      const isDone = clamped >= 1;
 
       if (fillRef.current) {
-        fillRef.current.style.width = `${fillPercent}%`;
         fillRef.current.style.opacity = isDone ? '0.35' : '1';
+        fillRef.current.style.transform = `translateZ(0) scaleX(${clamped})`;
         if (isDone) {
-          fillRef.current.style.maskImage = 'none';
-          fillRef.current.style.webkitMaskImage = 'none';
-        } else if (progress > 0) {
-          fillRef.current.style.maskImage = 'linear-gradient(to right, white 70%, transparent 100%)';
-          fillRef.current.style.webkitMaskImage = 'linear-gradient(to right, white 70%, transparent 100%)';
+          fillRef.current.style.setProperty('mask-image', 'none');
+          fillRef.current.style.setProperty('-webkit-mask-image', 'none');
+        } else if (clamped > 0) {
+          fillRef.current.style.setProperty('mask-image', 'linear-gradient(to right, white 70%, transparent 100%)');
+          fillRef.current.style.setProperty('-webkit-mask-image', 'linear-gradient(to right, white 70%, transparent 100%)');
         }
       }
 
-      if (wrapRef.current) {
+      if (wrapRef.current && isDone !== prevDoneRef.current) {
         const wordLift = isDone ? -1 : 0;
         const wordScale = hasEmphasis && isDone ? 1 + emphasisScale : 1;
-        // Only update transform when state changes to avoid constant style writes
-        if (isDone !== prevDoneRef.current) {
-          wrapRef.current.style.transform = `translateY(${wordLift}px) scale(${wordScale})`;
-          prevDoneRef.current = isDone;
-        }
+        wrapRef.current.style.transform = `translateY(${wordLift}px) scale(${wordScale})`;
+        prevDoneRef.current = isDone;
       }
 
       raf = requestAnimationFrame(tick);
     };
+
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [frozen, startTime, endTime, safeDuration, hasEmphasis, emphasisScale, timeRef]);
+  }, [endTime, frozen, hasEmphasis, emphasisScale, safeDuration, startTime, timeRef]);
 
   return (
     <span
@@ -316,20 +306,20 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
         willChange: 'transform',
       }}
     >
-      {/* Base (dim) layer */}
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
         {word}
       </span>
-      {/* Filled (bright) overlay — updated via ref, no React re-renders */}
       <span
         ref={fillRef}
         aria-hidden
-        className="absolute left-0 top-0 bottom-0 pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          width: '0%',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          willChange: 'width',
+          transform: 'translateZ(0) scaleX(0)',
+          transformOrigin: 'left center',
+          willChange: 'transform, opacity',
+          backfaceVisibility: 'hidden',
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
