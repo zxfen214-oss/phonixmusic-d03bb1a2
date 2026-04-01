@@ -355,9 +355,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }));
 
     if (track.source === 'youtube' && track.youtubeId) {
-      // Try offline/cached audio first, fall back to YouTube iframe
+      setIsLossless(false);
       loadCachedOrRemoteAudio(track).then(usedCached => {
         if (!usedCached) {
+          setIsLossless(false);
           loadYouTubeVideo(track.youtubeId!);
         }
       });
