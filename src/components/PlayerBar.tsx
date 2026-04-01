@@ -12,7 +12,8 @@ import {
   Youtube,
   Mic2,
   Gauge,
-  WifiOff
+  WifiOff,
+  Disc3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
