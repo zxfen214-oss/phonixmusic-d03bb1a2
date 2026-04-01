@@ -318,14 +318,12 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  // Render word-level fill for active line AND for the line that just finished
-  // (so users can see it fully filled as it scrolls up)
   const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
   if (shouldRenderFill) {
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
@@ -337,7 +335,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   }
 
   return (
-    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {text}
     </span>
   );
