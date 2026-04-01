@@ -13,11 +13,15 @@ import {
   Heart,
   Loader2,
   MoreHorizontal,
+  Repeat,
+  Repeat1,
+  ListPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import React from "react";
 
 interface LyricsViewProps {
@@ -231,10 +235,10 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
-  const safeDuration = Math.max(endTime - startTime, 0.001);
+  const safeDuration = Math.max(endTime - startTime, 0.15);
   let progress = 0;
   if (frozen) {
-    progress = 1; // freeze at fully filled when line scrolls up
+    progress = 1;
   } else if (currentTime >= endTime) {
     progress = 1;
   } else if (currentTime > startTime) {
@@ -243,62 +247,28 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
-  const isActive = !frozen && currentTime >= startTime && currentTime < endTime;
   const isDone = progress >= 1;
-  
-  // Tiered emphasis: 0.8-1s = small, 1-1.5s = medium, 1.5s+ = strong
-  const emphasisScale = wordDuration >= 1.5 ? 0.18 : wordDuration >= 1.0 ? 0.12 : wordDuration >= 0.8 ? 0.06 : 0;
+
+  // Tiered emphasis: word-level
+  const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
   const hasEmphasis = emphasisScale > 0;
 
-  // All words now render per-letter for the uplift effect
-  const letters = word.split('');
-
-  // Per-letter uplift: each letter lifts slightly as it gets filled
-  // Letter emphasis happens AFTER the letter is filled (delayed)
-  const getLetterLift = (ci: number) => {
-    const letterProgress = progress * letters.length;
-    const letterDone = letterProgress >= ci + 1;
-    const letterActive = letterProgress > ci && letterProgress < ci + 1;
-    const letterFrac = letterActive ? (letterProgress - ci) : 0;
-    if (letterDone) return -1; // stay lifted
-    if (letterActive) return -1 * letterFrac; // smooth lift
-    return 0;
-  };
-
-  // Emphasis pulse happens AFTER the letter karaoke finishes (delayed by ~0.3 letters)
-  const getLetterPulse = (ci: number) => {
-    if (!hasEmphasis || !isActive) return 1;
-    const letterProgress = progress * letters.length;
-    // Pulse starts when letter is done (ci+1), peaks at ci+1.3, fades by ci+2
-    const pulseProgress = letterProgress - (ci + 1);
-    if (pulseProgress < 0) return 1; // not done yet
-    if (pulseProgress > 1) return 1; // pulse over
-    // Bell curve: grows then shrinks
-    const t = pulseProgress;
-    const pulse = Math.sin(t * Math.PI);
-    return 1 + pulse * emphasisScale;
-  };
+  // Word-level uplift: entire word lifts smoothly when complete
+  const wordLift = isDone ? -1 : 0;
+  const wordScale = hasEmphasis && isDone && !frozen ? 1 + emphasisScale : 1;
 
   return (
-    <span className="relative inline-block align-baseline">
-      {/* Base (dim) per-letter layer */}
-      <span style={{ whiteSpace: 'pre' }}>
-        {letters.map((ch, ci) => {
-          const lift = getLetterLift(ci);
-          const scale = getLetterPulse(ci);
-          return (
-            <span
-              key={ci}
-              style={{
-                display: 'inline-block',
-                color: "rgba(255, 255, 255, 0.35)",
-                transform: `translateY(${lift}px) scale(${scale})`,
-                transformOrigin: 'bottom center',
-                transition: 'transform 150ms ease-out',
-              }}
-            >{ch}</span>
-          );
-        })}
+    <span
+      className="relative inline-block align-baseline"
+      style={{
+        transform: `translateY(${wordLift}px) scale(${wordScale})`,
+        transformOrigin: 'bottom center',
+        transition: 'transform 300ms ease-out',
+      }}
+    >
+      {/* Base (dim) layer */}
+      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
+        {word}
       </span>
       {/* Filled (bright) overlay clipped to progress with right fade */}
       <span
@@ -308,29 +278,16 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
           width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
+          opacity: frozen ? 0.35 : 1,
+          transition: 'width 80ms linear, opacity 400ms ease',
           ...(isDone ? {} : {
             maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
             WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
           }),
         }}
       >
-        <span style={{ whiteSpace: 'pre' }}>
-          {letters.map((ch, ci) => {
-            const lift = getLetterLift(ci);
-            const scale = getLetterPulse(ci);
-            return (
-              <span
-                key={ci}
-                style={{
-                  display: 'inline-block',
-                  color: '#ffffff',
-                  transform: `translateY(${lift}px) scale(${scale})`,
-                  transformOrigin: 'bottom center',
-                  transition: 'transform 150ms ease-out',
-                }}
-              >{ch}</span>
-            );
-          })}
+        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
+          {word}
         </span>
       </span>
     </span>
@@ -338,12 +295,12 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
 }
 
 // ─── eLRC line ───
-function ELRCLine({ words, currentTime, isMobile }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean }) {
+function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
-          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} />
+          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} frozen={frozen} />
           {idx < words.length - 1 ? " " : null}
         </Fragment>
       ))}
@@ -361,14 +318,12 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  // Render word-level fill for active line AND for the line that just finished
-  // (so users can see it fully filled as it scrolls up)
   const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
   if (shouldRenderFill) {
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
@@ -380,7 +335,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   }
 
   return (
-    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '36px' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {text}
     </span>
   );
@@ -572,7 +527,7 @@ function LyricsContent({
 
   useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
 
-  const fontSize = isMobile ? '36px' : '40px';
+  const fontSize = isMobile ? '3.5rem' : '40px';
 
   return (
     <div
@@ -599,8 +554,8 @@ function LyricsContent({
             className={cn("absolute left-0 right-0 transform-gpu", textAlignClass)}
             style={{
               willChange: "opacity, filter, transform",
-              paddingLeft: isMobile ? '24px' : '0',
-              paddingRight: isMobile ? '24px' : '0',
+              paddingLeft: isMobile ? '20px' : '0',
+              paddingRight: isMobile ? '20px' : '0',
               top: 0,
             }}
           >
@@ -608,10 +563,10 @@ function LyricsContent({
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
-                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} />
+                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -680,7 +635,7 @@ function LyricsContent({
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -694,6 +649,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [bounceIntensity, setBounceIntensity] = useState(0.5);
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -722,8 +678,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setSmoothTime(currentTime);
   }, [currentTime]);
 
-  // Reset base when playbackRate changes to avoid time jumps
+  // Smooth playback rate tween for consistent speed changes
+  const smoothRateRef = useRef(playbackRate);
+  const targetRateRef = useRef(playbackRate);
   useEffect(() => {
+    targetRateRef.current = playbackRate;
+    const startRate = smoothRateRef.current;
+    const startTs = performance.now();
+    const tweenDuration = 300; // 300ms tween
+    const tweenRate = () => {
+      const elapsed = performance.now() - startTs;
+      const t = Math.min(1, elapsed / tweenDuration);
+      const eased = t * t * (3 - 2 * t); // smoothstep
+      smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
+      if (t < 1) requestAnimationFrame(tweenRate);
+    };
+    requestAnimationFrame(tweenRate);
     baseTsRef.current = performance.now();
   }, [playbackRate]);
 
@@ -738,7 +708,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         return;
       }
       const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
-      const next = isPlaying ? baseTimeRef.current + elapsed * (playbackRate || 1) : baseTimeRef.current;
+      const rate = smoothRateRef.current || 1;
+      const next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
       setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -1033,6 +1004,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
                   <Heart className="h-5 w-5 text-white/60" />
                 </button>
+                <button
+                  onClick={() => currentTrack && setShowPlaylistDialog(true)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Add to playlist"
+                >
+                  <ListPlus className="h-5 w-5 text-white/60" />
+                </button>
+                <button
+                  onClick={toggleRepeat}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Loop"
+                >
+                  {repeat === 'one' ? (
+                    <Repeat1 className="h-5 w-5 text-white" />
+                  ) : repeat === 'all' ? (
+                    <Repeat className="h-5 w-5 text-white" />
+                  ) : (
+                    <Repeat className="h-5 w-5 text-white/60" />
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -1127,7 +1118,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-8 mt-3">
+            <div className="flex items-center justify-center gap-6 mt-3">
+              <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                {repeat === 'one' ? (
+                  <Repeat1 className="h-5 w-5 text-white" />
+                ) : repeat === 'all' ? (
+                  <Repeat className="h-5 w-5 text-white" />
+                ) : (
+                  <Repeat className="h-5 w-5 text-white/40" />
+                )}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
                 <SkipBack className="h-6 w-6 text-white" />
               </button>
@@ -1142,9 +1142,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
                 <SkipForward className="h-6 w-6 text-white" />
               </button>
+              <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <ListPlus className="h-5 w-5 text-white/60" />
+              </button>
             </div>
           </motion.div>
         </div>
+
+        {currentTrack && (
+          <AddToPlaylistDialog
+            track={currentTrack}
+            isOpen={showPlaylistDialog}
+            onClose={() => setShowPlaylistDialog(false)}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );
