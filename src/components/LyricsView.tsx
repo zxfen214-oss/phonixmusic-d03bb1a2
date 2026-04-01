@@ -690,8 +690,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
-  // Smooth time for karaoke — resilient to seek bouncing
+  // Smooth time for karaoke — DOM-driven via ref, state is throttled for layout/line changes only
   const [smoothTime, setSmoothTime] = useState(0);
+  const smoothTimeRef = useRef(0);
+  const lastPublishedSmoothTimeRef = useRef(0);
   const baseTimeRef = useRef(0);
   const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -700,33 +702,31 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const playbackRateRef = useRef(playbackRate);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
-  // When currentTime updates from the progress interval, sync the base —
-  // BUT ignore updates that would "bounce back" right after a seek.
   useEffect(() => {
     const now = performance.now();
     if (seekLockRef.current && now < seekLockRef.current.until) {
-      // We recently seeked — only accept if value is close to our seek target
       const diff = Math.abs(currentTime - seekLockRef.current.time);
-      if (diff > 1.5) return; // stale bounce, ignore
-      seekLockRef.current = null; // values converged, unlock
+      if (diff > 1.5) return;
+      seekLockRef.current = null;
     }
     baseTimeRef.current = currentTime;
     baseTsRef.current = performance.now();
+    smoothTimeRef.current = currentTime;
+    lastPublishedSmoothTimeRef.current = currentTime;
     setSmoothTime(currentTime);
   }, [currentTime]);
 
-  // Smooth playback rate tween for consistent speed changes
   const smoothRateRef = useRef(playbackRate);
   const targetRateRef = useRef(playbackRate);
   useEffect(() => {
     targetRateRef.current = playbackRate;
     const startRate = smoothRateRef.current;
     const startTs = performance.now();
-    const tweenDuration = 300; // 300ms tween
+    const tweenDuration = 300;
     const tweenRate = () => {
       const elapsed = performance.now() - startTs;
       const t = Math.min(1, elapsed / tweenDuration);
-      const eased = t * t * (3 - 2 * t); // smoothstep
+      const eased = t * t * (3 - 2 * t);
       smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
       if (t < 1) requestAnimationFrame(tweenRate);
     };
@@ -738,81 +738,36 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     if (!currentTrack) return;
     const tick = () => {
       const now = performance.now();
-      // If seek-locked, hold at the seek target
+      let next: number;
+
       if (seekLockRef.current && now < seekLockRef.current.until) {
-        setSmoothTime(seekLockRef.current.time);
-        rafRef.current = requestAnimationFrame(tick);
-        return;
+        next = seekLockRef.current.time;
+      } else {
+        const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
+        const rate = smoothRateRef.current || 1;
+        next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
+        next = Math.min(Math.max(next, 0), currentTrack.duration);
       }
-      const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
-      const rate = smoothRateRef.current || 1;
-      const next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
-      setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
+
+      smoothTimeRef.current = next;
+
+      if (Math.abs(next - lastPublishedSmoothTimeRef.current) >= 0.08) {
+        lastPublishedSmoothTimeRef.current = next;
+        setSmoothTime(next);
+      }
+
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [currentTrack?.id, currentTrack?.duration, isPlaying, playbackRate]);
+  }, [currentTrack?.id, currentTrack?.duration, isPlaying]);
 
-  // Fetch lyrics + karaoke
-  useEffect(() => {
-    if (!currentTrack) return;
-    const loadLyrics = async () => {
-      setIsLoadingLyrics(true);
-      setParsedLyrics(null);
-      setCurrentLineIndex(-1);
-      setKaraokeEnabled(false);
-      setKaraokeWords([]);
-      try {
-        if (currentTrack.youtubeId) {
-          const { data: song } = await supabase
-            .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity")
-            .eq("youtube_id", currentTrack.youtubeId)
-            .maybeSingle();
-          if (song) {
-            if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
-            if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
-            if (song.karaoke_enabled && song.karaoke_data) {
-              const data = song.karaoke_data as unknown as KaraokeData;
-              if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
-            }
-          }
-        }
-        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
-        
-        if (!lyrics?.lines.length && currentTrack.youtubeId) {
-          const cached = await getCachedLyrics(currentTrack.youtubeId);
-          if (cached?.syncedLyrics) {
-            const parsed = parseLRC(cached.syncedLyrics);
-            if (parsed.lines.length > 0) {
-              lyrics = parsed;
-            }
-          }
-        }
-
-        if (lyrics?.lines.length) {
-          setParsedLyrics(lyrics);
-        } else {
-          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
-        }
-      } catch {
-        setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
-      } finally {
-        setIsLoadingLyrics(false);
-      }
-    };
-    loadLyrics();
-  }, [currentTrack?.id]);
-
-  // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
     const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
   }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex]);
 
-  // Unsynced lyrics
   useEffect(() => {
     if (!parsedLyrics || parsedLyrics.isSynced || !currentTrack) return;
     const lps = parsedLyrics.lines.length / currentTrack.duration;
