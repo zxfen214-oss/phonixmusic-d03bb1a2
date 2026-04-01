@@ -389,11 +389,14 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
 function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
   text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
 }) {
-  const hasLineIndex = words.some((w) => typeof w.lineIndex === "number");
-  const lineWords = (hasLineIndex
-    ? words.filter((w) => w.lineIndex === lineIndex)
-    : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
-  ).slice().sort((a, b) => a.startTime - b.startTime);
+  const hasLineIndex = useMemo(() => words.some((w) => typeof w.lineIndex === "number"), [words]);
+
+  const lineWords = useMemo(() => {
+    const filtered = hasLineIndex
+      ? words.filter((w) => w.lineIndex === lineIndex)
+      : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime);
+    return filtered.slice().sort((a, b) => a.startTime - b.startTime);
+  }, [hasLineIndex, words, lineIndex, lineStartTime, lineEndTime]);
 
   const visualLineWords = useMemo(() => {
     if (lineWords.length === 0) return [] as Array<KaraokeWord & { visualStart: number; visualEnd: number; emphasisDuration: number }>;
@@ -458,6 +461,30 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     </span>
   );
 }
+
+const MemoKaraokeLine = React.memo(KaraokeLine, (prev, next) => {
+  if (
+    prev.text !== next.text ||
+    prev.words !== next.words ||
+    prev.lineIndex !== next.lineIndex ||
+    prev.lineStartTime !== next.lineStartTime ||
+    prev.lineEndTime !== next.lineEndTime ||
+    prev.isCurrentLine !== next.isCurrentLine ||
+    prev.isMobile !== next.isMobile
+  ) {
+    return false;
+  }
+
+  const prevFrozen = !prev.isCurrentLine && prev.currentTime >= prev.lineEndTime;
+  const nextFrozen = !next.isCurrentLine && next.currentTime >= next.lineEndTime;
+  if (prevFrozen && nextFrozen) return true;
+
+  const prevBeforeStart = prev.currentTime < prev.lineStartTime;
+  const nextBeforeStart = next.currentTime < next.lineStartTime;
+  if (!prev.isCurrentLine && !next.isCurrentLine && prevBeforeStart && nextBeforeStart) return true;
+
+  return Math.abs(prev.currentTime - next.currentTime) < 0.008;
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // Apple Music–style lyrics: fixed-position, CSS-transition based
