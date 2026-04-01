@@ -1118,7 +1118,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-8 mt-3">
+            <div className="flex items-center justify-center gap-6 mt-3">
+              <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                {repeat === 'one' ? (
+                  <Repeat1 className="h-5 w-5 text-white" />
+                ) : repeat === 'all' ? (
+                  <Repeat className="h-5 w-5 text-white" />
+                ) : (
+                  <Repeat className="h-5 w-5 text-white/40" />
+                )}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
                 <SkipBack className="h-6 w-6 text-white" />
               </button>
@@ -1133,9 +1142,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
                 <SkipForward className="h-6 w-6 text-white" />
               </button>
+              <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <ListPlus className="h-5 w-5 text-white/60" />
+              </button>
             </div>
           </motion.div>
         </div>
+
+        {currentTrack && (
+          <AddToPlaylistDialog
+            track={currentTrack}
+            isOpen={showPlaylistDialog}
+            onClose={() => setShowPlaylistDialog(false)}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );
