@@ -483,7 +483,7 @@ const MemoKaraokeLine = React.memo(KaraokeLine, (prev, next) => {
   const nextBeforeStart = next.currentTime < next.lineStartTime;
   if (!prev.isCurrentLine && !next.isCurrentLine && prevBeforeStart && nextBeforeStart) return true;
 
-  return Math.abs(prev.currentTime - next.currentTime) < 0.008;
+  return Math.abs(prev.currentTime - next.currentTime) < 0.02;
 });
 
 // ═══════════════════════════════════════════════════════════════════
