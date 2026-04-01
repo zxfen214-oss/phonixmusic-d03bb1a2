@@ -604,6 +604,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         addToQueue,
         playbackRate,
         speedPreset,
+        isLossless,
       }}
     >
       {children}
