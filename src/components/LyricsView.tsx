@@ -396,7 +396,7 @@ function useAppleMusicStyles(
 ) {
   const prevPositionsRef = useRef<Map<string, number>>(new Map());
   const LINE_PADDING = isMobile ? 16 : 16;
-  const ACTIVE_OFFSET = 0.22;
+  const ACTIVE_OFFSET = 0.15;
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
 
   useLayoutEffect(() => {
