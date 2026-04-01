@@ -315,9 +315,13 @@ function KaraokeWordSpan({
     const prev = visualProgressRef.current;
     if (rawProgress >= prev) {
       const delta = rawProgress - prev;
-      const catchUp = delta > 0.6 ? 0.58 : delta > 0.3 ? 0.42 : 0.3;
+      // Accelerate fill as we approach end (next word coming)
+      const timeLeft = Math.max(0, endTime - currentTime);
+      const urgency = timeLeft < 0.15 ? 0.85 : timeLeft < 0.3 ? 0.65 : 0;
+      const baseCatchUp = delta > 0.6 ? 0.58 : delta > 0.3 ? 0.42 : 0.3;
+      const catchUp = Math.min(0.92, baseCatchUp + urgency);
       progress = prev + delta * catchUp;
-      if (rawProgress === 1 && progress > 0.995) progress = 1;
+      if (rawProgress === 1 && progress > 0.99) progress = 1;
     }
     visualProgressRef.current = progress;
   }
