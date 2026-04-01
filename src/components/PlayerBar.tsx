@@ -256,6 +256,12 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
             {formatTime(currentTrack.duration)}
           </span>
         </div>
+        {isLossless && (
+          <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground font-medium tracking-wide">
+            <Disc3 className="h-3 w-3" />
+            Lossless
+          </div>
+        )}
       </div>
 
       {/* Volume & Lyrics - Desktop only */}
