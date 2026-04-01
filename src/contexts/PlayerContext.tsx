@@ -29,6 +29,7 @@ interface PlayerContextType extends PlayerState {
   addToQueue: (track: Track) => void;
   playbackRate: number;
   speedPreset: SpeedPreset;
+  isLossless: boolean;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -48,6 +49,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playbackRate, setPlaybackRateState] = useState(1.0);
   const [speedPreset, setSpeedPresetState] = useState<SpeedPreset>('normal');
   const [preservePitchEnabled, setPreservePitchEnabled] = useState(true);
+  const [isLossless, setIsLossless] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const youtubePlayerRef = useRef<any>(null);
@@ -322,6 +324,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
+      setIsLossless(true);
       await audio.play();
       setState(prev => ({ ...prev, isPlaying: true }));
       return true;
@@ -352,9 +355,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }));
 
     if (track.source === 'youtube' && track.youtubeId) {
-      // Try offline/cached audio first, fall back to YouTube iframe
+      setIsLossless(false);
       loadCachedOrRemoteAudio(track).then(usedCached => {
         if (!usedCached) {
+          setIsLossless(false);
           loadYouTubeVideo(track.youtubeId!);
         }
       });
@@ -600,6 +604,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         addToQueue,
         playbackRate,
         speedPreset,
+        isLossless,
       }}
     >
       {children}
@@ -636,6 +641,7 @@ export function usePlayer() {
       addToQueue: () => {},
       playbackRate: 1,
       speedPreset: 'normal' as const,
+      isLossless: false,
     } as PlayerContextType;
   }
   return context;
