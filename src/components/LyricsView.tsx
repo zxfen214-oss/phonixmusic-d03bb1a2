@@ -225,7 +225,7 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
           <motion.div
             key={i}
             className="rounded-full"
-            style={{ width: 25, height: 25 }}
+            style={{ width: 14, height: 14 }}
             animate={{
               scale: isShrinking ? 0 : circleProgress > 0 ? [0.9, 1.05, 0.9] : [0.9, 1.05, 0.9],
               opacity: isShrinking ? 0 : circleProgress > 0 ? 1 : 0.7,
