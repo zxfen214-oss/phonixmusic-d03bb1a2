@@ -1151,7 +1151,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             />
           )}
         </motion.div>
-      </SmoothTimeRefContext.Provider>
-    </AnimatePresence>
+      </AnimatePresence>
+    </SmoothTimeRefContext.Provider>
   );
 }
