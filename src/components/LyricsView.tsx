@@ -635,7 +635,7 @@ function LyricsContent({
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -649,6 +649,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [bounceIntensity, setBounceIntensity] = useState(0.5);
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
