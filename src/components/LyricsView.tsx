@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,9 +23,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import React from "react";
-
-// ─── Shared time ref context for zero-rerender karaoke fill ───
-const SmoothTimeRefContext = createContext<React.MutableRefObject<number>>({ current: 0 } as React.MutableRefObject<number>);
 
 interface LyricsViewProps {
   onClose: () => void;
@@ -237,89 +234,56 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Karaoke word span with gradient fill and fading edge ───
-function KaraokeWordSpan({ word, startTime, endTime, frozen }: { word: string; startTime: number; endTime: number; frozen?: boolean }) {
-  const timeRef = useContext(SmoothTimeRefContext);
-  const fillRef = useRef<HTMLSpanElement>(null);
-  const wrapRef = useRef<HTMLSpanElement>(null);
-  const prevDoneRef = useRef(false);
-
+function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
   const safeDuration = Math.max(endTime - startTime, 0.15);
+  let progress = 0;
+  if (frozen) {
+    progress = 1;
+  } else if (currentTime >= endTime) {
+    progress = 1;
+  } else if (currentTime > startTime) {
+    progress = (currentTime - startTime) / safeDuration;
+  }
+
+  const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
+  const isDone = progress >= 1;
+
+  // Tiered emphasis: word-level
   const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
   const hasEmphasis = emphasisScale > 0;
 
-  useEffect(() => {
-    if (frozen) {
-      if (fillRef.current) {
-        fillRef.current.style.opacity = '0.35';
-        fillRef.current.style.transform = 'translateZ(0) scaleX(1)';
-        fillRef.current.style.setProperty('mask-image', 'none');
-        fillRef.current.style.setProperty('-webkit-mask-image', 'none');
-      }
-      if (wrapRef.current) {
-        wrapRef.current.style.transform = 'translateY(-1px) scale(1)';
-      }
-      prevDoneRef.current = true;
-      return;
-    }
-
-    let raf = 0;
-    const tick = () => {
-      const ct = timeRef.current;
-      const progress = ct >= endTime ? 1 : ct > startTime ? (ct - startTime) / safeDuration : 0;
-      const clamped = Math.min(1, Math.max(0, progress));
-      const isDone = clamped >= 1;
-
-      if (fillRef.current) {
-        fillRef.current.style.opacity = isDone ? '0.35' : '1';
-        fillRef.current.style.transform = `translateZ(0) scaleX(${clamped})`;
-        if (isDone) {
-          fillRef.current.style.setProperty('mask-image', 'none');
-          fillRef.current.style.setProperty('-webkit-mask-image', 'none');
-        } else if (clamped > 0) {
-          fillRef.current.style.setProperty('mask-image', 'linear-gradient(to right, white 70%, transparent 100%)');
-          fillRef.current.style.setProperty('-webkit-mask-image', 'linear-gradient(to right, white 70%, transparent 100%)');
-        }
-      }
-
-      if (wrapRef.current && isDone !== prevDoneRef.current) {
-        const wordLift = isDone ? -1 : 0;
-        const wordScale = hasEmphasis && isDone ? 1 + emphasisScale : 1;
-        wrapRef.current.style.transform = `translateY(${wordLift}px) scale(${wordScale})`;
-        prevDoneRef.current = isDone;
-      }
-
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [endTime, frozen, hasEmphasis, emphasisScale, safeDuration, startTime, timeRef]);
+  // Word-level uplift: entire word lifts smoothly when complete
+  const wordLift = isDone ? -1 : 0;
+  const wordScale = hasEmphasis && isDone && !frozen ? 1 + emphasisScale : 1;
 
   return (
     <span
-      ref={wrapRef}
       className="relative inline-block align-baseline"
       style={{
+        transform: `translateY(${wordLift}px) scale(${wordScale})`,
         transformOrigin: 'bottom center',
         transition: 'transform 300ms ease-out',
-        willChange: 'transform',
       }}
     >
+      {/* Base (dim) layer */}
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
         {word}
       </span>
+      {/* Filled (bright) overlay clipped to progress with right fade */}
       <span
-        ref={fillRef}
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
+        className="absolute left-0 top-0 bottom-0 pointer-events-none"
         style={{
+          width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          transform: 'translateZ(0) scaleX(0)',
-          transformOrigin: 'left center',
-          willChange: 'transform, opacity',
-          backfaceVisibility: 'hidden',
+          opacity: frozen ? 0.35 : 1,
+          transition: 'opacity 400ms ease',
+          ...(isDone ? {} : {
+            maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+          }),
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
@@ -331,12 +295,12 @@ function KaraokeWordSpan({ word, startTime, endTime, frozen }: { word: string; s
 }
 
 // ─── eLRC line ───
-function ELRCLine({ words, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; isMobile: boolean; frozen?: boolean }) {
+function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
   return (
     <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
-          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} frozen={frozen} />
+          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} frozen={frozen} />
           {idx < words.length - 1 ? " " : null}
         </Fragment>
       ))}
@@ -345,8 +309,8 @@ function ELRCLine({ words, isMobile, frozen }: { words: { word: string; startTim
 }
 
 // ─── Karaoke line (renders for BOTH active and recently-passed lines) ───
-function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, isCurrentLine, isPastLine, isMobile }: {
-  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; isCurrentLine: boolean; isPastLine: boolean; isMobile: boolean;
+function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
+  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
 }) {
   const hasLineIndex = words.some((w) => typeof w.lineIndex === "number");
   const lineWords = (hasLineIndex
@@ -354,15 +318,15 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, isCur
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || isPastLine);
-  const frozen = isPastLine && !isCurrentLine;
+  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
+  const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
-            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} frozen={frozen} />
+            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
             {idx < lineWords.length - 1 ? " " : null}
           </Fragment>
         ))}
@@ -576,7 +540,6 @@ function LyricsContent({
       {visibleLyrics.map((item) => {
         const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords } = item;
         const isActive = position === 0;
-        const isPastLine = position < 0;
         const key = isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
@@ -600,10 +563,10 @@ function LyricsContent({
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
-                <ELRCLine words={elrcWords} isMobile={isMobile} frozen={isPastLine} />
+                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <ELRCLine words={nlCompanionElrcWords} isMobile={isMobile} frozen={isPastLine} />
+                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -618,10 +581,10 @@ function LyricsContent({
               </>
             ) : !isIntro && karaokeEnabled ? (
               <>
-                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} isCurrentLine={isActive} isPastLine={isPastLine} isMobile={isMobile} />
+                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} isCurrentLine={isActive} isPastLine={isPastLine} isMobile={isMobile} />
+                    <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -690,10 +653,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
-  // Smooth time for karaoke — DOM-driven via ref, state is throttled for layout/line changes only
+  // Smooth time for karaoke — resilient to seek bouncing
   const [smoothTime, setSmoothTime] = useState(0);
-  const smoothTimeRef = useRef(0);
-  const lastPublishedSmoothTimeRef = useRef(0);
   const baseTimeRef = useRef(0);
   const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -701,6 +662,60 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const playbackRateRef = useRef(playbackRate);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
+
+  // When currentTime updates from the progress interval, sync the base —
+  // BUT ignore updates that would "bounce back" right after a seek.
+  useEffect(() => {
+    const now = performance.now();
+    if (seekLockRef.current && now < seekLockRef.current.until) {
+      // We recently seeked — only accept if value is close to our seek target
+      const diff = Math.abs(currentTime - seekLockRef.current.time);
+      if (diff > 1.5) return; // stale bounce, ignore
+      seekLockRef.current = null; // values converged, unlock
+    }
+    baseTimeRef.current = currentTime;
+    baseTsRef.current = performance.now();
+    setSmoothTime(currentTime);
+  }, [currentTime]);
+
+  // Smooth playback rate tween for consistent speed changes
+  const smoothRateRef = useRef(playbackRate);
+  const targetRateRef = useRef(playbackRate);
+  useEffect(() => {
+    targetRateRef.current = playbackRate;
+    const startRate = smoothRateRef.current;
+    const startTs = performance.now();
+    const tweenDuration = 300; // 300ms tween
+    const tweenRate = () => {
+      const elapsed = performance.now() - startTs;
+      const t = Math.min(1, elapsed / tweenDuration);
+      const eased = t * t * (3 - 2 * t); // smoothstep
+      smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
+      if (t < 1) requestAnimationFrame(tweenRate);
+    };
+    requestAnimationFrame(tweenRate);
+    baseTsRef.current = performance.now();
+  }, [playbackRate]);
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    const tick = () => {
+      const now = performance.now();
+      // If seek-locked, hold at the seek target
+      if (seekLockRef.current && now < seekLockRef.current.until) {
+        setSmoothTime(seekLockRef.current.time);
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
+      const rate = smoothRateRef.current || 1;
+      const next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
+      setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [currentTrack?.id, currentTrack?.duration, isPlaying, playbackRate]);
 
   // Fetch lyrics + karaoke
   useEffect(() => {
@@ -728,7 +743,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           }
         }
         let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
-
+        
         if (!lyrics?.lines.length && currentTrack.youtubeId) {
           const cached = await getCachedLyrics(currentTrack.youtubeId);
           if (cached?.syncedLyrics) {
@@ -753,72 +768,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     loadLyrics();
   }, [currentTrack?.id]);
 
-  useEffect(() => {
-    const now = performance.now();
-    if (seekLockRef.current && now < seekLockRef.current.until) {
-      const diff = Math.abs(currentTime - seekLockRef.current.time);
-      if (diff > 1.5) return;
-      seekLockRef.current = null;
-    }
-    baseTimeRef.current = currentTime;
-    baseTsRef.current = performance.now();
-    smoothTimeRef.current = currentTime;
-    lastPublishedSmoothTimeRef.current = currentTime;
-    setSmoothTime(currentTime);
-  }, [currentTime]);
-
-  const smoothRateRef = useRef(playbackRate);
-  const targetRateRef = useRef(playbackRate);
-  useEffect(() => {
-    targetRateRef.current = playbackRate;
-    const startRate = smoothRateRef.current;
-    const startTs = performance.now();
-    const tweenDuration = 300;
-    const tweenRate = () => {
-      const elapsed = performance.now() - startTs;
-      const t = Math.min(1, elapsed / tweenDuration);
-      const eased = t * t * (3 - 2 * t);
-      smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
-      if (t < 1) requestAnimationFrame(tweenRate);
-    };
-    requestAnimationFrame(tweenRate);
-    baseTsRef.current = performance.now();
-  }, [playbackRate]);
-
-  useEffect(() => {
-    if (!currentTrack) return;
-    const tick = () => {
-      const now = performance.now();
-      let next: number;
-
-      if (seekLockRef.current && now < seekLockRef.current.until) {
-        next = seekLockRef.current.time;
-      } else {
-        const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
-        const rate = smoothRateRef.current || 1;
-        next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
-        next = Math.min(Math.max(next, 0), currentTrack.duration);
-      }
-
-      smoothTimeRef.current = next;
-
-      if (Math.abs(next - lastPublishedSmoothTimeRef.current) >= 0.08) {
-        lastPublishedSmoothTimeRef.current = next;
-        setSmoothTime(next);
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [currentTrack?.id, currentTrack?.duration, isPlaying]);
-
+  // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
     const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
   }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex]);
 
+  // Unsynced lyrics
   useEffect(() => {
     if (!parsedLyrics || parsedLyrics.isSynced || !currentTrack) return;
     const lps = parsedLyrics.lines.length / currentTrack.duration;
@@ -836,24 +793,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       : (currentTrack.duration * lineIndex) / Math.max(1, parsedLyrics.lines.length - 1);
     const nextProgress = currentTrack.duration > 0 ? (targetTime / currentTrack.duration) * 100 : 0;
 
+    // Lock smooth time to the seek target for 600ms to prevent bounce-back
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
     baseTimeRef.current = targetTime;
     baseTsRef.current = performance.now();
-    smoothTimeRef.current = targetTime;
-    lastPublishedSmoothTimeRef.current = targetTime;
     setSmoothTime(targetTime);
     setCurrentLineIndex(lineIndex);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [parsedLyrics, currentTrack, seekTo]);
 
+  // Seek handler for the progress slider — also uses seek lock
   const handleSliderSeek = useCallback((value: number) => {
     if (!currentTrack) return;
     const targetTime = (value / 100) * currentTrack.duration;
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
     baseTimeRef.current = targetTime;
     baseTsRef.current = performance.now();
-    smoothTimeRef.current = targetTime;
-    lastPublishedSmoothTimeRef.current = targetTime;
     setSmoothTime(targetTime);
     seekTo(value);
   }, [currentTrack, seekTo]);
@@ -972,125 +927,39 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   };
 
   return (
-    <SmoothTimeRefContext.Provider value={smoothTimeRef}>
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0, scale: 1.02 }}
-          animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-        >
-          <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 1.02 }}
+        animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+      >
+        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
 
-          <div className="relative h-full hidden md:flex items-center z-10">
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
-              transition={{ duration: 0.2 }}
-              onClick={handleClose}
-              className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        <div className="relative h-full hidden md:flex items-center z-10">
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+            transition={{ duration: 0.2 }}
+            onClick={handleClose}
+            className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-6 w-6 text-white" />
+          </motion.button>
+
+          <div className="flex-shrink-0 flex flex-col justify-center" style={{ width: '480px', paddingLeft: '120px' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             >
-              <X className="h-6 w-6 text-white" />
-            </motion.button>
-
-            <div className="flex-shrink-0 flex flex-col justify-center" style={{ width: '480px', paddingLeft: '120px' }}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
-                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              <div
+                className="overflow-hidden"
+                style={{
+                  width: '360px', height: '360px', borderRadius: '20px',
+                  boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.35)',
+                }}
               >
-                <div
-                  className="overflow-hidden"
-                  style={{
-                    width: '360px', height: '360px', borderRadius: '20px',
-                    boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.35)',
-                  }}
-                >
-                  <img
-                    src={currentTrack.artwork || "/placeholder.svg"}
-                    alt={currentTrack.album}
-                    className={cn("object-cover object-center", currentTrack.source === 'youtube' ? "h-full w-auto min-w-full" : "w-full h-full")}
-                  />
-                </div>
-
-                <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px' }}>
-                  {currentTrack.title}
-                </h2>
-                <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
-                  {currentTrack.artist}
-                </p>
-
-                <div style={{ marginTop: '24px', width: '360px' }}>
-                  <Slider
-                    value={[progress]}
-                    max={100}
-                    step={0.1}
-                    onValueChange={([value]) => handleSliderSeek(value)}
-                    className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
-                  />
-                  <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(currentTrack.duration)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
-                  <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                    <SkipBack className="h-6 w-6 text-white" />
-                  </button>
-                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                    {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
-                  </motion.button>
-                  <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                    <SkipForward className="h-6 w-6 text-white" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-center gap-4 mt-4" style={{ width: '360px' }}>
-                  <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                    <Heart className="h-5 w-5 text-white/60" />
-                  </button>
-                  <button
-                    onClick={() => currentTrack && setShowPlaylistDialog(true)}
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                    title="Add to playlist"
-                  >
-                    <ListPlus className="h-5 w-5 text-white/60" />
-                  </button>
-                  <button
-                    onClick={toggleRepeat}
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                    title="Loop"
-                  >
-                    {repeat === 'one' ? (
-                      <Repeat1 className="h-5 w-5 text-white" />
-                    ) : repeat === 'all' ? (
-                      <Repeat className="h-5 w-5 text-white" />
-                    ) : (
-                      <Repeat className="h-5 w-5 text-white/60" />
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-
-            <div style={{ width: '160px' }} className="flex-shrink-0" />
-
-            <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
-              <div className="flex h-full flex-col gap-6 py-10">
-                <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                  <LyricsContent {...lyricsContentProps} isMobile={false} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
-            <div
-              className="flex items-center gap-3 flex-shrink-0"
-              style={{ padding: '32px 24px 10px 24px' }}
-            >
-              <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
                 <img
                   src={currentTrack.artwork || "/placeholder.svg"}
                   alt={currentTrack.album}
@@ -1098,63 +967,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <div className="flex-1 min-w-0">
-                <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
-                  {currentTrack.title}
-                </h2>
-                <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
-                  {currentTrack.artist}
-                </p>
-              </div>
+              <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px' }}>
+                {currentTrack.title}
+              </h2>
+              <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+                {currentTrack.artist}
+              </p>
 
-              <button
-                className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-                style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-                onClick={(e) => { e.stopPropagation(); }}
-              >
-                <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
-              </button>
-
-              <button
-                onClick={(e) => { e.stopPropagation(); handleClose(); }}
-                className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-                style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              >
-                <X className="text-white" style={{ width: '18px', height: '18px' }} />
-              </button>
-            </div>
-
-            <div className="flex-1 min-h-0 flex flex-col">
-              <div
-                ref={lyricsContainerRef}
-                className="relative flex-1 min-h-0"
-                style={{ overflow: 'hidden' }}
-              >
-                <LyricsContent {...lyricsContentProps} isMobile />
-              </div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 1, y: 0 }}
-              animate={{ 
-                opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
-                y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
-              }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute bottom-0 left-0 right-0 z-20"
-              style={{ 
-                padding: '8px 24px 32px 24px',
-                pointerEvents: mobileControlsVisible ? 'auto' : 'none',
-                background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
-                paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
-              }}
-            >
-              <div style={{ width: '88%', margin: '0 auto' }}>
+              <div style={{ marginTop: '24px', width: '360px' }}>
                 <Slider
                   value={[progress]}
                   max={100}
                   step={0.1}
-                  onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
+                  onValueChange={([value]) => handleSliderSeek(value)}
                   className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
@@ -1163,46 +988,175 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-6 mt-3">
-                <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+              <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
+                <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                  <SkipBack className="h-6 w-6 text-white" />
+                </button>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
+                  {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
+                </motion.button>
+                <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                  <SkipForward className="h-6 w-6 text-white" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-4 mt-4" style={{ width: '360px' }}>
+                <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <Heart className="h-5 w-5 text-white/60" />
+                </button>
+                <button
+                  onClick={() => currentTrack && setShowPlaylistDialog(true)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Add to playlist"
+                >
+                  <ListPlus className="h-5 w-5 text-white/60" />
+                </button>
+                <button
+                  onClick={toggleRepeat}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Loop"
+                >
                   {repeat === 'one' ? (
                     <Repeat1 className="h-5 w-5 text-white" />
                   ) : repeat === 'all' ? (
                     <Repeat className="h-5 w-5 text-white" />
                   ) : (
-                    <Repeat className="h-5 w-5 text-white/40" />
+                    <Repeat className="h-5 w-5 text-white/60" />
                   )}
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                  <SkipBack className="h-6 w-6 text-white" />
-                </button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
-                  className="p-4 rounded-full transition-transform"
-                  style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
-                >
-                  {isPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-0.5" />}
-                </motion.button>
-                <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                  <SkipForward className="h-6 w-6 text-white" />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                  <ListPlus className="h-5 w-5 text-white/60" />
                 </button>
               </div>
             </motion.div>
           </div>
 
-          {currentTrack && (
-            <AddToPlaylistDialog
-              track={currentTrack}
-              isOpen={showPlaylistDialog}
-              onClose={() => setShowPlaylistDialog(false)}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
-    </SmoothTimeRefContext.Provider>
+          <div style={{ width: '160px' }} className="flex-shrink-0" />
+
+          <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
+            <div className="flex h-full flex-col gap-6 py-10">
+              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                <LyricsContent {...lyricsContentProps} isMobile={false} />
+              </div>
+              
+            </div>
+          </div>
+        </div>
+
+        <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
+          <div
+            className="flex items-center gap-3 flex-shrink-0"
+            style={{ padding: '32px 24px 10px 24px' }}
+          >
+            <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
+              <img
+                src={currentTrack.artwork || "/placeholder.svg"}
+                alt={currentTrack.album}
+                className={cn("object-cover object-center", currentTrack.source === 'youtube' ? "h-full w-auto min-w-full" : "w-full h-full")}
+              />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
+                {currentTrack.title}
+              </h2>
+              <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
+                {currentTrack.artist}
+              </p>
+            </div>
+
+            <button
+              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); handleClose(); }}
+              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
+            >
+              <X className="text-white" style={{ width: '18px', height: '18px' }} />
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div
+              ref={lyricsContainerRef}
+              className="relative flex-1 min-h-0"
+              style={{ overflow: 'hidden' }}
+            >
+              <LyricsContent {...lyricsContentProps} isMobile />
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 1, y: 0 }}
+            animate={{ 
+              opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
+              y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
+            }}
+            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute bottom-0 left-0 right-0 z-20"
+            style={{ 
+              padding: '8px 24px 32px 24px',
+              pointerEvents: mobileControlsVisible ? 'auto' : 'none',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
+              paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
+            }}
+          >
+            <div style={{ width: '88%', margin: '0 auto' }}>
+              <Slider
+                value={[progress]}
+                max={100}
+                step={0.1}
+                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
+                className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+              />
+              <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(currentTrack.duration)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-6 mt-3">
+              <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                {repeat === 'one' ? (
+                  <Repeat1 className="h-5 w-5 text-white" />
+                ) : repeat === 'all' ? (
+                  <Repeat className="h-5 w-5 text-white" />
+                ) : (
+                  <Repeat className="h-5 w-5 text-white/40" />
+                )}
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
+                <SkipBack className="h-6 w-6 text-white" />
+              </button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
+                className="p-4 rounded-full transition-transform"
+                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
+              >
+                {isPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-0.5" />}
+              </motion.button>
+              <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
+                <SkipForward className="h-6 w-6 text-white" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <ListPlus className="h-5 w-5 text-white/60" />
+              </button>
+            </div>
+          </motion.div>
+        </div>
+
+        {currentTrack && (
+          <AddToPlaylistDialog
+            track={currentTrack}
+            isOpen={showPlaylistDialog}
+            onClose={() => setShowPlaylistDialog(false)}
+          />
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }
