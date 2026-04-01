@@ -275,44 +275,115 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
   );
 }
 
-// ─── Karaoke word span with gradient fill and fading edge ───
-function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
-  const safeDuration = Math.max(endTime - startTime, 0.15);
-  let progress = 0;
+// ─── Karaoke word span with smoothed fill + pulse emphasis ───
+function KaraokeWordSpan({
+  word,
+  startTime,
+  endTime,
+  currentTime,
+  nextWordStart,
+  frozen,
+  emphasisDuration,
+}: {
+  word: string;
+  startTime: number;
+  endTime: number;
+  currentTime: number;
+  nextWordStart?: number;
+  frozen?: boolean;
+  emphasisDuration?: number;
+}) {
+  const safeDuration = Math.max(endTime - startTime, 0.12);
+  let rawProgress = 0;
+  if (frozen) {
+    rawProgress = 1;
+  } else if (currentTime >= endTime) {
+    rawProgress = 1;
+  } else if (currentTime > startTime) {
+    rawProgress = (currentTime - startTime) / safeDuration;
+  }
+  rawProgress = Math.min(1, Math.max(0, rawProgress));
+
+  // Catch-up smoothing: prevents teleporting when short/instant words are skipped.
+  const visualProgressRef = useRef(0);
+  if (!frozen && currentTime < startTime - 0.08) {
+    visualProgressRef.current = 0;
+  }
+
+  let progress = rawProgress;
   if (frozen) {
     progress = 1;
-  } else if (currentTime >= endTime) {
-    progress = 1;
-  } else if (currentTime > startTime) {
-    progress = (currentTime - startTime) / safeDuration;
+    visualProgressRef.current = 1;
+  } else {
+    const prev = visualProgressRef.current;
+    if (rawProgress >= prev) {
+      const delta = rawProgress - prev;
+      const catchUp = delta > 0.6 ? 0.58 : delta > 0.3 ? 0.42 : 0.3;
+      progress = prev + delta * catchUp;
+      if (rawProgress === 1 && progress > 0.995) progress = 1;
+    }
+    visualProgressRef.current = progress;
   }
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
-  const wordDuration = endTime - startTime;
+  const wordDuration = emphasisDuration ?? (endTime - startTime);
   const isDone = progress >= 1;
 
-  // Tiered emphasis: word-level
-  const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
-  const hasEmphasis = emphasisScale > 0;
+  // Apple-style pulse tiers
+  const pulseScale = wordDuration >= 1.5 ? 1.15 : wordDuration >= 1.0 ? 1.11 : wordDuration >= 0.8 ? 1.07 : 1.04;
+  const [isPulseActive, setIsPulseActive] = useState(false);
+  const hasPulsedRef = useRef(false);
+  const pulseTimeoutRef = useRef<number | null>(null);
 
-  // Word-level uplift: entire word lifts smoothly when complete
-  const wordLift = isDone ? -1 : 0;
-  const wordScale = hasEmphasis && isDone && !frozen ? 1 + emphasisScale : 1;
+  useEffect(() => {
+    return () => {
+      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (frozen) {
+      setIsPulseActive(false);
+      hasPulsedRef.current = true;
+      return;
+    }
+
+    if (progress >= 1 && !hasPulsedRef.current) {
+      hasPulsedRef.current = true;
+      setIsPulseActive(true);
+      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
+      pulseTimeoutRef.current = window.setTimeout(() => {
+        setIsPulseActive(false);
+      }, 300);
+      return;
+    }
+
+    if (progress < 0.05 && currentTime < startTime) {
+      hasPulsedRef.current = false;
+      setIsPulseActive(false);
+    }
+  }, [progress, frozen, currentTime, startTime]);
+
+  const settledLift = isDone ? -0.8 : 0;
+  const displayScale = isPulseActive ? pulseScale : 1;
 
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
-        transform: `translateY(${wordLift}px) scale(${wordScale})`,
+        transform: `translateY(${settledLift}px) scale(${displayScale})`,
         transformOrigin: 'bottom center',
-        transition: 'transform 300ms ease-out',
+        transition: 'transform 350ms ease, text-shadow 350ms ease',
+        textShadow: isPulseActive
+          ? '0 0 6px rgba(255,255,255,0.9), 0 0 12px rgba(255,255,255,0.6)'
+          : 'none',
       }}
     >
       {/* Base (dim) layer */}
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
         {word}
       </span>
-      {/* Filled (bright) overlay clipped to progress with right fade */}
+      {/* Filled overlay clipped to progress with right fade during active fill */}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
@@ -321,16 +392,16 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           opacity: frozen ? 0.35 : 1,
-          transition: 'opacity 400ms ease',
-          ...(isDone ? {} : {
-            maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-          }),
+          transition: 'opacity 300ms ease',
+          ...(isDone
+            ? {}
+            : {
+                maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
+              }),
         }}
       >
-        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
-          {word}
-        </span>
+        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
       </span>
     </span>
   );
@@ -342,7 +413,15 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
     <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
-          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} frozen={frozen} />
+          <KaraokeWordSpan
+            word={w.word}
+            startTime={w.startTime}
+            endTime={w.endTime}
+            currentTime={currentTime}
+            nextWordStart={words[idx + 1]?.startTime}
+            frozen={frozen}
+            emphasisDuration={Math.max(0, w.endTime - w.startTime)}
+          />
           {idx < words.length - 1 ? " " : null}
         </Fragment>
       ))}
@@ -360,16 +439,57 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
+  const visualLineWords = useMemo(() => {
+    if (lineWords.length === 0) return [] as Array<KaraokeWord & { visualStart: number; visualEnd: number; emphasisDuration: number }>;
+
+    const minVisualDuration = 0.18;
+    const smoothCarry = 0.045;
+    let prevVisualEnd = Math.max(lineStartTime, lineWords[0].startTime);
+
+    return lineWords.map((w, i) => {
+      const realStart = w.startTime;
+      const realEnd = Math.max(w.endTime, w.startTime + 0.02);
+      const emphasisDuration = Math.max(0, realEnd - realStart);
+      const nextRealStart = lineWords[i + 1]?.startTime ?? (lineEndTime + smoothCarry);
+
+      const visualStart = Math.max(realStart, prevVisualEnd - smoothCarry);
+      const naturalEnd = Math.max(realEnd, visualStart + minVisualDuration);
+      const capEnd = i < lineWords.length - 1
+        ? Math.max(visualStart + 0.1, nextRealStart + smoothCarry)
+        : Math.max(visualStart + minVisualDuration, lineEndTime + 0.1);
+
+      let visualEnd = Math.min(naturalEnd, capEnd);
+      if (visualEnd <= visualStart + 0.06) visualEnd = visualStart + 0.06;
+
+      prevVisualEnd = visualEnd;
+
+      return {
+        ...w,
+        visualStart,
+        visualEnd,
+        emphasisDuration,
+      };
+    });
+  }, [lineWords, lineStartTime, lineEndTime]);
+
+  const shouldRenderFill = visualLineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-        {lineWords.map((wordData, idx) => (
+        {visualLineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
-            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
-            {idx < lineWords.length - 1 ? " " : null}
+            <KaraokeWordSpan
+              word={wordData.word}
+              startTime={wordData.visualStart}
+              endTime={wordData.visualEnd}
+              currentTime={currentTime}
+              nextWordStart={visualLineWords[idx + 1]?.visualStart}
+              frozen={frozen}
+              emphasisDuration={wordData.emphasisDuration}
+            />
+            {idx < visualLineWords.length - 1 ? " " : null}
           </Fragment>
         ))}
       </span>
