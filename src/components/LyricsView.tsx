@@ -702,6 +702,57 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const playbackRateRef = useRef(playbackRate);
   useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
 
+  // Fetch lyrics + karaoke
+  useEffect(() => {
+    if (!currentTrack) return;
+    const loadLyrics = async () => {
+      setIsLoadingLyrics(true);
+      setParsedLyrics(null);
+      setCurrentLineIndex(-1);
+      setKaraokeEnabled(false);
+      setKaraokeWords([]);
+      try {
+        if (currentTrack.youtubeId) {
+          const { data: song } = await supabase
+            .from("songs")
+            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity")
+            .eq("youtube_id", currentTrack.youtubeId)
+            .maybeSingle();
+          if (song) {
+            if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
+            if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
+            if (song.karaoke_enabled && song.karaoke_data) {
+              const data = song.karaoke_data as unknown as KaraokeData;
+              if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
+            }
+          }
+        }
+        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+
+        if (!lyrics?.lines.length && currentTrack.youtubeId) {
+          const cached = await getCachedLyrics(currentTrack.youtubeId);
+          if (cached?.syncedLyrics) {
+            const parsed = parseLRC(cached.syncedLyrics);
+            if (parsed.lines.length > 0) {
+              lyrics = parsed;
+            }
+          }
+        }
+
+        if (lyrics?.lines.length) {
+          setParsedLyrics(lyrics);
+        } else {
+          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+        }
+      } catch {
+        setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+      } finally {
+        setIsLoadingLyrics(false);
+      }
+    };
+    loadLyrics();
+  }, [currentTrack?.id]);
+
   useEffect(() => {
     const now = performance.now();
     if (seekLockRef.current && now < seekLockRef.current.until) {
