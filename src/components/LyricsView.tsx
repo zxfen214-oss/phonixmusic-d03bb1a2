@@ -235,10 +235,10 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
-  const safeDuration = Math.max(endTime - startTime, 0.001);
+  const safeDuration = Math.max(endTime - startTime, 0.15);
   let progress = 0;
   if (frozen) {
-    progress = 1; // freeze at fully filled when line scrolls up
+    progress = 1;
   } else if (currentTime >= endTime) {
     progress = 1;
   } else if (currentTime > startTime) {
@@ -247,62 +247,28 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
-  const isActive = !frozen && currentTime >= startTime && currentTime < endTime;
   const isDone = progress >= 1;
-  
-  // Tiered emphasis: 0.8-1s = small, 1-1.5s = medium, 1.5s+ = strong
-  const emphasisScale = wordDuration >= 1.5 ? 0.18 : wordDuration >= 1.0 ? 0.12 : wordDuration >= 0.8 ? 0.06 : 0;
+
+  // Tiered emphasis: word-level
+  const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
   const hasEmphasis = emphasisScale > 0;
 
-  // All words now render per-letter for the uplift effect
-  const letters = word.split('');
-
-  // Per-letter uplift: each letter lifts slightly as it gets filled
-  // Letter emphasis happens AFTER the letter is filled (delayed)
-  const getLetterLift = (ci: number) => {
-    const letterProgress = progress * letters.length;
-    const letterDone = letterProgress >= ci + 1;
-    const letterActive = letterProgress > ci && letterProgress < ci + 1;
-    const letterFrac = letterActive ? (letterProgress - ci) : 0;
-    if (letterDone) return -1; // stay lifted
-    if (letterActive) return -1 * letterFrac; // smooth lift
-    return 0;
-  };
-
-  // Emphasis pulse happens AFTER the letter karaoke finishes (delayed by ~0.3 letters)
-  const getLetterPulse = (ci: number) => {
-    if (!hasEmphasis || !isActive) return 1;
-    const letterProgress = progress * letters.length;
-    // Pulse starts when letter is done (ci+1), peaks at ci+1.3, fades by ci+2
-    const pulseProgress = letterProgress - (ci + 1);
-    if (pulseProgress < 0) return 1; // not done yet
-    if (pulseProgress > 1) return 1; // pulse over
-    // Bell curve: grows then shrinks
-    const t = pulseProgress;
-    const pulse = Math.sin(t * Math.PI);
-    return 1 + pulse * emphasisScale;
-  };
+  // Word-level uplift: entire word lifts smoothly when complete
+  const wordLift = isDone ? -1 : 0;
+  const wordScale = hasEmphasis && isDone && !frozen ? 1 + emphasisScale : 1;
 
   return (
-    <span className="relative inline-block align-baseline">
-      {/* Base (dim) per-letter layer */}
-      <span style={{ whiteSpace: 'pre' }}>
-        {letters.map((ch, ci) => {
-          const lift = getLetterLift(ci);
-          const scale = getLetterPulse(ci);
-          return (
-            <span
-              key={ci}
-              style={{
-                display: 'inline-block',
-                color: "rgba(255, 255, 255, 0.35)",
-                transform: `translateY(${lift}px) scale(${scale})`,
-                transformOrigin: 'bottom center',
-                transition: 'transform 150ms ease-out',
-              }}
-            >{ch}</span>
-          );
-        })}
+    <span
+      className="relative inline-block align-baseline"
+      style={{
+        transform: `translateY(${wordLift}px) scale(${wordScale})`,
+        transformOrigin: 'bottom center',
+        transition: 'transform 300ms ease-out',
+      }}
+    >
+      {/* Base (dim) layer */}
+      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
+        {word}
       </span>
       {/* Filled (bright) overlay clipped to progress with right fade */}
       <span
@@ -312,29 +278,16 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
           width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
+          opacity: frozen ? 0.35 : 1,
+          transition: 'width 80ms linear, opacity 400ms ease',
           ...(isDone ? {} : {
             maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
             WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
           }),
         }}
       >
-        <span style={{ whiteSpace: 'pre' }}>
-          {letters.map((ch, ci) => {
-            const lift = getLetterLift(ci);
-            const scale = getLetterPulse(ci);
-            return (
-              <span
-                key={ci}
-                style={{
-                  display: 'inline-block',
-                  color: '#ffffff',
-                  transform: `translateY(${lift}px) scale(${scale})`,
-                  transformOrigin: 'bottom center',
-                  transition: 'transform 150ms ease-out',
-                }}
-              >{ch}</span>
-            );
-          })}
+        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
+          {word}
         </span>
       </span>
     </span>
