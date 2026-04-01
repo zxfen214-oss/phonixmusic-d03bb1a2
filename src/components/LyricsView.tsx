@@ -315,9 +315,13 @@ function KaraokeWordSpan({
     const prev = visualProgressRef.current;
     if (rawProgress >= prev) {
       const delta = rawProgress - prev;
-      const catchUp = delta > 0.6 ? 0.58 : delta > 0.3 ? 0.42 : 0.3;
+      // Accelerate fill as we approach end (next word coming)
+      const timeLeft = Math.max(0, endTime - currentTime);
+      const urgency = timeLeft < 0.15 ? 0.85 : timeLeft < 0.3 ? 0.65 : 0;
+      const baseCatchUp = delta > 0.6 ? 0.58 : delta > 0.3 ? 0.42 : 0.3;
+      const catchUp = Math.min(0.92, baseCatchUp + urgency);
       progress = prev + delta * catchUp;
-      if (rawProgress === 1 && progress > 0.995) progress = 1;
+      if (rawProgress === 1 && progress > 0.99) progress = 1;
     }
     visualProgressRef.current = progress;
   }
@@ -356,7 +360,7 @@ function KaraokeWordSpan({
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
           <KaraokeWordSpan
@@ -423,7 +427,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   if (shouldRenderFill) {
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {visualLineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan
@@ -443,7 +447,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   }
 
   return (
-    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.5rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {text}
     </span>
   );
@@ -635,7 +639,7 @@ function LyricsContent({
 
   useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
 
-  const fontSize = isMobile ? '2rem' : '40px';
+  const fontSize = isMobile ? '2.5rem' : '40px';
 
   return (
     <div
