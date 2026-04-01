@@ -921,8 +921,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   };
 
   return (
-    <AnimatePresence>
-      <SmoothTimeRefContext.Provider value={smoothTimeRef}>
+    <SmoothTimeRefContext.Provider value={smoothTimeRef}>
+      <AnimatePresence>
         <motion.div
           initial={{ opacity: 0, scale: 1.02 }}
           animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
