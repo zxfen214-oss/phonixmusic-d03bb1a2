@@ -1151,7 +1151,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             onClose={() => setShowPlaylistDialog(false)}
           />
         )}
-      </motion.div>
+      </SmoothTimeRefContext.Provider>
     </AnimatePresence>
   );
 }
