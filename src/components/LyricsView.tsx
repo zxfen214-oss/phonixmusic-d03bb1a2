@@ -275,15 +275,13 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
   );
 }
 
-// ─── Karaoke word span with smoothed fill + pulse emphasis ───
+// ─── Karaoke word span with smoothed fill ───
 function KaraokeWordSpan({
   word,
   startTime,
   endTime,
   currentTime,
-  nextWordStart,
   frozen,
-  emphasisDuration,
 }: {
   word: string;
   startTime: number;
@@ -304,7 +302,6 @@ function KaraokeWordSpan({
   }
   rawProgress = Math.min(1, Math.max(0, rawProgress));
 
-  // Catch-up smoothing: prevents teleporting when short/instant words are skipped.
   const visualProgressRef = useRef(0);
   if (!frozen && currentTime < startTime - 0.08) {
     visualProgressRef.current = 0;
@@ -326,64 +323,13 @@ function KaraokeWordSpan({
   }
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
-  const wordDuration = emphasisDuration ?? (endTime - startTime);
   const isDone = progress >= 1;
 
-  // Apple-style pulse tiers
-  const pulseScale = wordDuration >= 1.5 ? 1.15 : wordDuration >= 1.0 ? 1.11 : wordDuration >= 0.8 ? 1.07 : 1.04;
-  const [isPulseActive, setIsPulseActive] = useState(false);
-  const hasPulsedRef = useRef(false);
-  const pulseTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (frozen) {
-      setIsPulseActive(false);
-      hasPulsedRef.current = true;
-      return;
-    }
-
-    if (progress >= 1 && !hasPulsedRef.current) {
-      hasPulsedRef.current = true;
-      setIsPulseActive(true);
-      if (pulseTimeoutRef.current) window.clearTimeout(pulseTimeoutRef.current);
-      pulseTimeoutRef.current = window.setTimeout(() => {
-        setIsPulseActive(false);
-      }, 300);
-      return;
-    }
-
-    if (progress < 0.05 && currentTime < startTime) {
-      hasPulsedRef.current = false;
-      setIsPulseActive(false);
-    }
-  }, [progress, frozen, currentTime, startTime]);
-
-  const settledLift = isDone ? -0.8 : 0;
-  const displayScale = isPulseActive ? pulseScale : 1;
-
   return (
-    <span
-      className="relative inline-block align-baseline"
-      style={{
-        transform: `translateY(${settledLift}px) scale(${displayScale})`,
-        transformOrigin: 'bottom center',
-        transition: 'transform 350ms ease, text-shadow 350ms ease',
-        textShadow: isPulseActive
-          ? '0 0 6px rgba(255,255,255,0.9), 0 0 12px rgba(255,255,255,0.6)'
-          : 'none',
-      }}
-    >
-      {/* Base (dim) layer */}
+    <span className="relative inline-block align-baseline">
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
         {word}
       </span>
-      {/* Filled overlay clipped to progress with right fade during active fill */}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
