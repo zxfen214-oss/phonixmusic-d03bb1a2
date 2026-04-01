@@ -641,6 +641,7 @@ export function usePlayer() {
       addToQueue: () => {},
       playbackRate: 1,
       speedPreset: 'normal' as const,
+      isLossless: false,
     } as PlayerContextType;
   }
   return context;
