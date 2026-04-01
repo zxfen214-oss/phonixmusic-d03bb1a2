@@ -678,8 +678,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     setSmoothTime(currentTime);
   }, [currentTime]);
 
-  // Reset base when playbackRate changes to avoid time jumps
+  // Smooth playback rate tween for consistent speed changes
+  const smoothRateRef = useRef(playbackRate);
+  const targetRateRef = useRef(playbackRate);
   useEffect(() => {
+    targetRateRef.current = playbackRate;
+    const startRate = smoothRateRef.current;
+    const startTs = performance.now();
+    const tweenDuration = 300; // 300ms tween
+    const tweenRate = () => {
+      const elapsed = performance.now() - startTs;
+      const t = Math.min(1, elapsed / tweenDuration);
+      const eased = t * t * (3 - 2 * t); // smoothstep
+      smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
+      if (t < 1) requestAnimationFrame(tweenRate);
+    };
+    requestAnimationFrame(tweenRate);
     baseTsRef.current = performance.now();
   }, [playbackRate]);
 
@@ -694,7 +708,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         return;
       }
       const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
-      const next = isPlaying ? baseTimeRef.current + elapsed * (playbackRate || 1) : baseTimeRef.current;
+      const rate = smoothRateRef.current || 1;
+      const next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
       setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
       rafRef.current = requestAnimationFrame(tick);
     };
