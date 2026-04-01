@@ -238,55 +238,98 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 
 // ─── Karaoke word span with gradient fill and fading edge ───
 function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart, frozen }: { word: string; startTime: number; endTime: number; currentTime: number; nextWordStart?: number; frozen?: boolean }) {
+  const timeRef = useContext(SmoothTimeRefContext);
+  const fillRef = useRef<HTMLSpanElement>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const prevDoneRef = useRef(false);
+
   const safeDuration = Math.max(endTime - startTime, 0.15);
-  let progress = 0;
-  if (frozen) {
-    progress = 1;
-  } else if (currentTime >= endTime) {
-    progress = 1;
-  } else if (currentTime > startTime) {
-    progress = (currentTime - startTime) / safeDuration;
-  }
-
-  const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const wordDuration = endTime - startTime;
-  const isDone = progress >= 1;
-
-  // Tiered emphasis: word-level
   const emphasisScale = wordDuration >= 1.5 ? 0.12 : wordDuration >= 1.0 ? 0.08 : wordDuration >= 0.8 ? 0.04 : 0;
   const hasEmphasis = emphasisScale > 0;
 
-  // Word-level uplift: entire word lifts smoothly when complete
-  const wordLift = isDone ? -1 : 0;
-  const wordScale = hasEmphasis && isDone && !frozen ? 1 + emphasisScale : 1;
+  // Direct DOM update loop — no React re-renders
+  useEffect(() => {
+    if (frozen) {
+      // Set frozen state directly
+      if (fillRef.current) {
+        fillRef.current.style.width = '100%';
+        fillRef.current.style.opacity = '0.35';
+        fillRef.current.style.maskImage = 'none';
+        fillRef.current.style.webkitMaskImage = 'none';
+      }
+      if (wrapRef.current) {
+        wrapRef.current.style.transform = 'translateY(-1px) scale(1)';
+      }
+      prevDoneRef.current = true;
+      return;
+    }
+
+    let raf: number;
+    const tick = () => {
+      const ct = timeRef.current;
+      let progress = 0;
+      if (ct >= endTime) {
+        progress = 1;
+      } else if (ct > startTime) {
+        progress = (ct - startTime) / safeDuration;
+      }
+
+      const fillPercent = Math.min(100, Math.max(0, progress * 100));
+      const isDone = progress >= 1;
+
+      if (fillRef.current) {
+        fillRef.current.style.width = `${fillPercent}%`;
+        fillRef.current.style.opacity = isDone ? '0.35' : '1';
+        if (isDone) {
+          fillRef.current.style.maskImage = 'none';
+          fillRef.current.style.webkitMaskImage = 'none';
+        } else if (progress > 0) {
+          fillRef.current.style.maskImage = 'linear-gradient(to right, white 70%, transparent 100%)';
+          fillRef.current.style.webkitMaskImage = 'linear-gradient(to right, white 70%, transparent 100%)';
+        }
+      }
+
+      if (wrapRef.current) {
+        const wordLift = isDone ? -1 : 0;
+        const wordScale = hasEmphasis && isDone ? 1 + emphasisScale : 1;
+        // Only update transform when state changes to avoid constant style writes
+        if (isDone !== prevDoneRef.current) {
+          wrapRef.current.style.transform = `translateY(${wordLift}px) scale(${wordScale})`;
+          prevDoneRef.current = isDone;
+        }
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [frozen, startTime, endTime, safeDuration, hasEmphasis, emphasisScale, timeRef]);
 
   return (
     <span
+      ref={wrapRef}
       className="relative inline-block align-baseline"
       style={{
-        transform: `translateY(${wordLift}px) scale(${wordScale})`,
         transformOrigin: 'bottom center',
         transition: 'transform 300ms ease-out',
+        willChange: 'transform',
       }}
     >
       {/* Base (dim) layer */}
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
         {word}
       </span>
-      {/* Filled (bright) overlay clipped to progress with right fade */}
+      {/* Filled (bright) overlay — updated via ref, no React re-renders */}
       <span
+        ref={fillRef}
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
         style={{
-          width: `${fillPercent}%`,
+          width: '0%',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          opacity: frozen ? 0.35 : 1,
-          transition: 'opacity 400ms ease',
-          ...(isDone ? {} : {
-            maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-          }),
+          willChange: 'width',
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>
