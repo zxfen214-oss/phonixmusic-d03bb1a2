@@ -279,7 +279,7 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           opacity: frozen ? 0.35 : 1,
-          transition: 'width 80ms linear, opacity 400ms ease',
+          transition: 'opacity 400ms ease',
           ...(isDone ? {} : {
             maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
             WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
