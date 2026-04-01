@@ -554,8 +554,8 @@ function LyricsContent({
             className={cn("absolute left-0 right-0 transform-gpu", textAlignClass)}
             style={{
               willChange: "opacity, filter, transform",
-              paddingLeft: isMobile ? '24px' : '0',
-              paddingRight: isMobile ? '24px' : '0',
+              paddingLeft: isMobile ? '20px' : '0',
+              paddingRight: isMobile ? '20px' : '0',
               top: 0,
             }}
           >
