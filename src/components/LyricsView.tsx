@@ -351,13 +351,7 @@ function KaraokeWordSpan({
               }),
         }}
       >
-        <span style={{
-          whiteSpace: 'pre',
-          background: isDone ? 'white' : 'linear-gradient(to right, white 60%, rgba(255,255,255,0.4) 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-        }}>{word}</span>
+        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
       </span>
     </span>
   );
