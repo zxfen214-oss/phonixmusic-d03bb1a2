@@ -215,7 +215,7 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
   const delayBetween = (duration - fillDuration) / circleCount;
 
   return (
-    <div className="flex gap-5 py-2">
+    <div className="flex gap-3 py-2">
       {Array.from({ length: circleCount }).map((_, i) => {
         const circleStart = i * delayBetween;
         const circleProgress = Math.max(0, Math.min(1, (elapsed - circleStart) / fillDuration));
@@ -225,7 +225,7 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
           <motion.div
             key={i}
             className="rounded-full"
-            style={{ width: 25, height: 25 }}
+            style={{ width: 14, height: 14 }}
             animate={{
               scale: isShrinking ? 0 : circleProgress > 0 ? [0.9, 1.05, 0.9] : [0.9, 1.05, 0.9],
               opacity: isShrinking ? 0 : circleProgress > 0 ? 1 : 0.7,
@@ -396,7 +396,7 @@ function useAppleMusicStyles(
 ) {
   const prevPositionsRef = useRef<Map<string, number>>(new Map());
   const LINE_PADDING = isMobile ? 16 : 16;
-  const ACTIVE_OFFSET = 0.22;
+  const ACTIVE_OFFSET = 0.15;
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
 
   useLayoutEffect(() => {
