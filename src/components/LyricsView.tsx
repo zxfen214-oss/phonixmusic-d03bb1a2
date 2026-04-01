@@ -341,12 +341,12 @@ function KaraokeWordSpan({ word, startTime, endTime, currentTime, nextWordStart,
 }
 
 // ─── eLRC line ───
-function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
+function ELRCLine({ words, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; isMobile: boolean; frozen?: boolean }) {
   return (
     <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
-          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} currentTime={currentTime} nextWordStart={words[idx + 1]?.startTime} frozen={frozen} />
+          <KaraokeWordSpan word={w.word} startTime={w.startTime} endTime={w.endTime} frozen={frozen} />
           {idx < words.length - 1 ? " " : null}
         </Fragment>
       ))}
@@ -355,8 +355,8 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
 }
 
 // ─── Karaoke line (renders for BOTH active and recently-passed lines) ───
-function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
-  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
+function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, isCurrentLine, isPastLine, isMobile }: {
+  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; isCurrentLine: boolean; isPastLine: boolean; isMobile: boolean;
 }) {
   const hasLineIndex = words.some((w) => typeof w.lineIndex === "number");
   const lineWords = (hasLineIndex
@@ -364,15 +364,15 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     : words.filter((w) => w.startTime >= lineStartTime && w.startTime < lineEndTime)
   ).slice().sort((a, b) => a.startTime - b.startTime);
 
-  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
-  const frozen = !isCurrentLine && currentTime >= lineEndTime;
+  const shouldRenderFill = lineWords.length > 0 && (isCurrentLine || isPastLine);
+  const frozen = isPastLine && !isCurrentLine;
 
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '3.5rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {lineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
-            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} currentTime={currentTime} nextWordStart={lineWords[idx + 1]?.startTime} frozen={frozen} />
+            <KaraokeWordSpan word={wordData.word} startTime={wordData.startTime} endTime={wordData.endTime} frozen={frozen} />
             {idx < lineWords.length - 1 ? " " : null}
           </Fragment>
         ))}
