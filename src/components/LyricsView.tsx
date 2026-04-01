@@ -1004,6 +1004,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
                   <Heart className="h-5 w-5 text-white/60" />
                 </button>
+                <button
+                  onClick={() => currentTrack && setShowPlaylistDialog(true)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Add to playlist"
+                >
+                  <ListPlus className="h-5 w-5 text-white/60" />
+                </button>
+                <button
+                  onClick={toggleRepeat}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title="Loop"
+                >
+                  {repeat === 'one' ? (
+                    <Repeat1 className="h-5 w-5 text-white" />
+                  ) : repeat === 'all' ? (
+                    <Repeat className="h-5 w-5 text-white" />
+                  ) : (
+                    <Repeat className="h-5 w-5 text-white/60" />
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>
