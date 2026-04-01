@@ -576,6 +576,7 @@ function LyricsContent({
       {visibleLyrics.map((item) => {
         const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords } = item;
         const isActive = position === 0;
+        const isPastLine = position < 0;
         const key = isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
@@ -599,10 +600,10 @@ function LyricsContent({
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
-                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                <ELRCLine words={elrcWords} isMobile={isMobile} frozen={isPastLine} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                    <ELRCLine words={nlCompanionElrcWords} isMobile={isMobile} frozen={isPastLine} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -617,10 +618,10 @@ function LyricsContent({
               </>
             ) : !isIntro && karaokeEnabled ? (
               <>
-                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                <KaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} isCurrentLine={isActive} isPastLine={isPastLine} isMobile={isMobile} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                    <KaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} isCurrentLine={isActive} isPastLine={isPastLine} isMobile={isMobile} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
