@@ -215,7 +215,7 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
   const delayBetween = (duration - fillDuration) / circleCount;
 
   return (
-    <div className="flex gap-5 py-2">
+    <div className="flex gap-3 py-2">
       {Array.from({ length: circleCount }).map((_, i) => {
         const circleStart = i * delayBetween;
         const circleProgress = Math.max(0, Math.min(1, (elapsed - circleStart) / fillDuration));
