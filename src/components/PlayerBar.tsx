@@ -41,6 +41,7 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
     repeat,
     playbackRate,
     speedPreset,
+    isLossless,
     pauseTrack,
     resumeTrack,
     nextTrack,
