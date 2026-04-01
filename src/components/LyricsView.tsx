@@ -924,37 +924,122 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     <AnimatePresence>
       <SmoothTimeRefContext.Provider value={smoothTimeRef}>
         <motion.div
-        initial={{ opacity: 0, scale: 1.02 }}
-        animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-      >
-        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        >
+          <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
 
-        <div className="relative h-full hidden md:flex items-center z-10">
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleClose}
-            className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            <X className="h-6 w-6 text-white" />
-          </motion.button>
-
-          <div className="flex-shrink-0 flex flex-col justify-center" style={{ width: '480px', paddingLeft: '120px' }}>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          <div className="relative h-full hidden md:flex items-center z-10">
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleClose}
+              className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             >
-              <div
-                className="overflow-hidden"
-                style={{
-                  width: '360px', height: '360px', borderRadius: '20px',
-                  boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.35)',
-                }}
+              <X className="h-6 w-6 text-white" />
+            </motion.button>
+
+            <div className="flex-shrink-0 flex flex-col justify-center" style={{ width: '480px', paddingLeft: '120px' }}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
               >
+                <div
+                  className="overflow-hidden"
+                  style={{
+                    width: '360px', height: '360px', borderRadius: '20px',
+                    boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.35)',
+                  }}
+                >
+                  <img
+                    src={currentTrack.artwork || "/placeholder.svg"}
+                    alt={currentTrack.album}
+                    className={cn("object-cover object-center", currentTrack.source === 'youtube' ? "h-full w-auto min-w-full" : "w-full h-full")}
+                  />
+                </div>
+
+                <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px' }}>
+                  {currentTrack.title}
+                </h2>
+                <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+                  {currentTrack.artist}
+                </p>
+
+                <div style={{ marginTop: '24px', width: '360px' }}>
+                  <Slider
+                    value={[progress]}
+                    max={100}
+                    step={0.1}
+                    onValueChange={([value]) => handleSliderSeek(value)}
+                    className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                  />
+                  <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(currentTrack.duration)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
+                  <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                    <SkipBack className="h-6 w-6 text-white" />
+                  </button>
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
+                    {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
+                  </motion.button>
+                  <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                    <SkipForward className="h-6 w-6 text-white" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-center gap-4 mt-4" style={{ width: '360px' }}>
+                  <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                    <Heart className="h-5 w-5 text-white/60" />
+                  </button>
+                  <button
+                    onClick={() => currentTrack && setShowPlaylistDialog(true)}
+                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    title="Add to playlist"
+                  >
+                    <ListPlus className="h-5 w-5 text-white/60" />
+                  </button>
+                  <button
+                    onClick={toggleRepeat}
+                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    title="Loop"
+                  >
+                    {repeat === 'one' ? (
+                      <Repeat1 className="h-5 w-5 text-white" />
+                    ) : repeat === 'all' ? (
+                      <Repeat className="h-5 w-5 text-white" />
+                    ) : (
+                      <Repeat className="h-5 w-5 text-white/60" />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+
+            <div style={{ width: '160px' }} className="flex-shrink-0" />
+
+            <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
+              <div className="flex h-full flex-col gap-6 py-10">
+                <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                  <LyricsContent {...lyricsContentProps} isMobile={false} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
+            <div
+              className="flex items-center gap-3 flex-shrink-0"
+              style={{ padding: '32px 24px 10px 24px' }}
+            >
+              <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
                 <img
                   src={currentTrack.artwork || "/placeholder.svg"}
                   alt={currentTrack.album}
@@ -962,19 +1047,63 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px' }}>
-                {currentTrack.title}
-              </h2>
-              <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
-                {currentTrack.artist}
-              </p>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
+                  {currentTrack.title}
+                </h2>
+                <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
+                  {currentTrack.artist}
+                </p>
+              </div>
 
-              <div style={{ marginTop: '24px', width: '360px' }}>
+              <button
+                className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+                style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
+                onClick={(e) => { e.stopPropagation(); }}
+              >
+                <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
+              </button>
+
+              <button
+                onClick={(e) => { e.stopPropagation(); handleClose(); }}
+                className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+                style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
+              >
+                <X className="text-white" style={{ width: '18px', height: '18px' }} />
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div
+                ref={lyricsContainerRef}
+                className="relative flex-1 min-h-0"
+                style={{ overflow: 'hidden' }}
+              >
+                <LyricsContent {...lyricsContentProps} isMobile />
+              </div>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 1, y: 0 }}
+              animate={{ 
+                opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
+                y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
+              }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute bottom-0 left-0 right-0 z-20"
+              style={{ 
+                padding: '8px 24px 32px 24px',
+                pointerEvents: mobileControlsVisible ? 'auto' : 'none',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
+                paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
+              }}
+            >
+              <div style={{ width: '88%', margin: '0 auto' }}>
                 <Slider
                   value={[progress]}
                   max={100}
                   step={0.1}
-                  onValueChange={([value]) => handleSliderSeek(value)}
+                  onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
                   className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
@@ -983,174 +1112,45 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
-                <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipBack className="h-6 w-6 text-white" />
-                </button>
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                  {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
-                </motion.button>
-                <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipForward className="h-6 w-6 text-white" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-4 mt-4" style={{ width: '360px' }}>
-                <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                  <Heart className="h-5 w-5 text-white/60" />
-                </button>
-                <button
-                  onClick={() => currentTrack && setShowPlaylistDialog(true)}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                  title="Add to playlist"
-                >
-                  <ListPlus className="h-5 w-5 text-white/60" />
-                </button>
-                <button
-                  onClick={toggleRepeat}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                  title="Loop"
-                >
+              <div className="flex items-center justify-center gap-6 mt-3">
+                <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                   {repeat === 'one' ? (
                     <Repeat1 className="h-5 w-5 text-white" />
                   ) : repeat === 'all' ? (
                     <Repeat className="h-5 w-5 text-white" />
                   ) : (
-                    <Repeat className="h-5 w-5 text-white/60" />
+                    <Repeat className="h-5 w-5 text-white/40" />
                   )}
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
+                  <SkipBack className="h-6 w-6 text-white" />
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
+                  className="p-4 rounded-full transition-transform"
+                  style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
+                >
+                  {isPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-0.5" />}
+                </motion.button>
+                <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
+                  <SkipForward className="h-6 w-6 text-white" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <ListPlus className="h-5 w-5 text-white/60" />
                 </button>
               </div>
             </motion.div>
           </div>
 
-          <div style={{ width: '160px' }} className="flex-shrink-0" />
-
-          <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
-            <div className="flex h-full flex-col gap-6 py-10">
-              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                <LyricsContent {...lyricsContentProps} isMobile={false} />
-              </div>
-              
-            </div>
-          </div>
-        </div>
-
-        <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
-          <div
-            className="flex items-center gap-3 flex-shrink-0"
-            style={{ padding: '32px 24px 10px 24px' }}
-          >
-            <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
-              <img
-                src={currentTrack.artwork || "/placeholder.svg"}
-                alt={currentTrack.album}
-                className={cn("object-cover object-center", currentTrack.source === 'youtube' ? "h-full w-auto min-w-full" : "w-full h-full")}
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
-                {currentTrack.title}
-              </h2>
-              <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
-                {currentTrack.artist}
-              </p>
-            </div>
-
-            <button
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              onClick={(e) => { e.stopPropagation(); }}
-            >
-              <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
-            </button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); handleClose(); }}
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-            >
-              <X className="text-white" style={{ width: '18px', height: '18px' }} />
-            </button>
-          </div>
-
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div
-              ref={lyricsContainerRef}
-              className="relative flex-1 min-h-0"
-              style={{ overflow: 'hidden' }}
-            >
-              <LyricsContent {...lyricsContentProps} isMobile />
-            </div>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 1, y: 0 }}
-            animate={{ 
-              opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
-              y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
-            }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute bottom-0 left-0 right-0 z-20"
-            style={{ 
-              padding: '8px 24px 32px 24px',
-              pointerEvents: mobileControlsVisible ? 'auto' : 'none',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
-              paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
-            }}
-          >
-            <div style={{ width: '88%', margin: '0 auto' }}>
-              <Slider
-                value={[progress]}
-                max={100}
-                step={0.1}
-                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
-                className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
-              />
-              <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(currentTrack.duration)}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 mt-3">
-              <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                {repeat === 'one' ? (
-                  <Repeat1 className="h-5 w-5 text-white" />
-                ) : repeat === 'all' ? (
-                  <Repeat className="h-5 w-5 text-white" />
-                ) : (
-                  <Repeat className="h-5 w-5 text-white/40" />
-                )}
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <SkipBack className="h-6 w-6 text-white" />
-              </button>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
-                className="p-4 rounded-full transition-transform"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
-              >
-                {isPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-0.5" />}
-              </motion.button>
-              <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <SkipForward className="h-6 w-6 text-white" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                <ListPlus className="h-5 w-5 text-white/60" />
-              </button>
-            </div>
-          </motion.div>
-        </div>
-
-        {currentTrack && (
-          <AddToPlaylistDialog
-            track={currentTrack}
-            isOpen={showPlaylistDialog}
-            onClose={() => setShowPlaylistDialog(false)}
-          />
-        )}
+          {currentTrack && (
+            <AddToPlaylistDialog
+              track={currentTrack}
+              isOpen={showPlaylistDialog}
+              onClose={() => setShowPlaylistDialog(false)}
+            />
+          )}
+        </motion.div>
       </SmoothTimeRefContext.Provider>
     </AnimatePresence>
   );
