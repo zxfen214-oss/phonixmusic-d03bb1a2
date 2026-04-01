@@ -639,6 +639,8 @@ function LyricsContent({
                   </p>
                 )}
               </>
+            ) : isIntro ? (
+              <IntroCircles currentTime={smoothTime} startTime={lineTime} endTime={nextLineTime} />
             ) : (
               <>
                 <p
