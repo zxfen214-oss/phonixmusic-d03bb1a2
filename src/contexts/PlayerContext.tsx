@@ -324,6 +324,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
+      setIsLossless(true);
       await audio.play();
       setState(prev => ({ ...prev, isPlaying: true }));
       return true;
