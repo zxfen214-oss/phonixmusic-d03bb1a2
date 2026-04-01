@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback, createContext, useContext } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import React from "react";
+
+// ─── Shared time ref context for zero-rerender karaoke fill ───
+const SmoothTimeRefContext = createContext<React.MutableRefObject<number>>({ current: 0 } as React.MutableRefObject<number>);
 
 interface LyricsViewProps {
   onClose: () => void;
