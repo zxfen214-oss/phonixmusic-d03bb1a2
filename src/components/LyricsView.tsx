@@ -16,6 +16,7 @@ import {
   Repeat,
   Repeat1,
   ListPlus,
+  AlignLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
@@ -79,7 +80,7 @@ interface Blob {
   color: [number, number, number];
 }
 
-function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | null; isClosing: boolean }) {
+function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artworkUrl?: string | null; isClosing: boolean; isMobile?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyzeRef = useRef<HTMLCanvasElement>(null);
   const blobsRef = useRef<Blob[]>([]);
@@ -92,7 +93,7 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
       // Fallback palette
       blobsRef.current = createBlobs(canvasRef.current, [
         [80, 20, 120], [20, 60, 140], [140, 30, 60], [30, 100, 80], [100, 40, 100],
-      ]);
+      ], isMobile);
       return;
     }
 
@@ -112,12 +113,12 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
         const idx = Math.floor(Math.random() * (data.length / 4)) * 4;
         colors.push([data[idx], data[idx + 1], data[idx + 2]]);
       }
-      blobsRef.current = createBlobs(canvasRef.current, colors);
+      blobsRef.current = createBlobs(canvasRef.current, colors, isMobile);
     };
     img.onerror = () => {
       blobsRef.current = createBlobs(canvasRef.current, [
         [80, 20, 120], [20, 60, 140], [140, 30, 60],
-      ]);
+      ], isMobile);
     };
     img.src = artworkUrl;
   }, [artworkUrl]);
@@ -188,11 +189,12 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
   );
 }
 
-function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, number][]): Blob[] {
+function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, number][], isMobile = false): Blob[] {
   const w = canvas?.width || window.innerWidth;
   const h = canvas?.height || window.innerHeight;
+  const count = isMobile ? 8 : 20; // Fewer blobs on mobile for performance
   const blobs: Blob[] = [];
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < count; i++) {
     blobs.push({
       x: Math.random() * w,
       y: Math.random() * h,
@@ -605,19 +607,16 @@ function useAppleMusicStyles(
 
       if (isNew) {
         el.style.transition = 'none';
-        el.style.willChange = 'transform, opacity';
+        el.style.willChange = isMobile ? 'transform, opacity' : 'transform, opacity';
         if (isMobile) {
-          el.style.visibility = 'hidden';
+          // iOS Safari: avoid double-rAF, use simpler single-frame approach
           el.style.opacity = '0';
           el.style.transform = makeTransform(targetY, scale);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              el.style.visibility = 'visible';
-              el.style.transition = `opacity 0.25s ${easing}, transform ${dur}s ${easing}`;
-              el.style.opacity = String(opacity);
-              el.style.transform = makeTransform(targetY, scale);
-            });
-          });
+          // Force layout read to flush the 'none' transition
+          void el.offsetHeight;
+          el.style.transition = `opacity 0.25s ${easing}, transform ${dur}s ${easing}`;
+          el.style.opacity = String(opacity);
+          el.style.transform = makeTransform(targetY, scale);
         } else if (position > 5) {
           el.style.opacity = '0';
           el.style.filter = 'blur(4px)';
@@ -778,6 +777,40 @@ function LyricsContent({
   );
 }
 
+// ─── Static Lyrics (scrollable plain text) ───
+function StaticLyricsContent({ text, onTextChange, isMobile }: { text: string; onTextChange: (t: string) => void; isMobile: boolean }) {
+  const hasText = text.trim().length > 0;
+  return (
+    <div className="relative w-full h-full overflow-y-auto" style={{ padding: isMobile ? '20px' : '20px 0' }}>
+      {!hasText ? (
+        <div className="flex flex-col items-center justify-center h-full gap-3">
+          <p className="text-white/40" style={{ fontSize: '14px' }}>Paste lyrics below</p>
+          <textarea
+            value={text}
+            onChange={(e) => onTextChange(e.target.value)}
+            placeholder="Paste your lyrics here..."
+            className="w-full rounded-lg border border-white/10 bg-white/5 text-white/80 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+            style={{ fontSize: '14px', padding: '12px', minHeight: '200px', resize: 'vertical' }}
+          />
+        </div>
+      ) : (
+        <div>
+          <div className="whitespace-pre-wrap" style={{ fontSize: isMobile ? '1rem' : '1.1rem', lineHeight: 1.8, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>
+            {text}
+          </div>
+          <button
+            onClick={() => onTextChange('')}
+            className="mt-4 text-white/30 hover:text-white/60 transition-colors"
+            style={{ fontSize: '12px' }}
+          >
+            Clear lyrics
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
@@ -797,6 +830,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const [staticLyricsMode, setStaticLyricsMode] = useState(false);
+  const [staticLyricsText, setStaticLyricsText] = useState("");
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -877,12 +912,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         if (currentTrack.youtubeId) {
           const { data: song } = await supabase
             .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity")
+            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
             .eq("youtube_id", currentTrack.youtubeId)
             .maybeSingle();
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
+            if (song.plain_lyrics) setStaticLyricsText(song.plain_lyrics);
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData;
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
@@ -1081,7 +1117,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
-        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
+        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} isMobile={isMobile} />
 
         <div className="relative h-full hidden md:flex items-center z-10">
           <motion.button
@@ -1179,10 +1215,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
           <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
             <div className="flex h-full flex-col gap-6 py-10">
-              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                <LyricsContent {...lyricsContentProps} isMobile={false} />
+              <div className="flex items-center gap-2 px-1">
+                <button
+                  onClick={() => setStaticLyricsMode(!staticLyricsMode)}
+                  className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
+                  title="Static lyrics"
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </button>
               </div>
-              
+              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                {staticLyricsMode ? (
+                  <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile={false} />
+                ) : (
+                  <LyricsContent {...lyricsContentProps} isMobile={false} />
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1210,11 +1258,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
 
             <button
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              onClick={(e) => { e.stopPropagation(); }}
+              className={cn(
+                "flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
+                staticLyricsMode ? "bg-white/25" : "hover:bg-white/20"
+              )}
+              style={{ width: '36px', height: '36px', background: staticLyricsMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
+              onClick={(e) => { e.stopPropagation(); setStaticLyricsMode(!staticLyricsMode); }}
+              title="Static lyrics"
             >
-              <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
+              <AlignLeft className="text-white" style={{ width: '16px', height: '16px' }} />
             </button>
 
             <button
@@ -1230,9 +1282,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <div
               ref={lyricsContainerRef}
               className="relative flex-1 min-h-0"
-              style={{ overflow: 'hidden' }}
+              style={{ overflow: staticLyricsMode ? 'auto' : 'hidden' }}
             >
-              <LyricsContent {...lyricsContentProps} isMobile />
+              {staticLyricsMode ? (
+                <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile />
+              ) : (
+                <LyricsContent {...lyricsContentProps} isMobile />
+              )}
             </div>
           </div>
 
