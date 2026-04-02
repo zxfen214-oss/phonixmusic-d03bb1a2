@@ -336,7 +336,7 @@ function KaraokeWordSpan({
       className="relative inline-block align-baseline"
       style={{
         transform: isDone ? 'translateY(-1px)' : 'translateY(0)',
-        transition: 'transform 300ms ease-out',
+        transition: isDone ? 'transform 300ms ease-out' : 'none',
       }}
     >
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>

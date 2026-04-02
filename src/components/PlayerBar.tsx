@@ -1,9 +1,5 @@
 import { usePlayer } from "@/contexts/PlayerContext";
 import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
   Volume2, 
   VolumeX,
   Repeat,
@@ -20,6 +16,10 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DownloadButton } from "./DownloadButton";
 import { useOfflineAudio } from "@/hooks/useOfflineAudio";
+import iconPlay from "@/assets/icon-play.png";
+import iconPause from "@/assets/icon-pause.png";
+import iconNext from "@/assets/icon-next.png";
+import iconPrev from "@/assets/icon-prev.png";
 
 interface PlayerBarProps {
   onOpenLyrics?: () => void;
