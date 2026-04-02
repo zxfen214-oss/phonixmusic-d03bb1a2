@@ -16,6 +16,7 @@ import {
   Repeat,
   Repeat1,
   ListPlus,
+  AlignLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
