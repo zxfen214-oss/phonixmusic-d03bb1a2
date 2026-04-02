@@ -912,7 +912,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         if (currentTrack.youtubeId) {
           const { data: song } = await supabase
             .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity")
+            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
             .eq("youtube_id", currentTrack.youtubeId)
             .maybeSingle();
           if (song) {
