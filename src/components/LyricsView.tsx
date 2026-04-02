@@ -1257,11 +1257,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
 
             <button
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              onClick={(e) => { e.stopPropagation(); }}
+              className={cn(
+                "flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
+                staticLyricsMode ? "bg-white/25" : "hover:bg-white/20"
+              )}
+              style={{ width: '36px', height: '36px', background: staticLyricsMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
+              onClick={(e) => { e.stopPropagation(); setStaticLyricsMode(!staticLyricsMode); }}
+              title="Static lyrics"
             >
-              <MoreHorizontal className="text-white" style={{ width: '16px', height: '16px' }} />
+              <AlignLeft className="text-white" style={{ width: '16px', height: '16px' }} />
             </button>
 
             <button
