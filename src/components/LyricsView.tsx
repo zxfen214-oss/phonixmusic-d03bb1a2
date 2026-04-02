@@ -92,7 +92,7 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
       // Fallback palette
       blobsRef.current = createBlobs(canvasRef.current, [
         [80, 20, 120], [20, 60, 140], [140, 30, 60], [30, 100, 80], [100, 40, 100],
-      ]);
+      ], isMobile);
       return;
     }
 
