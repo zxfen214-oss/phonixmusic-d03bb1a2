@@ -1173,13 +1173,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
                 <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipBack className="h-6 w-6 text-white" />
+                  <img src={iconPrev} alt="Previous" className="h-6 w-6 invert" />
                 </button>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                  {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
+                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-8 w-8 invert" />
                 </motion.button>
                 <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipForward className="h-6 w-6 text-white" />
+                  <img src={iconNext} alt="Next" className="h-6 w-6 invert" />
                 </button>
               </div>
 
