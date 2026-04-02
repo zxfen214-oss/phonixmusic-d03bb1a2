@@ -55,6 +55,8 @@ function AppContent() {
         return <LibraryView key="library" />;
       case "playlists":
         return <PlaylistsView key="playlists" />;
+      case "leaderboard":
+        return <LeaderboardView key="leaderboard" />;
       case "youtube":
         return <YouTubeView key="youtube" />;
       case "settings":
