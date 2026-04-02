@@ -1210,7 +1210,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
               <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                 {staticLyricsMode ? (
-                  <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile={false} />
+                  <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                 ) : (
                   <LyricsContent {...lyricsContentProps} isMobile={false} />
                 )}
