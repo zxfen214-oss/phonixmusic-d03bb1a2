@@ -188,11 +188,12 @@ function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | nul
   );
 }
 
-function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, number][]): Blob[] {
+function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, number][], isMobile = false): Blob[] {
   const w = canvas?.width || window.innerWidth;
   const h = canvas?.height || window.innerHeight;
+  const count = isMobile ? 8 : 20; // Fewer blobs on mobile for performance
   const blobs: Blob[] = [];
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < count; i++) {
     blobs.push({
       x: Math.random() * w,
       y: Math.random() * h,
