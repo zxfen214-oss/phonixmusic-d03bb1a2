@@ -1269,7 +1269,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               style={{ overflow: staticLyricsMode ? 'auto' : 'hidden' }}
             >
               {staticLyricsMode ? (
-                <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile />
+                <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
                 <LyricsContent {...lyricsContentProps} isMobile />
               )}
