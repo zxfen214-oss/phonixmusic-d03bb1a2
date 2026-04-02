@@ -112,7 +112,7 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
         const idx = Math.floor(Math.random() * (data.length / 4)) * 4;
         colors.push([data[idx], data[idx + 1], data[idx + 2]]);
       }
-      blobsRef.current = createBlobs(canvasRef.current, colors);
+      blobsRef.current = createBlobs(canvasRef.current, colors, isMobile);
     };
     img.onerror = () => {
       blobsRef.current = createBlobs(canvasRef.current, [
