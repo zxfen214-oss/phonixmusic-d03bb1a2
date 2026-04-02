@@ -1080,7 +1080,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
-        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} />
+        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} isMobile={isMobile} />
 
         <div className="relative h-full hidden md:flex items-center z-10">
           <motion.button
