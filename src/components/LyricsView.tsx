@@ -1214,10 +1214,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
           <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
             <div className="flex h-full flex-col gap-6 py-10">
-              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                <LyricsContent {...lyricsContentProps} isMobile={false} />
+              <div className="flex items-center gap-2 px-1">
+                <button
+                  onClick={() => setStaticLyricsMode(!staticLyricsMode)}
+                  className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
+                  title="Static lyrics"
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </button>
               </div>
-              
+              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                {staticLyricsMode ? (
+                  <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile={false} />
+                ) : (
+                  <LyricsContent {...lyricsContentProps} isMobile={false} />
+                )}
+              </div>
             </div>
           </div>
         </div>
