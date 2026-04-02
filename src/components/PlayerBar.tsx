@@ -206,20 +206,16 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
             <Shuffle className="h-4 w-4" />
           </button>
           <button onClick={previousTrack} className="icon-button h-9 w-9">
-            <SkipBack className="h-5 w-5" />
+            <img src={iconPrev} alt="Previous" className="h-5 w-5 invert dark:invert" />
           </button>
           <button
             onClick={isPlaying ? pauseTrack : resumeTrack}
             className="icon-button accent h-10 w-10"
           >
-            {isPlaying ? (
-              <Pause className="h-5 w-5" />
-            ) : (
-              <Play className="h-5 w-5 ml-0.5" />
-            )}
+            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
           </button>
           <button onClick={nextTrack} className="icon-button h-9 w-9">
-            <SkipForward className="h-5 w-5" />
+            <img src={iconNext} alt="Next" className="h-5 w-5 invert dark:invert" />
           </button>
           <button
             onClick={toggleRepeat}
