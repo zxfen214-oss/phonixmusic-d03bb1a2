@@ -79,7 +79,7 @@ interface Blob {
   color: [number, number, number];
 }
 
-function CanvasGradientBg({ artworkUrl, isClosing }: { artworkUrl?: string | null; isClosing: boolean }) {
+function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artworkUrl?: string | null; isClosing: boolean; isMobile?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyzeRef = useRef<HTMLCanvasElement>(null);
   const blobsRef = useRef<Blob[]>([]);
