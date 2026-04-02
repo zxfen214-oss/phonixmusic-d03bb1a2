@@ -1281,9 +1281,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <div
               ref={lyricsContainerRef}
               className="relative flex-1 min-h-0"
-              style={{ overflow: 'hidden' }}
+              style={{ overflow: staticLyricsMode ? 'auto' : 'hidden' }}
             >
-              <LyricsContent {...lyricsContentProps} isMobile />
+              {staticLyricsMode ? (
+                <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile />
+              ) : (
+                <LyricsContent {...lyricsContentProps} isMobile />
+              )}
             </div>
           </div>
 
