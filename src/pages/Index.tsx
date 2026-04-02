@@ -6,6 +6,7 @@ import { PlayerBar } from "@/components/PlayerBar";
 import { HomeView } from "@/components/HomeView";
 import { LibraryView } from "@/components/LibraryView";
 import { PlaylistsView } from "@/components/PlaylistsView";
+import { LeaderboardView } from "@/components/LeaderboardView";
 import { YouTubeView } from "@/components/YouTubeView";
 import { LyricsView } from "@/components/LyricsView";
 import { PlayerProvider, usePlayer } from "@/contexts/PlayerContext";
