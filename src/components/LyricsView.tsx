@@ -117,7 +117,7 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
     img.onerror = () => {
       blobsRef.current = createBlobs(canvasRef.current, [
         [80, 20, 120], [20, 60, 140], [140, 30, 60],
-      ]);
+      ], isMobile);
     };
     img.src = artworkUrl;
   }, [artworkUrl]);
