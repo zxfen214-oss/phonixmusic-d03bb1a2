@@ -606,19 +606,16 @@ function useAppleMusicStyles(
 
       if (isNew) {
         el.style.transition = 'none';
-        el.style.willChange = 'transform, opacity';
+        el.style.willChange = isMobile ? 'transform, opacity' : 'transform, opacity';
         if (isMobile) {
-          el.style.visibility = 'hidden';
+          // iOS Safari: avoid double-rAF, use simpler single-frame approach
           el.style.opacity = '0';
           el.style.transform = makeTransform(targetY, scale);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              el.style.visibility = 'visible';
-              el.style.transition = `opacity 0.25s ${easing}, transform ${dur}s ${easing}`;
-              el.style.opacity = String(opacity);
-              el.style.transform = makeTransform(targetY, scale);
-            });
-          });
+          // Force layout read to flush the 'none' transition
+          void el.offsetHeight;
+          el.style.transition = `opacity 0.25s ${easing}, transform ${dur}s ${easing}`;
+          el.style.opacity = String(opacity);
+          el.style.transform = makeTransform(targetY, scale);
         } else if (position > 5) {
           el.style.opacity = '0';
           el.style.filter = 'blur(4px)';
