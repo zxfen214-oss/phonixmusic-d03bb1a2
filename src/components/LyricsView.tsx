@@ -6,10 +6,6 @@ import { getCachedLyrics } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
   X, 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward,
   Heart,
   Loader2,
   MoreHorizontal,
@@ -18,6 +14,10 @@ import {
   ListPlus,
   AlignLeft,
 } from "lucide-react";
+import iconPlay from "@/assets/icon-play.png";
+import iconPause from "@/assets/icon-pause.png";
+import iconNext from "@/assets/icon-next.png";
+import iconPrev from "@/assets/icon-prev.png";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
