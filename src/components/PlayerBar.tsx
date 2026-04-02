@@ -107,20 +107,16 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
       {/* Mobile Controls - Simplified */}
       <div className="flex md:hidden items-center gap-1">
         <button onClick={previousTrack} className="icon-button h-9 w-9">
-          <SkipBack className="h-4 w-4" />
+          <img src={iconPrev} alt="Previous" className="h-4 w-4 invert dark:invert" />
         </button>
         <button
           onClick={isPlaying ? pauseTrack : resumeTrack}
           className="icon-button accent h-11 w-11"
         >
-          {isPlaying ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="h-5 w-5 ml-0.5" />
-          )}
+          <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
         </button>
         <button onClick={nextTrack} className="icon-button h-9 w-9">
-          <SkipForward className="h-4 w-4" />
+          <img src={iconNext} alt="Next" className="h-4 w-4 invert dark:invert" />
         </button>
 
         {/* Playback speed (popover) */}
