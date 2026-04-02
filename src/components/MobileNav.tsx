@@ -1,4 +1,4 @@
-import { Home, Library, ListMusic, Search, Settings, Download } from "lucide-react";
+import { Home, Library, ListMusic, Search, Settings, Download, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
