@@ -6,10 +6,6 @@ import { getCachedLyrics } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
   X, 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward,
   Heart,
   Loader2,
   MoreHorizontal,
@@ -18,6 +14,10 @@ import {
   ListPlus,
   AlignLeft,
 } from "lucide-react";
+import iconPlay from "@/assets/icon-play.png";
+import iconPause from "@/assets/icon-pause.png";
+import iconNext from "@/assets/icon-next.png";
+import iconPrev from "@/assets/icon-prev.png";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -336,7 +336,7 @@ function KaraokeWordSpan({
       className="relative inline-block align-baseline"
       style={{
         transform: isDone ? 'translateY(-1px)' : 'translateY(0)',
-        transition: 'transform 300ms ease-out',
+        transition: isDone ? 'transform 300ms ease-out' : 'none',
       }}
     >
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
@@ -778,33 +778,17 @@ function LyricsContent({
 }
 
 // ─── Static Lyrics (scrollable plain text) ───
-function StaticLyricsContent({ text, onTextChange, isMobile }: { text: string; onTextChange: (t: string) => void; isMobile: boolean }) {
+function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boolean }) {
   const hasText = text.trim().length > 0;
   return (
     <div className="relative w-full h-full overflow-y-auto" style={{ padding: isMobile ? '20px' : '20px 0' }}>
       {!hasText ? (
         <div className="flex flex-col items-center justify-center h-full gap-3">
-          <p className="text-white/40" style={{ fontSize: '14px' }}>Paste lyrics below</p>
-          <textarea
-            value={text}
-            onChange={(e) => onTextChange(e.target.value)}
-            placeholder="Paste your lyrics here..."
-            className="w-full rounded-lg border border-white/10 bg-white/5 text-white/80 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
-            style={{ fontSize: '14px', padding: '12px', minHeight: '200px', resize: 'vertical' }}
-          />
+          <p className="text-white/40" style={{ fontSize: '14px' }}>No static lyrics available for this track.</p>
         </div>
       ) : (
-        <div>
-          <div className="whitespace-pre-wrap" style={{ fontSize: isMobile ? '1rem' : '1.1rem', lineHeight: 1.8, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>
-            {text}
-          </div>
-          <button
-            onClick={() => onTextChange('')}
-            className="mt-4 text-white/30 hover:text-white/60 transition-colors"
-            style={{ fontSize: '12px' }}
-          >
-            Clear lyrics
-          </button>
+        <div className="whitespace-pre-wrap" style={{ fontSize: isMobile ? '1rem' : '1.1rem', lineHeight: 1.8, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>
+          {text}
         </div>
       )}
     </div>
@@ -1173,13 +1157,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
                 <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipBack className="h-6 w-6 text-white" />
+                  <img src={iconPrev} alt="Previous" className="h-6 w-6 invert" />
                 </button>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                  {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-0.5" />}
+                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-8 w-8 invert" />
                 </motion.button>
                 <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <SkipForward className="h-6 w-6 text-white" />
+                  <img src={iconNext} alt="Next" className="h-6 w-6 invert" />
                 </button>
               </div>
 
@@ -1226,7 +1210,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
               <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                 {staticLyricsMode ? (
-                  <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile={false} />
+                  <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                 ) : (
                   <LyricsContent {...lyricsContentProps} isMobile={false} />
                 )}
@@ -1285,7 +1269,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               style={{ overflow: staticLyricsMode ? 'auto' : 'hidden' }}
             >
               {staticLyricsMode ? (
-                <StaticLyricsContent text={staticLyricsText} onTextChange={setStaticLyricsText} isMobile />
+                <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
                 <LyricsContent {...lyricsContentProps} isMobile />
               )}
@@ -1332,7 +1316,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 )}
               </button>
               <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <SkipBack className="h-6 w-6 text-white" />
+                <img src={iconPrev} alt="Previous" className="h-6 w-6 invert" />
               </button>
               <motion.button
                 whileTap={{ scale: 0.95 }}
@@ -1340,10 +1324,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 className="p-4 rounded-full transition-transform"
                 style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
               >
-                {isPlaying ? <Pause className="h-7 w-7 text-white" /> : <Play className="h-7 w-7 text-white ml-0.5" />}
+                <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-7 w-7 invert" />
               </motion.button>
               <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <SkipForward className="h-6 w-6 text-white" />
+                <img src={iconNext} alt="Next" className="h-6 w-6 invert" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 <ListPlus className="h-5 w-5 text-white/60" />

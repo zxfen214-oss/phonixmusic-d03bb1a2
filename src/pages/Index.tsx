@@ -6,6 +6,7 @@ import { PlayerBar } from "@/components/PlayerBar";
 import { HomeView } from "@/components/HomeView";
 import { LibraryView } from "@/components/LibraryView";
 import { PlaylistsView } from "@/components/PlaylistsView";
+import { LeaderboardView } from "@/components/LeaderboardView";
 import { YouTubeView } from "@/components/YouTubeView";
 import { LyricsView } from "@/components/LyricsView";
 import { PlayerProvider, usePlayer } from "@/contexts/PlayerContext";
@@ -54,6 +55,8 @@ function AppContent() {
         return <LibraryView key="library" />;
       case "playlists":
         return <PlaylistsView key="playlists" />;
+      case "leaderboard":
+        return <LeaderboardView key="leaderboard" />;
       case "youtube":
         return <YouTubeView key="youtube" />;
       case "settings":

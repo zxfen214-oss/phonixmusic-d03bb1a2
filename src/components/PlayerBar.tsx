@@ -1,9 +1,5 @@
 import { usePlayer } from "@/contexts/PlayerContext";
 import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
   Volume2, 
   VolumeX,
   Repeat,
@@ -20,6 +16,10 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DownloadButton } from "./DownloadButton";
 import { useOfflineAudio } from "@/hooks/useOfflineAudio";
+import iconPlay from "@/assets/icon-play.png";
+import iconPause from "@/assets/icon-pause.png";
+import iconNext from "@/assets/icon-next.png";
+import iconPrev from "@/assets/icon-prev.png";
 
 interface PlayerBarProps {
   onOpenLyrics?: () => void;
@@ -107,20 +107,16 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
       {/* Mobile Controls - Simplified */}
       <div className="flex md:hidden items-center gap-1">
         <button onClick={previousTrack} className="icon-button h-9 w-9">
-          <SkipBack className="h-4 w-4" />
+          <img src={iconPrev} alt="Previous" className="h-4 w-4 invert dark:invert" />
         </button>
         <button
           onClick={isPlaying ? pauseTrack : resumeTrack}
           className="icon-button accent h-11 w-11"
         >
-          {isPlaying ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="h-5 w-5 ml-0.5" />
-          )}
+          <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
         </button>
         <button onClick={nextTrack} className="icon-button h-9 w-9">
-          <SkipForward className="h-4 w-4" />
+          <img src={iconNext} alt="Next" className="h-4 w-4 invert dark:invert" />
         </button>
 
         {/* Playback speed (popover) */}
@@ -210,20 +206,16 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
             <Shuffle className="h-4 w-4" />
           </button>
           <button onClick={previousTrack} className="icon-button h-9 w-9">
-            <SkipBack className="h-5 w-5" />
+            <img src={iconPrev} alt="Previous" className="h-5 w-5 invert dark:invert" />
           </button>
           <button
             onClick={isPlaying ? pauseTrack : resumeTrack}
             className="icon-button accent h-10 w-10"
           >
-            {isPlaying ? (
-              <Pause className="h-5 w-5" />
-            ) : (
-              <Play className="h-5 w-5 ml-0.5" />
-            )}
+            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
           </button>
           <button onClick={nextTrack} className="icon-button h-9 w-9">
-            <SkipForward className="h-5 w-5" />
+            <img src={iconNext} alt="Next" className="h-5 w-5 invert dark:invert" />
           </button>
           <button
             onClick={toggleRepeat}
