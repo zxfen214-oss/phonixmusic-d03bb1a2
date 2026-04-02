@@ -796,6 +796,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const [staticLyricsMode, setStaticLyricsMode] = useState(false);
+  const [staticLyricsText, setStaticLyricsText] = useState("");
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
