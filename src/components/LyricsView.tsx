@@ -777,6 +777,40 @@ function LyricsContent({
   );
 }
 
+// ─── Static Lyrics (scrollable plain text) ───
+function StaticLyricsContent({ text, onTextChange, isMobile }: { text: string; onTextChange: (t: string) => void; isMobile: boolean }) {
+  const hasText = text.trim().length > 0;
+  return (
+    <div className="relative w-full h-full overflow-y-auto" style={{ padding: isMobile ? '20px' : '20px 0' }}>
+      {!hasText ? (
+        <div className="flex flex-col items-center justify-center h-full gap-3">
+          <p className="text-white/40" style={{ fontSize: '14px' }}>Paste lyrics below</p>
+          <textarea
+            value={text}
+            onChange={(e) => onTextChange(e.target.value)}
+            placeholder="Paste your lyrics here..."
+            className="w-full rounded-lg border border-white/10 bg-white/5 text-white/80 placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+            style={{ fontSize: '14px', padding: '12px', minHeight: '200px', resize: 'vertical' }}
+          />
+        </div>
+      ) : (
+        <div>
+          <div className="whitespace-pre-wrap" style={{ fontSize: isMobile ? '1rem' : '1.1rem', lineHeight: 1.8, color: 'rgba(255,255,255,0.75)', fontWeight: 400 }}>
+            {text}
+          </div>
+          <button
+            onClick={() => onTextChange('')}
+            className="mt-4 text-white/30 hover:text-white/60 transition-colors"
+            style={{ fontSize: '12px' }}
+          >
+            Clear lyrics
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
