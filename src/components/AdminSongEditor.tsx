@@ -150,6 +150,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           karaokeColor: data.karaoke_color || '',
           lyricColor: data.lyric_color || '',
         }));
+        setPlainLyrics((data as any).plain_lyrics || "");
 
         if (data.synced_lyrics) {
           parseSpecialCommands(data.synced_lyrics);
