@@ -326,6 +326,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         audio_url: audioUrl,
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
+        plain_lyrics: plainLyrics || null,
       };
 
       if (existingSong) {
