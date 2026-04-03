@@ -141,6 +141,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           karaoke_color: data.karaoke_color ?? null,
           lyric_color: data.lyric_color ?? null,
           synced_lyrics: data.synced_lyrics ?? null,
+          plain_lyrics: (data as any).plain_lyrics ?? null,
         });
         setFormData(prev => ({
           ...prev,
