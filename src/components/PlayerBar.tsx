@@ -32,7 +32,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
+export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) {
   const {
     currentTrack,
     isPlaying,
