@@ -932,6 +932,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
+          // Synced lyrics available — prefer synced mode
+          setStaticLyricsMode(false);
+        } else if (staticLyricsText.trim()) {
+          // No synced lyrics but static available — show static
+          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+          setStaticLyricsMode(true);
         } else {
           setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
         }
