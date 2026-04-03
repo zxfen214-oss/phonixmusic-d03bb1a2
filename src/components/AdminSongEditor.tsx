@@ -116,7 +116,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     try {
       let query = supabase
         .from("songs")
-        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics")
+        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics")
         .order("created_at", { ascending: false })
         .limit(1);
 
