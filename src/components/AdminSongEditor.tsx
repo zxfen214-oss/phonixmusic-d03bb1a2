@@ -682,7 +682,20 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                 )}
               </div>
 
-              {/* Advanced Editing */}
+              {/* Static / Plain Lyrics */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Static Lyrics (plain text)</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Paste plain lyrics here. If synced lyrics are available, synced will be shown by default. Otherwise static lyrics are displayed.
+                </p>
+                <Textarea
+                  value={plainLyrics}
+                  onChange={(e) => setPlainLyrics(e.target.value)}
+                  placeholder="Paste plain lyrics here..."
+                  className="h-32 text-xs resize-none"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Advanced Editing</Label>
                 <div className="flex gap-2">
