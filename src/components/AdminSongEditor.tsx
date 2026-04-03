@@ -91,7 +91,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     karaoke_color: string | null;
     lyric_color: string | null;
     synced_lyrics: string | null;
+    plain_lyrics: string | null;
   } | null>(null);
+  const [plainLyrics, setPlainLyrics] = useState("");
   
   const [userLibraryInfo, setUserLibraryInfo] = useState<{
     count: number;
