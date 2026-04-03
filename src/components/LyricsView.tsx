@@ -211,17 +211,23 @@ function createBlobs(canvas: HTMLCanvasElement | null, colors: [number, number, 
 function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number; startTime: number; endTime: number }) {
   const duration = Math.max(endTime - startTime, 0.5);
   const elapsed = Math.max(0, currentTime - startTime);
-  const progress = Math.min(1, elapsed / duration);
   const circleCount = 3;
-  const fillDuration = 0.6; // seconds per circle fill
-  const delayBetween = (duration - fillDuration) / circleCount;
+  
+  // Each circle fills sequentially: first, second, third
+  const fillDurationPerCircle = Math.min(0.5, duration / (circleCount + 1));
+  const delayBetween = (duration - fillDurationPerCircle - 0.3) / circleCount;
+  
+  // Shrink 0.3s before the first lyric line
+  const shrinkStart = endTime - 0.3;
+  const isShrinking = currentTime >= shrinkStart;
 
   return (
     <div className="flex gap-3 py-2">
       {Array.from({ length: circleCount }).map((_, i) => {
-        const circleStart = i * delayBetween;
-        const circleProgress = Math.max(0, Math.min(1, (elapsed - circleStart) / fillDuration));
-        const isShrinking = progress >= 0.95;
+        const circleStart = startTime + i * delayBetween;
+        const circleEnd = circleStart + fillDurationPerCircle;
+        const circleProgress = Math.max(0, Math.min(1, (currentTime - circleStart) / fillDurationPerCircle));
+        const isFilled = currentTime >= circleEnd;
 
         return (
           <motion.div
@@ -229,18 +235,20 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
             className="rounded-full"
             style={{ width: 14, height: 14 }}
             animate={{
-              scale: isShrinking ? 0 : circleProgress > 0 ? [0.9, 1.05, 0.9] : [0.9, 1.05, 0.9],
-              opacity: isShrinking ? 0 : circleProgress > 0 ? 1 : 0.7,
+              scale: isShrinking ? 0 : isFilled ? [0.95, 1.05, 0.95] : 0.9,
+              opacity: isShrinking ? 0 : circleProgress > 0 ? 1 : 0.5,
               backgroundColor: circleProgress > 0
-                ? `rgba(255,255,255,${0.2 + circleProgress * 0.8})`
-                : 'rgba(255,255,255,0.2)',
+                ? `rgba(255,255,255,${0.15 + circleProgress * 0.85})`
+                : 'rgba(255,255,255,0.15)',
             }}
             transition={{
               scale: isShrinking
-                ? { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] }
-                : { duration: 2, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' },
-              opacity: { duration: isShrinking ? 0.4 : 0.3 },
-              backgroundColor: { duration: 0.3 },
+                ? { duration: 0.25, ease: [0.55, 0.085, 0.68, 0.53] }
+                : isFilled
+                  ? { duration: 2, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }
+                  : { duration: 0.3 },
+              opacity: { duration: isShrinking ? 0.25 : 0.3 },
+              backgroundColor: { duration: 0.4, ease: 'easeOut' },
             }}
           />
         );
