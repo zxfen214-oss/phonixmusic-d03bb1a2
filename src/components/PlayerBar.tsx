@@ -23,6 +23,7 @@ import iconPrev from "@/assets/icon-prev.png";
 
 interface PlayerBarProps {
   onOpenLyrics?: () => void;
+  onOpenMobilePlayer?: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -31,7 +32,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
+export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) {
   const {
     currentTrack,
     isPlaying,
@@ -72,7 +73,14 @@ export function PlayerBar({ onOpenLyrics }: PlayerBarProps) {
       <div className="flex items-center gap-2 md:gap-3 flex-1 md:w-64 md:flex-initial min-w-0">
         <div 
           className="relative h-12 w-12 md:h-14 md:w-14 flex-shrink-0 overflow-hidden rounded-lg cursor-pointer group"
-          onClick={onOpenLyrics}
+          onClick={() => {
+            // On mobile, open the fullscreen MobilePlayer; on desktop, open lyrics
+            if (window.innerWidth < 768 && onOpenMobilePlayer) {
+              onOpenMobilePlayer();
+            } else if (onOpenLyrics) {
+              onOpenLyrics();
+            }
+          }}
         >
           <img
             src={currentTrack.artwork || "/placeholder.svg"}

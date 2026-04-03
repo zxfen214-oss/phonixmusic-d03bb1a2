@@ -9,6 +9,7 @@ import { PlaylistsView } from "@/components/PlaylistsView";
 import { LeaderboardView } from "@/components/LeaderboardView";
 import { YouTubeView } from "@/components/YouTubeView";
 import { LyricsView } from "@/components/LyricsView";
+import MobilePlayer from "@/components/MobilePlayer";
 import { PlayerProvider, usePlayer } from "@/contexts/PlayerContext";
 import { LibraryProvider } from "@/contexts/LibraryContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +19,7 @@ import Settings from "@/pages/Settings";
 function AppContent() {
   const [activeView, setActiveView] = useState("home");
   const [showLyrics, setShowLyrics] = useState(false);
+  const [showMobilePlayer, setShowMobilePlayer] = useState(false);
   const { currentTrack } = usePlayer();
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -68,7 +70,14 @@ function AppContent() {
 
   const handleOpenLyrics = () => {
     if (currentTrack) {
+      setShowMobilePlayer(false);
       setShowLyrics(true);
+    }
+  };
+
+  const handleOpenMobilePlayer = () => {
+    if (currentTrack) {
+      setShowMobilePlayer(true);
     }
   };
 
@@ -93,9 +102,14 @@ function AppContent() {
             {renderView()}
           </motion.div>
         </AnimatePresence>
-        <PlayerBar onOpenLyrics={handleOpenLyrics} />
+        <PlayerBar onOpenLyrics={handleOpenLyrics} onOpenMobilePlayer={handleOpenMobilePlayer} />
       </div>
       <MobileNav activeView={activeView} onViewChange={setActiveView} />
+      <MobilePlayer
+        isOpen={showMobilePlayer}
+        onClose={() => setShowMobilePlayer(false)}
+        onOpenLyrics={handleOpenLyrics}
+      />
       <AnimatePresence>
         {showLyrics && currentTrack && (
           <LyricsView onClose={() => setShowLyrics(false)} />
