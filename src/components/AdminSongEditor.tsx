@@ -91,7 +91,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     karaoke_color: string | null;
     lyric_color: string | null;
     synced_lyrics: string | null;
+    plain_lyrics: string | null;
   } | null>(null);
+  const [plainLyrics, setPlainLyrics] = useState("");
   
   const [userLibraryInfo, setUserLibraryInfo] = useState<{
     count: number;
@@ -114,7 +116,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     try {
       let query = supabase
         .from("songs")
-        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics")
+        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics")
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -139,6 +141,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           karaoke_color: data.karaoke_color ?? null,
           lyric_color: data.lyric_color ?? null,
           synced_lyrics: data.synced_lyrics ?? null,
+          plain_lyrics: (data as any).plain_lyrics ?? null,
         });
         setFormData(prev => ({
           ...prev,
@@ -147,6 +150,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           karaokeColor: data.karaoke_color || '',
           lyricColor: data.lyric_color || '',
         }));
+        setPlainLyrics((data as any).plain_lyrics || "");
 
         if (data.synced_lyrics) {
           parseSpecialCommands(data.synced_lyrics);
@@ -322,6 +326,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         audio_url: audioUrl,
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
+        plain_lyrics: plainLyrics || null,
       };
 
       if (existingSong) {
@@ -677,7 +682,20 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                 )}
               </div>
 
-              {/* Advanced Editing */}
+              {/* Static / Plain Lyrics */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Static Lyrics (plain text)</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Paste plain lyrics here. If synced lyrics are available, synced will be shown by default. Otherwise static lyrics are displayed.
+                </p>
+                <Textarea
+                  value={plainLyrics}
+                  onChange={(e) => setPlainLyrics(e.target.value)}
+                  placeholder="Paste plain lyrics here..."
+                  className="h-32 text-xs resize-none"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Advanced Editing</Label>
                 <div className="flex gap-2">

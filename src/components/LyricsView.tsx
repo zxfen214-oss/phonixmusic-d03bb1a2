@@ -305,15 +305,21 @@ function KaraokeWordSpan({
   rawProgress = Math.min(1, Math.max(0, rawProgress));
 
   const visualProgressRef = useRef(0);
-  if (!frozen && currentTime < startTime - 0.08) {
-    visualProgressRef.current = 0;
-  }
+  const lastTimeRef = useRef(currentTime);
 
   let progress = rawProgress;
   if (frozen) {
     progress = 1;
     visualProgressRef.current = 1;
   } else {
+    // Detect seek (large backward jump in currentTime)
+    const timeDelta = currentTime - lastTimeRef.current;
+    if (timeDelta < -0.5) {
+      // Seek detected — allow reset
+      visualProgressRef.current = rawProgress;
+    }
+    lastTimeRef.current = currentTime;
+
     const prev = visualProgressRef.current;
     if (rawProgress >= prev) {
       const delta = rawProgress - prev;
@@ -324,6 +330,9 @@ function KaraokeWordSpan({
       progress = prev + delta * catchUp;
       if (rawProgress === 1 && progress > 0.97) progress = 1;
       if (rawProgress >= 0.95 && timeLeft < 0.05) progress = 1;
+    } else {
+      // Never go backward within a word — hold at previous value
+      progress = prev;
     }
     visualProgressRef.current = progress;
   }
@@ -923,6 +932,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
+          // Synced lyrics available — prefer synced mode
+          setStaticLyricsMode(false);
+        } else if (staticLyricsText.trim()) {
+          // No synced lyrics but static available — show static
+          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+          setStaticLyricsMode(true);
         } else {
           setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
         }
