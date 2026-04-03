@@ -37,8 +37,6 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
     setVolume,
   } = usePlayer();
 
-  const { isCached } = useOfflineAudio(currentTrack);
-
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -48,6 +46,41 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   useEffect(() => {
     if (!isAnimating) setDisplayPlaying(isPlaying);
   }, [isPlaying, isAnimating]);
+
+  const handleProgressChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!currentTrack) return;
+      const val = Number(e.target.value);
+      const pct = (val / currentTrack.duration) * 100;
+      seekTo(pct);
+    },
+    [currentTrack, seekTo]
+  );
+
+  const handleVolumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setVolume(Number(e.target.value));
+    },
+    [setVolume]
+  );
+
+  const handlePlayPause = useCallback(() => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setTimeout(() => {
+      if (isPlaying) pauseTrack();
+      else resumeTrack();
+      setDisplayPlaying(!isPlaying);
+      setTimeout(() => setIsAnimating(false), 80);
+    }, 80);
+  }, [isAnimating, isPlaying, pauseTrack, resumeTrack]);
+
+  const handleLyricsClick = useCallback(() => {
+    onClose();
+    setTimeout(() => {
+      onOpenLyrics();
+    }, 150);
+  }, [onClose, onOpenLyrics]);
 
   if (!currentTrack) return null;
 
