@@ -23,6 +23,7 @@ import iconPrev from "@/assets/icon-prev.png";
 
 interface PlayerBarProps {
   onOpenLyrics?: () => void;
+  onOpenMobilePlayer?: () => void;
 }
 
 function formatTime(seconds: number): string {
