@@ -296,6 +296,7 @@ function KaraokeWordSpan({
   endTime,
   currentTime,
   frozen,
+  isEm,
 }: {
   word: string;
   startTime: number;
@@ -304,6 +305,7 @@ function KaraokeWordSpan({
   nextWordStart?: number;
   frozen?: boolean;
   emphasisDuration?: number;
+  isEm?: boolean;
 }) {
   const safeDuration = Math.max(endTime - startTime, 0.12);
   let rawProgress = 0;
