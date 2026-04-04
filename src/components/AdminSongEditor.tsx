@@ -151,6 +151,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           bounceIntensity: (data as any).bounce_intensity ?? 0.5,
           karaokeColor: data.karaoke_color || '',
           lyricColor: data.lyric_color || '',
+          writtenBy: (data as any).written_by || '',
+          creditsNames: (data as any).credits_names || '',
         }));
         setPlainLyrics((data as any).plain_lyrics || "");
 
