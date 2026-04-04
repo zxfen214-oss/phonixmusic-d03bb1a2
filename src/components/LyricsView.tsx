@@ -713,9 +713,9 @@ function LyricsContent({
       }}
     >
       {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords } = item;
+        const { text, index, position, lineTime, nextLineTime, isIntro, isCredits, creditsWrittenBy: cWrittenBy, creditsNames: cNames, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords, emWords } = item;
         const isActive = position === 0;
-        const key = isIntro ? 'intro' : `lyric-${index}`;
+        const key = isCredits ? 'credits' : isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
