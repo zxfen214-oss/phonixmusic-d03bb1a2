@@ -57,6 +57,23 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        karaoke: {
+          bg: "hsl(var(--karaoke-bg))",
+          active: "hsl(var(--karaoke-active))",
+          "active-text": "hsl(var(--karaoke-active-text))",
+          btn: "hsl(var(--karaoke-btn))",
+          "btn-text": "hsl(var(--karaoke-btn-text))",
+          "btn-hover": "hsl(var(--karaoke-btn-hover))",
+        },
+      },
+      fontFamily: {
+        karaoke: ['"Inter"', 'system-ui', 'sans-serif'],
+      },
+      fontSize: {
+        karaoke: ['clamp(2rem, 5vw, 3.5rem)', { lineHeight: '1.1' }],
+      },
+      letterSpacing: {
+        karaoke: '-0.02em',
       },
       borderRadius: {
         lg: "var(--radius)",
