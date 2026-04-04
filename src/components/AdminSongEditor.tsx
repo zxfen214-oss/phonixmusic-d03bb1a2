@@ -331,6 +331,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
         plain_lyrics: plainLyrics || null,
+        written_by: formData.writtenBy || null,
+        credits_names: formData.creditsNames || null,
       };
 
       if (existingSong) {
