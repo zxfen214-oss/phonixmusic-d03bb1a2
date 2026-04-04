@@ -47,6 +47,9 @@ interface VisibleLyricItem {
   lineTime: number;
   nextLineTime: number;
   isIntro?: boolean;
+  isCredits?: boolean;
+  creditsWrittenBy?: string;
+  creditsNames?: string;
   secondaryText?: string;
   alignment?: 'left' | 'right';
   isMusic?: boolean;
@@ -57,6 +60,7 @@ interface VisibleLyricItem {
   nlCompanionEndTime?: number;
   nlCompanionElrcWords?: { word: string; startTime: number; endTime: number }[];
   elrcWords?: { word: string; startTime: number; endTime: number }[];
+  emWords?: Set<number>; // indices of words with <em> tag
 }
 
 function formatTime(seconds: number): string {
