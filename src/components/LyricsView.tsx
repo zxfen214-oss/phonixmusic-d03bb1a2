@@ -1092,10 +1092,29 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         nlCompanionEndTime: nlNextLine?.time ?? (nlCompanionLine ? nlCompanionLine.time + 10 : undefined),
         nlCompanionElrcWords: nlCompanionLine?.elrcWords,
         elrcWords: line.elrcWords,
+        emWords: line.emWords,
       });
     }
+
+    // Add credits after last lyric
+    if (creditsWrittenBy || creditsNames) {
+      const lastLine = parsedLyrics.lines[parsedLyrics.lines.length - 1];
+      const lastTime = lastLine ? lastLine.time + 5 : 999;
+      const isLastLineVisible = result.some(r => r.index === parsedLyrics.lines.length - 1);
+      if (isLastLineVisible || effectiveCurrentIndex >= parsedLyrics.lines.length - 2) {
+        const maxPos = Math.max(...result.map(r => r.position), 0);
+        result.push({
+          text: '', index: -99, position: maxPos + 1,
+          lineTime: lastTime, nextLineTime: lastTime + 10,
+          isCredits: true,
+          creditsWrittenBy,
+          creditsNames,
+        });
+      }
+    }
+
     return result;
-  }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
+  }, [currentLineIndex, parsedLyrics, LINES_AFTER, creditsWrittenBy, creditsNames]);
 
   // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {
