@@ -77,6 +77,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     bounceIntensity: 0.5,
     karaokeColor: '',
     lyricColor: '',
+    writtenBy: '',
+    creditsNames: '',
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
