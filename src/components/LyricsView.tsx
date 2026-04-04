@@ -852,6 +852,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
   const [staticLyricsText, setStaticLyricsText] = useState("");
+  const [creditsWrittenBy, setCreditsWrittenBy] = useState("");
+  const [creditsNames, setCreditsNames] = useState("");
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
