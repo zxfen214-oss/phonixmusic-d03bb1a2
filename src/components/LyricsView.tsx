@@ -352,12 +352,20 @@ function KaraokeWordSpan({
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
+  // <em> effect: wave uplift + glow based on karaoke duration
+  const emDuration = isEm ? Math.max(0, endTime - startTime) : 0;
+  const emActive = isEm && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
+  const emScale = emActive ? (emDuration > 1.5 ? 1.12 : emDuration > 1.0 ? 1.08 : 1.04) : 1;
+  const emLift = emActive ? (emDuration > 1.5 ? -4 : emDuration > 1.0 ? -2 : -1) : 0;
+  const emGlow = emActive ? `0 0 ${emDuration > 1.5 ? 16 : emDuration > 1.0 ? 10 : 6}px rgba(255,255,255,${emDuration > 1.5 ? 0.5 : 0.3})` : 'none';
+
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
-        transform: isDone ? 'translateY(-1px)' : 'translateY(0)',
-        transition: isDone ? 'transform 300ms ease-out' : 'none',
+        transform: `translateY(${isDone ? -1 + emLift : emLift}px) scale(${emScale})`,
+        transition: 'transform 300ms ease-out',
+        textShadow: emGlow,
       }}
     >
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
