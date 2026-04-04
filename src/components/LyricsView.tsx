@@ -734,7 +734,20 @@ function LyricsContent({
               top: 0,
             }}
           >
-            {isMusic && musicEnd ? (
+            {isCredits ? (
+              <div style={{ paddingTop: '24px' }}>
+                {cWrittenBy && (
+                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.6)', fontWeight: 400, lineHeight: 1.6 }}>
+                    <span style={{ fontWeight: 700 }}>Written By</span> — {cWrittenBy}
+                  </p>
+                )}
+                {cNames && (
+                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.4)', fontWeight: 400, lineHeight: 1.6, marginTop: '8px' }}>
+                    {cNames}
+                  </p>
+                )}
+              </div>
+            ) : isMusic && musicEnd ? (
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
