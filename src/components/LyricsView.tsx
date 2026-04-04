@@ -934,13 +934,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         if (currentTrack.youtubeId) {
           const { data: song } = await supabase
             .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
+            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names")
             .eq("youtube_id", currentTrack.youtubeId)
             .maybeSingle();
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
             if (song.plain_lyrics) setStaticLyricsText(song.plain_lyrics);
+            if ((song as any).written_by) setCreditsWrittenBy((song as any).written_by);
+            if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData;
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
