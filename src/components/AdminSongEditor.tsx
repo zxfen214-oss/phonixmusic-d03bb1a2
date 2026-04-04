@@ -77,6 +77,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     bounceIntensity: 0.5,
     karaokeColor: '',
     lyricColor: '',
+    writtenBy: '',
+    creditsNames: '',
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
@@ -116,7 +118,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     try {
       let query = supabase
         .from("songs")
-        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics")
+        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names")
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -149,6 +151,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           bounceIntensity: (data as any).bounce_intensity ?? 0.5,
           karaokeColor: data.karaoke_color || '',
           lyricColor: data.lyric_color || '',
+          writtenBy: (data as any).written_by || '',
+          creditsNames: (data as any).credits_names || '',
         }));
         setPlainLyrics((data as any).plain_lyrics || "");
 
@@ -327,6 +331,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
         plain_lyrics: plainLyrics || null,
+        written_by: formData.writtenBy || null,
+        credits_names: formData.creditsNames || null,
       };
 
       if (existingSong) {
@@ -609,6 +615,21 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                       <input type="color" value={formData.karaokeColor || '#ffffff'} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent" />
                       <Input value={formData.karaokeColor} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} placeholder="Auto" className="h-8 text-xs flex-1" />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Credits */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Credits (shown after lyrics end)</Label>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Written By</Label>
+                    <Input value={formData.writtenBy} onChange={(e) => setFormData({ ...formData, writtenBy: e.target.value })} placeholder="Songwriter name(s)" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Names (producers, features, etc.)</Label>
+                    <Input value={formData.creditsNames} onChange={(e) => setFormData({ ...formData, creditsNames: e.target.value })} placeholder="Additional credits" className="h-8 text-xs" />
                   </div>
                 </div>
               </div>

@@ -47,6 +47,9 @@ interface VisibleLyricItem {
   lineTime: number;
   nextLineTime: number;
   isIntro?: boolean;
+  isCredits?: boolean;
+  creditsWrittenBy?: string;
+  creditsNames?: string;
   secondaryText?: string;
   alignment?: 'left' | 'right';
   isMusic?: boolean;
@@ -57,6 +60,7 @@ interface VisibleLyricItem {
   nlCompanionEndTime?: number;
   nlCompanionElrcWords?: { word: string; startTime: number; endTime: number }[];
   elrcWords?: { word: string; startTime: number; endTime: number }[];
+  emWords?: Set<number>; // indices of words with <em> tag
 }
 
 function formatTime(seconds: number): string {
@@ -292,6 +296,7 @@ function KaraokeWordSpan({
   endTime,
   currentTime,
   frozen,
+  isEm,
 }: {
   word: string;
   startTime: number;
@@ -300,6 +305,7 @@ function KaraokeWordSpan({
   nextWordStart?: number;
   frozen?: boolean;
   emphasisDuration?: number;
+  isEm?: boolean;
 }) {
   const safeDuration = Math.max(endTime - startTime, 0.12);
   let rawProgress = 0;
@@ -348,12 +354,20 @@ function KaraokeWordSpan({
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
+  // <em> effect: wave uplift + glow based on karaoke duration
+  const emDuration = isEm ? Math.max(0, endTime - startTime) : 0;
+  const emActive = isEm && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
+  const emScale = emActive ? (emDuration > 1.5 ? 1.12 : emDuration > 1.0 ? 1.08 : 1.04) : 1;
+  const emLift = emActive ? (emDuration > 1.5 ? -4 : emDuration > 1.0 ? -2 : -1) : 0;
+  const emGlow = emActive ? `0 0 ${emDuration > 1.5 ? 16 : emDuration > 1.0 ? 10 : 6}px rgba(255,255,255,${emDuration > 1.5 ? 0.5 : 0.3})` : 'none';
+
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
-        transform: isDone ? 'translateY(-1px)' : 'translateY(0)',
-        transition: isDone ? 'transform 300ms ease-out' : 'none',
+        transform: `translateY(${isDone ? -1 + emLift : emLift}px) scale(${emScale})`,
+        transition: 'transform 300ms ease-out',
+        textShadow: emGlow,
       }}
     >
       <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
@@ -699,9 +713,9 @@ function LyricsContent({
       }}
     >
       {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords } = item;
+        const { text, index, position, lineTime, nextLineTime, isIntro, isCredits, creditsWrittenBy: cWrittenBy, creditsNames: cNames, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords, emWords } = item;
         const isActive = position === 0;
-        const key = isIntro ? 'intro' : `lyric-${index}`;
+        const key = isCredits ? 'credits' : isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
@@ -720,7 +734,20 @@ function LyricsContent({
               top: 0,
             }}
           >
-            {isMusic && musicEnd ? (
+            {isCredits ? (
+              <div style={{ paddingTop: '24px' }}>
+                {cWrittenBy && (
+                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.6)', fontWeight: 400, lineHeight: 1.6 }}>
+                    <span style={{ fontWeight: 700 }}>Written By</span> — {cWrittenBy}
+                  </p>
+                )}
+                {cNames && (
+                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.4)', fontWeight: 400, lineHeight: 1.6, marginTop: '8px' }}>
+                    {cNames}
+                  </p>
+                )}
+              </div>
+            ) : isMusic && musicEnd ? (
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
@@ -838,6 +865,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
   const [staticLyricsText, setStaticLyricsText] = useState("");
+  const [creditsWrittenBy, setCreditsWrittenBy] = useState("");
+  const [creditsNames, setCreditsNames] = useState("");
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -918,13 +947,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         if (currentTrack.youtubeId) {
           const { data: song } = await supabase
             .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
+            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names")
             .eq("youtube_id", currentTrack.youtubeId)
             .maybeSingle();
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
             if (song.plain_lyrics) setStaticLyricsText(song.plain_lyrics);
+            if ((song as any).written_by) setCreditsWrittenBy((song as any).written_by);
+            if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData;
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
@@ -1074,10 +1105,29 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         nlCompanionEndTime: nlNextLine?.time ?? (nlCompanionLine ? nlCompanionLine.time + 10 : undefined),
         nlCompanionElrcWords: nlCompanionLine?.elrcWords,
         elrcWords: line.elrcWords,
+        emWords: line.emWords,
       });
     }
+
+    // Add credits after last lyric
+    if (creditsWrittenBy || creditsNames) {
+      const lastLine = parsedLyrics.lines[parsedLyrics.lines.length - 1];
+      const lastTime = lastLine ? lastLine.time + 5 : 999;
+      const isLastLineVisible = result.some(r => r.index === parsedLyrics.lines.length - 1);
+      if (isLastLineVisible || effectiveCurrentIndex >= parsedLyrics.lines.length - 2) {
+        const maxPos = Math.max(...result.map(r => r.position), 0);
+        result.push({
+          text: '', index: -99, position: maxPos + 1,
+          lineTime: lastTime, nextLineTime: lastTime + 10,
+          isCredits: true,
+          creditsWrittenBy,
+          creditsNames,
+        });
+      }
+    }
+
     return result;
-  }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
+  }, [currentLineIndex, parsedLyrics, LINES_AFTER, creditsWrittenBy, creditsNames]);
 
   // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {

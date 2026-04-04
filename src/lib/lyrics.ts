@@ -9,6 +9,7 @@ export interface LyricLine {
   musicEnd?: number; // end time for music section (seconds)
   isNl?: boolean; // <nl> tag: next line joins as secondary main line
   elrcWords?: { word: string; startTime: number; endTime: number }[]; // eLRC word-level timestamps
+  emWords?: Set<number>; // indices of words that have <em> emphasis
 }
 
 export interface ParsedLyrics {
@@ -193,7 +194,33 @@ export function parseLRC(content: string): ParsedLyrics {
             displayText = elrcWords.map(w => w.word).join(' ');
           }
           
-          const { main, secondary } = extractParenthesized(displayText);
+          // Parse <em> tags — extract which words are emphasized
+          const emWords = new Set<number>();
+          let emClean = displayText;
+          // Find <em>...</em> spans and mark word indices
+          const emRegex = /<em>(.*?)<\/em>/gi;
+          let emMatch;
+          // First, build a version without <em> tags to count word indices
+          const withoutEmTags = displayText.replace(/<\/?em>/gi, '');
+          const wordsArr = withoutEmTags.split(/\s+/);
+          // Now find em-tagged words
+          let tempText = displayText;
+          let wordIdx = 0;
+          const parts = tempText.split(/(<em>|<\/em>)/gi);
+          let inEm = false;
+          let finalWords: string[] = [];
+          for (const part of parts) {
+            if (part.toLowerCase() === '<em>') { inEm = true; continue; }
+            if (part.toLowerCase() === '</em>') { inEm = false; continue; }
+            const ws = part.split(/\s+/).filter(w => w.length > 0);
+            for (const w of ws) {
+              if (inEm) emWords.add(finalWords.length);
+              finalWords.push(w);
+            }
+          }
+          emClean = finalWords.join(' ');
+          
+          const { main, secondary } = extractParenthesized(emClean);
           lines.push({ 
             time, 
             text: main, 
@@ -201,6 +228,7 @@ export function parseLRC(content: string): ParsedLyrics {
             alignment: lineAlignment,
             isNl,
             elrcWords: elrcWords || undefined,
+            emWords: emWords.size > 0 ? emWords : undefined,
           });
         }
       }

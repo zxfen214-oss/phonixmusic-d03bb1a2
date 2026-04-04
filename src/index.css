@@ -53,6 +53,14 @@
     --album-shadow: 0 8px 32px -8px hsl(0 0% 0% / 0.15);
     --logo-phonix: 0 0% 5%;
     --logo-music: 4 90% 55%;
+
+    /* Karaoke text effect tokens */
+    --karaoke-bg: 240 10% 8%;
+    --karaoke-active: 0 0% 100%;
+    --karaoke-active-text: 240 10% 8%;
+    --karaoke-btn: 0 0% 100% / 0.12;
+    --karaoke-btn-text: 0 0% 100%;
+    --karaoke-btn-hover: 0 0% 100% / 0.2;
   }
 
   .dark {
@@ -101,6 +109,14 @@
     --album-shadow: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
     --logo-phonix: 0 0% 100%;
     --logo-music: 4 90% 55%;
+
+    /* Karaoke text effect tokens - Dark */
+    --karaoke-bg: 240 10% 8%;
+    --karaoke-active: 0 0% 100%;
+    --karaoke-active-text: 240 10% 8%;
+    --karaoke-btn: 0 0% 100% / 0.12;
+    --karaoke-btn-text: 0 0% 100%;
+    --karaoke-btn-hover: 0 0% 100% / 0.2;
   }
 }
 
