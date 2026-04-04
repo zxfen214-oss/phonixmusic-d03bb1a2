@@ -9,6 +9,7 @@ export interface LyricLine {
   musicEnd?: number; // end time for music section (seconds)
   isNl?: boolean; // <nl> tag: next line joins as secondary main line
   elrcWords?: { word: string; startTime: number; endTime: number }[]; // eLRC word-level timestamps
+  emWords?: Set<number>; // indices of words that have <em> emphasis
 }
 
 export interface ParsedLyrics {
