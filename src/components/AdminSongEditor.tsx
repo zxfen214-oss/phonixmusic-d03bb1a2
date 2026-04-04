@@ -614,7 +614,21 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <div className="flex items-center gap-2">
                       <input type="color" value={formData.karaokeColor || '#ffffff'} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent" />
                       <Input value={formData.karaokeColor} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} placeholder="Auto" className="h-8 text-xs flex-1" />
-                    </div>
+              </div>
+
+              {/* Credits */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Credits (shown after lyrics end)</Label>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Written By</Label>
+                    <Input value={formData.writtenBy} onChange={(e) => setFormData({ ...formData, writtenBy: e.target.value })} placeholder="Songwriter name(s)" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Names (producers, features, etc.)</Label>
+                    <Input value={formData.creditsNames} onChange={(e) => setFormData({ ...formData, creditsNames: e.target.value })} placeholder="Additional credits" className="h-8 text-xs" />
+                  </div>
+                </div>
                   </div>
                 </div>
               </div>
