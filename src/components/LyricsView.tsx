@@ -172,10 +172,10 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
       blobsRef.current.forEach(b => {
         b.x += b.vx;
         b.y += b.vy;
-        if (b.x < -b.radius) b.x = canvas.width + b.radius;
-        if (b.x > canvas.width + b.radius) b.x = -b.radius;
-        if (b.y < -b.radius) b.y = canvas.height + b.radius;
-        if (b.y > canvas.height + b.radius) b.y = -b.radius;
+        if (b.x < -b.radius) b.x = w + b.radius;
+        if (b.x > w + b.radius) b.x = -b.radius;
+        if (b.y < -b.radius) b.y = h + b.radius;
+        if (b.y > h + b.radius) b.y = -b.radius;
 
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
         grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.18)`);
