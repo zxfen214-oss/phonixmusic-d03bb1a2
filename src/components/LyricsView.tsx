@@ -125,7 +125,7 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
       ], isMobile);
     };
     img.src = artworkUrl;
-  }, [artworkUrl]);
+  }, [artworkUrl, isMobile]);
 
   // Resize with devicePixelRatio for crisp rendering
   useEffect(() => {
@@ -960,17 +960,35 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             .from("songs")
             .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names")
             .eq("youtube_id", currentTrack.youtubeId)
-            .maybeSingle();
+            .maybeSingle()
+            .then(res => {
+              // If query fails (missing columns), retry with safe columns
+              if (res.error) {
+                return supabase
+                  .from("songs")
+                  .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
+                  .eq("youtube_id", currentTrack.youtubeId!)
+                  .maybeSingle();
+              }
+              return res;
+            });
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
-            if (song.plain_lyrics) setStaticLyricsText(song.plain_lyrics);
+            if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
+            else setStaticLyricsText("");
             if ((song as any).written_by) setCreditsWrittenBy((song as any).written_by);
+            else setCreditsWrittenBy("");
             if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
+            else setCreditsNames("");
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData;
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
             }
+          } else {
+            setStaticLyricsText("");
+            setCreditsWrittenBy("");
+            setCreditsNames("");
           }
         }
         let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
