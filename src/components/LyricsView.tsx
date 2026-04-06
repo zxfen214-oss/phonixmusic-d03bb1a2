@@ -127,11 +127,19 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
     img.src = artworkUrl;
   }, [artworkUrl]);
 
-  // Resize
+  // Resize with devicePixelRatio for crisp rendering
   useEffect(() => {
     const handleResize = () => {
       const c = canvasRef.current;
-      if (c) { c.width = window.innerWidth; c.height = window.innerHeight; }
+      if (c) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        c.width = window.innerWidth * dpr;
+        c.height = window.innerHeight * dpr;
+        c.style.width = window.innerWidth + 'px';
+        c.style.height = window.innerHeight + 'px';
+        const ctx = c.getContext('2d');
+        if (ctx) ctx.scale(dpr, dpr);
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -146,15 +154,18 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
     if (!ctx) return;
 
     const draw = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
       // Fade in
       if (!isClosing && opacityRef.current < 1) opacityRef.current = Math.min(1, opacityRef.current + 0.02);
       if (isClosing && opacityRef.current > 0) opacityRef.current = Math.max(0, opacityRef.current - 0.03);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
       ctx.globalAlpha = opacityRef.current * 0.65;
       ctx.globalCompositeOperation = 'lighter';
 
