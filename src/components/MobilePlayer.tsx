@@ -9,6 +9,7 @@ import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 import lyricsIcon from "@/assets/lyrics-icon.png";
 import { useDominantColors } from "@/hooks/useDominantColor";
+import { preloadPlayerIcons, preloadArtwork } from "@/lib/preloadPlayerAssets";
 
 interface MobilePlayerProps {
   isOpen: boolean;
@@ -43,6 +44,10 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   const [displayPlaying, setDisplayPlaying] = useState(isPlaying);
 
   const { primary: dominantColor, palette } = useDominantColors(currentTrack?.artwork);
+
+  // Preload icons on mount and artwork when track changes
+  useEffect(() => { preloadPlayerIcons(); }, []);
+  useEffect(() => { preloadArtwork(currentTrack?.artwork); }, [currentTrack?.artwork]);
 
   // Swipe-down to close
   const dragY = useMotionValue(0);
