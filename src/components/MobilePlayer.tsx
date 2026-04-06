@@ -23,6 +23,109 @@ const formatTime = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
+// Canvas gradient background (matches lyrics tab style)
+function MobilePlayerCanvasBg({ artworkUrl, palette, dominantColor }: { artworkUrl?: string | null; palette: string[]; dominantColor: string | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const blobsRef = useRef<{ x: number; y: number; vx: number; vy: number; radius: number; color: [number, number, number] }[]>([]);
+  const rafRef = useRef(0);
+  const opacityRef = useRef(0);
+
+  useEffect(() => {
+    if (!artworkUrl) {
+      blobsRef.current = makeBlobs([
+        [80, 20, 120], [20, 60, 140], [140, 30, 60],
+      ]);
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      c.width = img.width; c.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, img.width, img.height).data;
+      const colors: [number, number, number][] = [];
+      for (let i = 0; i < 40; i++) {
+        const idx = Math.floor(Math.random() * (data.length / 4)) * 4;
+        colors.push([data[idx], data[idx + 1], data[idx + 2]]);
+      }
+      blobsRef.current = makeBlobs(colors);
+    };
+    img.onerror = () => {
+      blobsRef.current = makeBlobs([[80, 20, 120], [20, 60, 140], [140, 30, 60]]);
+    };
+    img.src = artworkUrl;
+  }, [artworkUrl]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    const draw = () => {
+      if (opacityRef.current < 1) opacityRef.current = Math.min(1, opacityRef.current + 0.03);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = opacityRef.current * 0.65;
+      ctx.globalCompositeOperation = 'lighter';
+
+      blobsRef.current.forEach(b => {
+        b.x += b.vx; b.y += b.vy;
+        if (b.x < -b.radius) b.x = w + b.radius;
+        if (b.x > w + b.radius) b.x = -b.radius;
+        if (b.y < -b.radius) b.y = h + b.radius;
+        if (b.y > h + b.radius) b.y = -b.radius;
+
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+        grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.18)`);
+        grad.addColorStop(1, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0" />;
+}
+
+function makeBlobs(colors: [number, number, number][]) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const blobs: { x: number; y: number; vx: number; vy: number; radius: number; color: [number, number, number] }[] = [];
+  for (let i = 0; i < 8; i++) {
+    blobs.push({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+      radius: Math.random() * 280 + 180,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+  return blobs;
+}
+
 export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePlayerProps) {
   const {
     currentTrack,
