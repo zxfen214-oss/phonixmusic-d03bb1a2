@@ -125,13 +125,21 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
       ], isMobile);
     };
     img.src = artworkUrl;
-  }, [artworkUrl]);
+  }, [artworkUrl, isMobile]);
 
-  // Resize
+  // Resize with devicePixelRatio for crisp rendering
   useEffect(() => {
     const handleResize = () => {
       const c = canvasRef.current;
-      if (c) { c.width = window.innerWidth; c.height = window.innerHeight; }
+      if (c) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        c.width = window.innerWidth * dpr;
+        c.height = window.innerHeight * dpr;
+        c.style.width = window.innerWidth + 'px';
+        c.style.height = window.innerHeight + 'px';
+        const ctx = c.getContext('2d');
+        if (ctx) ctx.scale(dpr, dpr);
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -146,25 +154,28 @@ function CanvasGradientBg({ artworkUrl, isClosing, isMobile = false }: { artwork
     if (!ctx) return;
 
     const draw = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
       // Fade in
       if (!isClosing && opacityRef.current < 1) opacityRef.current = Math.min(1, opacityRef.current + 0.02);
       if (isClosing && opacityRef.current > 0) opacityRef.current = Math.max(0, opacityRef.current - 0.03);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
       ctx.globalAlpha = opacityRef.current * 0.65;
       ctx.globalCompositeOperation = 'lighter';
 
       blobsRef.current.forEach(b => {
         b.x += b.vx;
         b.y += b.vy;
-        if (b.x < -b.radius) b.x = canvas.width + b.radius;
-        if (b.x > canvas.width + b.radius) b.x = -b.radius;
-        if (b.y < -b.radius) b.y = canvas.height + b.radius;
-        if (b.y > canvas.height + b.radius) b.y = -b.radius;
+        if (b.x < -b.radius) b.x = w + b.radius;
+        if (b.x > w + b.radius) b.x = -b.radius;
+        if (b.y < -b.radius) b.y = h + b.radius;
+        if (b.y > h + b.radius) b.y = -b.radius;
 
         const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
         grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.18)`);
@@ -949,17 +960,35 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             .from("songs")
             .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names")
             .eq("youtube_id", currentTrack.youtubeId)
-            .maybeSingle();
+            .maybeSingle()
+            .then(res => {
+              // If query fails (missing columns), retry with safe columns
+              if (res.error) {
+                return supabase
+                  .from("songs")
+                  .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
+                  .eq("youtube_id", currentTrack.youtubeId!)
+                  .maybeSingle();
+              }
+              return res;
+            });
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
-            if (song.plain_lyrics) setStaticLyricsText(song.plain_lyrics);
+            if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
+            else setStaticLyricsText("");
             if ((song as any).written_by) setCreditsWrittenBy((song as any).written_by);
+            else setCreditsWrittenBy("");
             if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
+            else setCreditsNames("");
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData;
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
             }
+          } else {
+            setStaticLyricsText("");
+            setCreditsWrittenBy("");
+            setCreditsNames("");
           }
         }
         let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);

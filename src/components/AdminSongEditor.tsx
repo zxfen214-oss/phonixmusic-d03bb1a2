@@ -317,7 +317,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         }
       }
 
-      const songData = {
+      const baseSongData: Record<string, any> = {
         title: formData.title,
         artist: formData.artist,
         album: formData.album || null,
@@ -335,17 +335,24 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         credits_names: formData.creditsNames || null,
       };
 
-      if (existingSong) {
-        const { error } = await supabase
-          .from("songs")
-          .update(songData)
-          .eq("id", existingSong.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("songs")
-          .insert(songData);
-        if (error) throw error;
+      // Try saving with all fields; if it fails (missing columns), retry without credits fields
+      const trySave = async (data: Record<string, any>) => {
+        if (existingSong) {
+          const { error } = await supabase.from("songs").update(data).eq("id", existingSong.id);
+          return error;
+        } else {
+          const { error } = await supabase.from("songs").insert(data);
+          return error;
+        }
+      };
+
+      let saveError = await trySave(baseSongData);
+      if (saveError) {
+        // Retry without potentially missing columns
+        const { written_by, credits_names, ...safeSongData } = baseSongData;
+        saveError = await trySave(safeSongData);
+        if (saveError) throw saveError;
+        console.warn("Saved without credits columns (may need migration)");
       }
 
       toast({ title: "Success", description: "Song updated successfully" });

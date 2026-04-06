@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { preloadPlayerIcons } from "@/lib/preloadPlayerAssets";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { PlayerBar } from "@/components/PlayerBar";
@@ -23,6 +24,10 @@ function AppContent() {
   const { currentTrack } = usePlayer();
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    preloadPlayerIcons();
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user) {
