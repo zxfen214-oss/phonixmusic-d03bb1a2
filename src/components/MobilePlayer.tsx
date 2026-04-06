@@ -121,22 +121,8 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
           className="fixed inset-0 z-50 flex flex-col"
           /* safe area padding */
         >
-          {/* Dominant color gradient background */}
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              background: `linear-gradient(180deg, ${bg1} 0%, ${bg2} 60%, hsl(0,0%,2%) 100%)`,
-            }}
-          />
-          {/* Subtle artwork overlay for depth */}
-          <div className="absolute inset-0 z-0 overflow-hidden">
-            <img
-              src={currentTrack.artwork || "/placeholder.svg"}
-              alt=""
-              className="w-full h-full object-cover scale-150 blur-[100px] opacity-30"
-            />
-            <div className="absolute inset-0 bg-black/40" />
-          </div>
+          {/* Canvas gradient background matching lyrics tab */}
+          <MobilePlayerCanvasBg artworkUrl={currentTrack.artwork} palette={palette} dominantColor={dominantColor} />
 
           {/* Content */}
           <div
