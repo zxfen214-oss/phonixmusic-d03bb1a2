@@ -203,9 +203,6 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   const currentTime = (progress / 100) * currentTrack.duration;
   const remaining = currentTrack.duration - currentTime;
 
-  // Build gradient background from dominant colors
-  const bg1 = palette[0] || dominantColor || 'hsl(0, 0%, 8%)';
-  const bg2 = palette[1] || 'hsl(0, 0%, 4%)';
 
   return (
     <AnimatePresence>
