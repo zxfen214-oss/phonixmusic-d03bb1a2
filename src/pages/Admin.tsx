@@ -779,6 +779,10 @@ export default function Admin() {
                       <Copy className="h-4 w-4" />
                       Duplicates
                     </TabsTrigger>
+                    <TabsTrigger value="accounts" className="gap-2" onClick={() => { if (accountUsers.length === 0) fetchAccountUsers(); }}>
+                      <Users className="h-4 w-4" />
+                      Accounts
+                    </TabsTrigger>
                     <TabsTrigger value="admin-users" className="gap-2" onClick={() => { if (adminUsers.length === 0) fetchAdminUsers(); }}>
                       <Shield className="h-4 w-4" />
                       Admins
