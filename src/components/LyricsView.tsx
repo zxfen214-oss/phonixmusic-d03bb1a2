@@ -860,7 +860,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, repeat, toggleRepeat } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
