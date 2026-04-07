@@ -610,15 +610,16 @@ function useAppleMusicStyles(
       const targetY = positionYMap.get(key) ?? (anchorY + position * 68);
 
       let opacity: number, blur: number, scale: number;
+      const blurEnabled = localStorage.getItem('lyrics-blur-enabled') !== 'false';
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
       } else if (position < 0) {
         opacity = Math.max(0, 0.3 - (distance - 1) * 0.2);
-        blur = isMobile ? 0 : 1.5 + distance * 0.8;
+        blur = blurEnabled ? 1.5 + distance * 0.8 : 0;
         scale = 1;
       } else {
         opacity = Math.max(0.08, 0.5 - (distance - 1) * 0.06);
-        blur = isMobile ? 0 : Math.min(3, distance * 0.35);
+        blur = blurEnabled ? Math.min(3, distance * 0.35) : 0;
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
