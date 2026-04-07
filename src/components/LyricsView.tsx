@@ -13,6 +13,10 @@ import {
   Repeat1,
   ListPlus,
   AlignLeft,
+  Volume2,
+  VolumeX,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
