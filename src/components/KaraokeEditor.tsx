@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchMergedSongRecord, saveSongRecord } from "@/lib/songRecords";
 import { parseLRC, fetchSyncedLyrics, fetchTextUtf8, LyricLine } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -270,31 +271,28 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
     }
 
     try {
-      const { data: song } = await supabase
-        .from("songs")
-        .select("karaoke_enabled, karaoke_data, lyrics_url")
-        .eq("youtube_id", track.youtubeId)
-        .maybeSingle();
+      const { merged } = await fetchMergedSongRecord(
+        { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+        "id, karaoke_enabled, karaoke_data, lyrics_url"
+      );
 
-      if (song) {
-        setKaraokeEnabled(song.karaoke_enabled || false);
+      if (merged) {
+        setKaraokeEnabled(merged.karaoke_enabled || false);
         
-        if (song.karaoke_data) {
-          const data = song.karaoke_data as unknown as KaraokeData;
+        if (merged.karaoke_data) {
+          const data = merged.karaoke_data as unknown as KaraokeData;
           if (data.words && data.words.length > 0) {
             setExistingWords(data.words);
           }
         }
 
-        // Load lyrics
-        if (song.lyrics_url) {
-          const content = await fetchTextUtf8(song.lyrics_url);
+        if (merged.lyrics_url) {
+          const content = await fetchTextUtf8(merged.lyrics_url);
           const parsed = parseLRC(content);
           setLyricsLines(parsed.lines);
           initializeLineTimings(parsed.lines);
         }
       } else {
-        // Try to fetch lyrics from API
         const lyrics = await fetchSyncedLyrics(track.youtubeId, track.artist, track.title);
         if (lyrics && lyrics.lines.length > 0) {
           setLyricsLines(lyrics.lines);
@@ -638,31 +636,18 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
       const karaokeWords = aiWords || generateKaraokeWords();
       const karaokeDataJson = JSON.parse(JSON.stringify({ words: karaokeWords }));
 
-      const { data: existingSong } = await supabase
-        .from("songs")
-        .select("id")
-        .eq("youtube_id", track.youtubeId)
-        .maybeSingle();
-
-      if (existingSong) {
-        await supabase
-          .from("songs")
-          .update({
-            karaoke_enabled: karaokeEnabled,
-            karaoke_data: karaokeDataJson,
-          })
-          .eq("id", existingSong.id);
-      } else {
-        await supabase.from("songs").insert([{
+      const lookup = { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album };
+      await saveSongRecord(
+        lookup,
+        { karaoke_enabled: karaokeEnabled, karaoke_data: karaokeDataJson },
+        {
           title: track.title,
           artist: track.artist,
           album: track.album || null,
           duration: track.duration,
           youtube_id: track.youtubeId,
-          karaoke_enabled: karaokeEnabled,
-          karaoke_data: karaokeDataJson,
-        }]);
-      }
+        }
+      );
 
       toast({ title: "Success", description: "Karaoke settings saved" });
       onSave?.();

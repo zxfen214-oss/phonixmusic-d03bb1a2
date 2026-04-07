@@ -157,6 +157,20 @@ export default function Admin() {
   const [addAdminEmail, setAddAdminEmail] = useState("");
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
 
+  // Accounts management state
+  interface AccountUser {
+    id: string;
+    display_name: string | null;
+    email: string | null;
+    club: string | null;
+    is_admin: boolean;
+    library_songs: { song_youtube_id: string; song_title: string; song_artist: string; added_at: string }[];
+  }
+  const [accountUsers, setAccountUsers] = useState<AccountUser[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
+  const [editingSongFromAccount, setEditingSongFromAccount] = useState<Song | null>(null);
+
   const fetchAdminUsers = async () => {
     setIsLoadingUsers(true);
     try {
@@ -261,6 +275,53 @@ export default function Admin() {
       toast({ title: 'Error', description: 'Failed to grant admin access', variant: 'destructive' });
     } finally {
       setIsAddingAdmin(false);
+    }
+  };
+
+  const fetchAccountUsers = async () => {
+    setIsLoadingAccounts(true);
+    try {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, club')
+        .order('created_at', { ascending: false });
+      if (profilesError) throw profilesError;
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'admin');
+      const adminIds = new Set((roles || []).map(r => r.user_id));
+
+      // Fetch all library entries
+      const { data: libraryData } = await supabase
+        .from('user_song_library')
+        .select('user_id, song_youtube_id, song_title, song_artist, added_at');
+
+      const libraryMap = new Map<string, AccountUser['library_songs']>();
+      (libraryData || []).forEach(entry => {
+        if (!libraryMap.has(entry.user_id)) libraryMap.set(entry.user_id, []);
+        libraryMap.get(entry.user_id)!.push({
+          song_youtube_id: entry.song_youtube_id,
+          song_title: entry.song_title,
+          song_artist: entry.song_artist,
+          added_at: entry.added_at,
+        });
+      });
+
+      setAccountUsers((profiles || []).map(p => ({
+        id: p.id,
+        display_name: p.display_name,
+        email: (p as any).email || null,
+        club: (p as any).club || null,
+        is_admin: adminIds.has(p.id),
+        library_songs: libraryMap.get(p.id) || [],
+      })));
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+      toast({ title: 'Error', description: 'Failed to load accounts', variant: 'destructive' });
+    } finally {
+      setIsLoadingAccounts(false);
     }
   };
 
@@ -718,6 +779,10 @@ export default function Admin() {
                       <Copy className="h-4 w-4" />
                       Duplicates
                     </TabsTrigger>
+                    <TabsTrigger value="accounts" className="gap-2" onClick={() => { if (accountUsers.length === 0) fetchAccountUsers(); }}>
+                      <Users className="h-4 w-4" />
+                      Accounts
+                    </TabsTrigger>
                     <TabsTrigger value="admin-users" className="gap-2" onClick={() => { if (adminUsers.length === 0) fetchAdminUsers(); }}>
                       <Shield className="h-4 w-4" />
                       Admins
@@ -1045,6 +1110,121 @@ export default function Admin() {
                 {/* Duplicates Tab */}
                 <TabsContent value="duplicates" className="mt-0">
                   <DuplicatesView songs={songs} onDelete={handleDelete} />
+                </TabsContent>
+
+                {/* Accounts Tab */}
+                <TabsContent value="accounts" className="mt-0">
+                  {isLoadingAccounts ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        {accountUsers.length} registered account(s). Click to view their library.
+                      </p>
+                      {accountUsers.map((au) => (
+                        <motion.div
+                          key={au.id}
+                          layout
+                          className={`rounded-xl border transition-colors ${
+                            au.is_admin ? "border-accent/50 bg-accent/5" : "border-border bg-card"
+                          }`}
+                        >
+                          <button
+                            className="w-full p-4 text-left flex items-center gap-4"
+                            onClick={() => setExpandedAccount(expandedAccount === au.id ? null : au.id)}
+                          >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              au.is_admin ? 'bg-accent/20' : 'bg-secondary'
+                            }`}>
+                              {au.is_admin ? (
+                                <ShieldCheck className="h-5 w-5 text-accent" />
+                              ) : (
+                                <Users className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium truncate">
+                                {au.display_name || 'Unnamed User'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {au.email || `ID: ${au.id.slice(0, 12)}...`}
+                                {au.club ? ` • ${au.club}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {au.is_admin && (
+                                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Admin</span>
+                              )}
+                              <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                                {au.library_songs.length} song{au.library_songs.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </button>
+
+                          <AnimatePresence>
+                            {expandedAccount === au.id && au.library_songs.length > 0 && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-4 pb-4 space-y-2 border-t border-border/50 pt-3">
+                                  {au.library_songs.map((ls) => {
+                                    const adminSong = songs.find(s => s.youtube_id === ls.song_youtube_id);
+                                    return (
+                                      <div
+                                        key={ls.song_youtube_id}
+                                        className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors"
+                                      >
+                                        <div className="w-8 h-8 rounded bg-secondary overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                          {adminSong?.cover_url ? (
+                                            <img src={adminSong.cover_url} alt="" className="w-full h-full object-cover" />
+                                          ) : (
+                                            <Music className="h-3 w-3 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">{ls.song_title}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{ls.song_artist}</p>
+                                        </div>
+                                        {adminSong && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEdit(adminSong);
+                                            }}
+                                          >
+                                            <Edit className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      ))}
+                      {accountUsers.length === 0 && (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No accounts found.</p>
+                          <Button variant="outline" onClick={fetchAccountUsers} className="mt-4 gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            Load Accounts
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Admin Users Tab */}
