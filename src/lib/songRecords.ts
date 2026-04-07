@@ -98,7 +98,7 @@ async function runSongQuery(select: string, applyFilters: (query: any) => any) {
     }
 
     return {
-      data: (result.data as SongRow[] | null) ?? [],
+      data: (result.data as unknown as SongRow[] | null) ?? [],
       error: result.error,
     };
   }
