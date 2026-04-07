@@ -157,6 +157,20 @@ export default function Admin() {
   const [addAdminEmail, setAddAdminEmail] = useState("");
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
 
+  // Accounts management state
+  interface AccountUser {
+    id: string;
+    display_name: string | null;
+    email: string | null;
+    club: string | null;
+    is_admin: boolean;
+    library_songs: { song_youtube_id: string; song_title: string; song_artist: string; added_at: string }[];
+  }
+  const [accountUsers, setAccountUsers] = useState<AccountUser[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
+  const [editingSongFromAccount, setEditingSongFromAccount] = useState<Song | null>(null);
+
   const fetchAdminUsers = async () => {
     setIsLoadingUsers(true);
     try {
