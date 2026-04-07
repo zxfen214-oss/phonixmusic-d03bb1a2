@@ -17,8 +17,10 @@ import {
   Palette,
   Volume2,
   Bell,
-  Info
+  Info,
+  Eye
 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,15 @@ export default function Settings({ embedded = false }: SettingsProps) {
   const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, signOut } = useAuth();
 
+  const [lyricsBlurEnabled, setLyricsBlurEnabled] = useState(() => {
+    const saved = localStorage.getItem('lyrics-blur-enabled');
+    return saved !== null ? saved === 'true' : true; // enabled by default
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lyrics-blur-enabled', String(lyricsBlurEnabled));
+  }, [lyricsBlurEnabled]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
@@ -40,7 +51,7 @@ export default function Settings({ embedded = false }: SettingsProps) {
     <PageTransition className={cn("bg-background", !embedded && "min-h-screen")}>
       <div className={cn(
         "mx-auto max-w-2xl",
-        embedded ? "px-4 md:px-6 py-6 h-full overflow-y-auto" : "container px-4 py-8 pb-32 overflow-y-auto max-h-[100dvh]"
+        embedded ? "px-4 md:px-6 py-6 h-full overflow-y-auto pb-32" : "container px-4 py-8 pb-32 overflow-y-auto max-h-[100dvh]"
       )}>
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
@@ -133,6 +144,34 @@ export default function Settings({ embedded = false }: SettingsProps) {
                     id="dark-mode"
                     checked={theme === "dark"}
                     onCheckedChange={toggleTheme}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </StaggerItem>
+
+          {/* Lyrics Section */}
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="p-6 rounded-xl border border-border bg-card"
+            >
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Eye className="h-5 w-5 text-accent" />
+                Lyrics
+              </h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="lyrics-blur">Line Blur Effect</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Blur non-active lyrics lines for focus
+                    </p>
+                  </div>
+                  <Switch
+                    id="lyrics-blur"
+                    checked={lyricsBlurEnabled}
+                    onCheckedChange={setLyricsBlurEnabled}
                   />
                 </div>
               </div>

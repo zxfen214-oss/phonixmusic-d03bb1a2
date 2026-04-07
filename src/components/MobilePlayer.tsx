@@ -212,7 +212,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 300 }}
+          transition={{ type: "tween", duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
           dragElastic={0.4}

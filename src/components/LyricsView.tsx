@@ -13,6 +13,10 @@ import {
   Repeat1,
   ListPlus,
   AlignLeft,
+  Volume2,
+  VolumeX,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
@@ -610,15 +614,16 @@ function useAppleMusicStyles(
       const targetY = positionYMap.get(key) ?? (anchorY + position * 68);
 
       let opacity: number, blur: number, scale: number;
+      const blurEnabled = localStorage.getItem('lyrics-blur-enabled') !== 'false';
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
       } else if (position < 0) {
         opacity = Math.max(0, 0.3 - (distance - 1) * 0.2);
-        blur = isMobile ? 0 : 1.5 + distance * 0.8;
+        blur = blurEnabled ? 1.5 + distance * 0.8 : 0;
         scale = 1;
       } else {
         opacity = Math.max(0.08, 0.5 - (distance - 1) * 0.06);
-        blur = isMobile ? 0 : Math.min(3, distance * 0.35);
+        blur = blurEnabled ? Math.min(3, distance * 0.35) : 0;
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
@@ -641,7 +646,7 @@ function useAppleMusicStyles(
       }
 
       const easing = isMobile ? 'cubic-bezier(0.25, 0.8, 0.25, 1)' : 'cubic-bezier(0.2, 0.9, 0.3, 1.05)';
-      const filterProp = isMobile ? '' : `, filter ${dur}s ${easing} ${delay}s`;
+      const filterProp = blur > 0 ? `, filter ${dur}s ${easing} ${delay}s` : '';
       const transitionStr = `opacity ${dur}s ${easing} ${delay}s${filterProp}, transform ${dur}s ${easing} ${delay}s`;
 
       const makeTransform = (y: number, s: number) =>
@@ -649,7 +654,7 @@ function useAppleMusicStyles(
 
       if (isNew) {
         el.style.transition = 'none';
-        el.style.willChange = isMobile ? 'transform, opacity' : 'transform, opacity';
+        el.style.willChange = 'transform, opacity';
         if (isMobile) {
           // iOS Safari: avoid double-rAF, use simpler single-frame approach
           el.style.opacity = '0';
@@ -682,7 +687,7 @@ function useAppleMusicStyles(
       } else if (posChanged) {
         el.style.transition = transitionStr;
         el.style.opacity = String(opacity);
-        if (!isMobile) el.style.filter = `blur(${blur}px)`;
+        if (blur > 0) el.style.filter = `blur(${blur}px)`;
         el.style.transform = makeTransform(targetY, scale);
       }
     });
@@ -859,7 +864,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, repeat, toggleRepeat } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -878,6 +883,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [creditsWrittenBy, setCreditsWrittenBy] = useState("");
   const [creditsNames, setCreditsNames] = useState("");
+  const [showLyricsPanel, setShowLyricsPanel] = useState(true);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -1221,16 +1227,23 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <X className="h-6 w-6 text-white" />
           </motion.button>
 
-          <div className="flex-shrink-0 flex flex-col justify-center" style={{ width: '480px', paddingLeft: '120px' }}>
+          <motion.div
+            className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            style={{ width: showLyricsPanel ? '480px' : '100%', paddingLeft: showLyricsPanel ? '120px' : '0' }}
+            layout
+          >
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
               transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className={showLyricsPanel ? '' : 'flex flex-col items-center'}
             >
               <div
-                className="overflow-hidden"
+                className="overflow-hidden transition-all duration-500"
                 style={{
-                  width: '360px', height: '360px', borderRadius: '20px',
+                  width: showLyricsPanel ? '360px' : '400px',
+                  height: showLyricsPanel ? '360px' : '400px',
+                  borderRadius: '20px',
                   boxShadow: '0 30px 80px -20px rgba(0, 0, 0, 0.35)',
                 }}
               >
@@ -1241,14 +1254,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px' }}>
+              <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
                 {currentTrack.title}
               </h2>
-              <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+              <p style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '4px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
                 {currentTrack.artist}
               </p>
 
-              <div style={{ marginTop: '24px', width: '360px' }}>
+              <div style={{ marginTop: '24px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <Slider
                   value={[progress]}
                   max={100}
@@ -1262,7 +1275,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
+              <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
                   <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
                 </button>
@@ -1274,7 +1287,28 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-4 mt-4" style={{ width: '360px' }}>
+              {/* Volume control */}
+              <div className="flex items-center gap-3 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
+                <button
+                  onClick={() => setVolume(volume === 0 ? 80 : 0)}
+                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  {volume === 0 ? (
+                    <VolumeX className="h-4 w-4 text-white/50" />
+                  ) : (
+                    <Volume2 className="h-4 w-4 text-white/50" />
+                  )}
+                </button>
+                <Slider
+                  value={[volume]}
+                  max={100}
+                  step={1}
+                  onValueChange={([value]) => setVolume(value)}
+                  className="flex-1 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                />
+              </div>
+
+              <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
                 <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
                   <Heart className="h-5 w-5 text-white/60" />
                 </button>
@@ -1298,32 +1332,54 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     <Repeat className="h-5 w-5 text-white/60" />
                   )}
                 </button>
-              </div>
-            </motion.div>
-          </div>
-
-          <div style={{ width: '160px' }} className="flex-shrink-0" />
-
-          <div className="flex-1 min-w-0 h-full" style={{ maxWidth: '620px' }}>
-            <div className="flex h-full flex-col gap-6 py-10">
-              <div className="flex items-center gap-2 px-1">
                 <button
-                  onClick={() => setStaticLyricsMode(!staticLyricsMode)}
-                  className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
-                  title="Static lyrics"
+                  onClick={() => setShowLyricsPanel(!showLyricsPanel)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                  title={showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
                 >
-                  <AlignLeft className="h-4 w-4" />
+                  {showLyricsPanel ? (
+                    <EyeOff className="h-5 w-5 text-white/60" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-white/60" />
+                  )}
                 </button>
               </div>
-              <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                {staticLyricsMode ? (
-                  <StaticLyricsContent text={staticLyricsText} isMobile={false} />
-                ) : (
-                  <LyricsContent {...lyricsContentProps} isMobile={false} />
-                )}
-              </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
+
+          {showLyricsPanel && (
+            <>
+              <div style={{ width: '160px' }} className="flex-shrink-0" />
+
+              <motion.div
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                className="flex-1 min-w-0 h-full"
+                style={{ maxWidth: '620px' }}
+              >
+                <div className="flex h-full flex-col gap-6 py-10">
+                  <div className="flex items-center gap-2 px-1">
+                    <button
+                      onClick={() => setStaticLyricsMode(!staticLyricsMode)}
+                      className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
+                      title="Static lyrics"
+                    >
+                      <AlignLeft className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+                    {staticLyricsMode ? (
+                      <StaticLyricsContent text={staticLyricsText} isMobile={false} />
+                    ) : (
+                      <LyricsContent {...lyricsContentProps} isMobile={false} />
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
         </div>
 
         <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>

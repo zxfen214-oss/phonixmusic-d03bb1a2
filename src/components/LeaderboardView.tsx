@@ -30,18 +30,78 @@ export function LeaderboardView() {
 
   const fetchLeaderboard = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("songs")
-      .select("id, title, artist, cover_url, youtube_id, duration, stream_count")
-      .gt("stream_count", 0)
-      .order("stream_count", { ascending: false })
-      .limit(50);
+    try {
+      // Count streams from user_song_library (each user adding = 1 stream)
+      const { data: libraryData } = await supabase
+        .from("user_song_library")
+        .select("song_youtube_id, song_title, song_artist");
 
-    if (!error && data) {
-      setSongs(data as LeaderboardSong[]);
+      // Count how many users have each song
+      const streamMap = new Map<string, { title: string; artist: string; count: number }>();
+      (libraryData || []).forEach(entry => {
+        const key = entry.song_youtube_id;
+        if (!streamMap.has(key)) {
+          streamMap.set(key, { title: entry.song_title, artist: entry.song_artist, count: 0 });
+        }
+        streamMap.get(key)!.count++;
+      });
+
+      // Also fetch songs table for covers and existing stream_count overrides
+      const { data: songsData } = await supabase
+        .from("songs")
+        .select("id, title, artist, cover_url, youtube_id, duration, stream_count");
+
+      const songInfoMap = new Map<string, { id: string; cover_url: string | null; duration: number | null; stream_count: number }>();
+      (songsData || []).forEach(s => {
+        if (s.youtube_id) {
+          songInfoMap.set(s.youtube_id, {
+            id: s.id,
+            cover_url: s.cover_url,
+            duration: s.duration,
+            stream_count: s.stream_count || 0,
+          });
+        }
+      });
+
+      // Merge: use library count + any manual stream_count from songs table
+      const merged: LeaderboardSong[] = [];
+      streamMap.forEach((val, ytId) => {
+        const songInfo = songInfoMap.get(ytId);
+        const totalStreams = val.count + (songInfo?.stream_count || 0);
+        merged.push({
+          id: songInfo?.id || ytId,
+          title: val.title,
+          artist: val.artist,
+          cover_url: songInfo?.cover_url || null,
+          youtube_id: ytId,
+          duration: songInfo?.duration || null,
+          stream_count: totalStreams,
+        });
+      });
+
+      // Also add songs with stream_count but not in any library
+      (songsData || []).forEach(s => {
+        if (s.stream_count && s.stream_count > 0 && s.youtube_id && !streamMap.has(s.youtube_id)) {
+          merged.push({
+            id: s.id,
+            title: s.title,
+            artist: s.artist,
+            cover_url: s.cover_url,
+            youtube_id: s.youtube_id,
+            duration: s.duration,
+            stream_count: s.stream_count,
+          });
+        }
+      });
+
+      merged.sort((a, b) => b.stream_count - a.stream_count);
+      setSongs(merged.slice(0, 50));
+
       const counts: Record<string, number> = {};
-      data.forEach((s: any) => { counts[s.id] = s.stream_count || 0; });
+      merged.forEach(s => { counts[s.id] = s.stream_count || 0; });
       setEditCounts(counts);
+    } catch (err) {
+      console.error("Leaderboard fetch error:", err);
     }
     setLoading(false);
   };

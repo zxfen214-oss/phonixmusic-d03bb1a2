@@ -281,25 +281,23 @@ export default function Admin() {
   const fetchAccountUsers = async () => {
     setIsLoadingAccounts(true);
     try {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, email, club')
-        .order('created_at', { ascending: false });
-      if (profilesError) throw profilesError;
+      // Fetch all library entries first - this is readable by all authenticated users
+      const { data: libraryData } = await supabase
+        .from('user_song_library')
+        .select('user_id, song_youtube_id, song_title, song_artist, added_at');
 
+      // Get admin roles
       const { data: roles } = await supabase
         .from('user_roles')
         .select('user_id, role')
         .eq('role', 'admin');
       const adminIds = new Set((roles || []).map(r => r.user_id));
 
-      // Fetch all library entries
-      const { data: libraryData } = await supabase
-        .from('user_song_library')
-        .select('user_id, song_youtube_id, song_title, song_artist, added_at');
-
+      // Build library map and collect all unique user IDs
       const libraryMap = new Map<string, AccountUser['library_songs']>();
+      const allUserIds = new Set<string>();
       (libraryData || []).forEach(entry => {
+        allUserIds.add(entry.user_id);
         if (!libraryMap.has(entry.user_id)) libraryMap.set(entry.user_id, []);
         libraryMap.get(entry.user_id)!.push({
           song_youtube_id: entry.song_youtube_id,
@@ -309,14 +307,42 @@ export default function Admin() {
         });
       });
 
-      setAccountUsers((profiles || []).map(p => ({
-        id: p.id,
-        display_name: p.display_name,
-        email: (p as any).email || null,
-        club: (p as any).club || null,
-        is_admin: adminIds.has(p.id),
-        library_songs: libraryMap.get(p.id) || [],
-      })));
+      // Also add admin user IDs that may not have library entries
+      (roles || []).forEach(r => allUserIds.add(r.user_id));
+
+      // Try to fetch profiles (RLS may limit to own profile only)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, club');
+      const profileMap = new Map<string, { display_name: string | null; email: string | null; club: string | null }>();
+      (profiles || []).forEach(p => {
+        profileMap.set(p.id, {
+          display_name: p.display_name,
+          email: (p as any).email || null,
+          club: (p as any).club || null,
+        });
+      });
+
+      // Build accounts from all unique user IDs
+      const accounts: AccountUser[] = Array.from(allUserIds).map(uid => {
+        const profile = profileMap.get(uid);
+        return {
+          id: uid,
+          display_name: profile?.display_name || null,
+          email: profile?.email || null,
+          club: profile?.club || null,
+          is_admin: adminIds.has(uid),
+          library_songs: libraryMap.get(uid) || [],
+        };
+      });
+
+      // Sort: admins first, then by library size
+      accounts.sort((a, b) => {
+        if (a.is_admin !== b.is_admin) return a.is_admin ? -1 : 1;
+        return b.library_songs.length - a.library_songs.length;
+      });
+
+      setAccountUsers(accounts);
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
       toast({ title: 'Error', description: 'Failed to load accounts', variant: 'destructive' });
