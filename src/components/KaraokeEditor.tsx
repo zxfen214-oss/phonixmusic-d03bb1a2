@@ -636,31 +636,18 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
       const karaokeWords = aiWords || generateKaraokeWords();
       const karaokeDataJson = JSON.parse(JSON.stringify({ words: karaokeWords }));
 
-      const { data: existingSong } = await supabase
-        .from("songs")
-        .select("id")
-        .eq("youtube_id", track.youtubeId)
-        .maybeSingle();
-
-      if (existingSong) {
-        await supabase
-          .from("songs")
-          .update({
-            karaoke_enabled: karaokeEnabled,
-            karaoke_data: karaokeDataJson,
-          })
-          .eq("id", existingSong.id);
-      } else {
-        await supabase.from("songs").insert([{
+      const lookup = { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album };
+      await saveSongRecord(
+        lookup,
+        { karaoke_enabled: karaokeEnabled, karaoke_data: karaokeDataJson },
+        {
           title: track.title,
           artist: track.artist,
           album: track.album || null,
           duration: track.duration,
           youtube_id: track.youtubeId,
-          karaoke_enabled: karaokeEnabled,
-          karaoke_data: karaokeDataJson,
-        }]);
-      }
+        }
+      );
 
       toast({ title: "Success", description: "Karaoke settings saved" });
       onSave?.();
