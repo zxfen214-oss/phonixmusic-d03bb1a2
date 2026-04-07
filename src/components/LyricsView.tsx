@@ -1264,13 +1264,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: '360px' }}>
                 <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <img src={iconPrev} alt="Previous" className="h-6 w-6 invert" />
+                  <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
                 </button>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-8 w-8 invert" />
+                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-8 w-8 brightness-0 invert" />
                 </motion.button>
                 <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <img src={iconNext} alt="Next" className="h-6 w-6 invert" />
+                  <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
                 </button>
               </div>
 
@@ -1423,7 +1423,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 )}
               </button>
               <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <img src={iconPrev} alt="Previous" className="h-6 w-6 invert" />
+                <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
               </button>
               <motion.button
                 whileTap={{ scale: 0.95 }}
@@ -1431,10 +1431,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 className="p-4 rounded-full transition-transform"
                 style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
               >
-                <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-7 w-7 invert" />
+                <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-7 w-7 brightness-0 invert" />
               </motion.button>
               <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <img src={iconNext} alt="Next" className="h-6 w-6 invert" />
+                <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
               </button>
               <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 <ListPlus className="h-5 w-5 text-white/60" />

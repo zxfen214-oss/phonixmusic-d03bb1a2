@@ -3,6 +3,7 @@ import { Track } from "@/types/music";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadPublicStorageFile } from "@/lib/storageUploads";
 import { saveAudioFile } from "@/lib/database";
+import { fetchMergedSongRecord, saveSongRecord, updateSongRecordsByIds } from "@/lib/songRecords";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,48 +117,37 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const checkExistingSong = async () => {
     try {
-      let query = supabase
-        .from("songs")
-        .select("id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names")
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names";
+      const { merged } = await fetchMergedSongRecord(
+        { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+        selectFields
+      );
 
-      if (track.youtubeId) {
-        query = query.eq("youtube_id", track.youtubeId);
-      } else {
-        query = query
-          .eq("title", track.title)
-          .eq("artist", track.artist)
-          .or(`album.eq.${track.album || ""},album.is.null`);
-      }
-
-      const { data } = await query.maybeSingle();
-
-      if (data) {
+      if (merged) {
         setExistingSong({
-          id: data.id,
-          lyrics_url: data.lyrics_url,
-          lyrics_speed: data.lyrics_speed ?? 0.75,
-          bounce_intensity: (data as any).bounce_intensity ?? 0.5,
-          audio_url: data.audio_url,
-          karaoke_color: data.karaoke_color ?? null,
-          lyric_color: data.lyric_color ?? null,
-          synced_lyrics: data.synced_lyrics ?? null,
-          plain_lyrics: (data as any).plain_lyrics ?? null,
+          id: merged.id,
+          lyrics_url: merged.lyrics_url ?? null,
+          lyrics_speed: merged.lyrics_speed ?? 0.75,
+          bounce_intensity: (merged as any).bounce_intensity ?? 0.5,
+          audio_url: merged.audio_url ?? null,
+          karaoke_color: merged.karaoke_color ?? null,
+          lyric_color: merged.lyric_color ?? null,
+          synced_lyrics: merged.synced_lyrics ?? null,
+          plain_lyrics: (merged as any).plain_lyrics ?? null,
         });
         setFormData(prev => ({
           ...prev,
-          lyricsSpeed: data.lyrics_speed ?? 0.75,
-          bounceIntensity: (data as any).bounce_intensity ?? 0.5,
-          karaokeColor: data.karaoke_color || '',
-          lyricColor: data.lyric_color || '',
-          writtenBy: (data as any).written_by || '',
-          creditsNames: (data as any).credits_names || '',
+          lyricsSpeed: merged.lyrics_speed ?? 0.75,
+          bounceIntensity: (merged as any).bounce_intensity ?? 0.5,
+          karaokeColor: merged.karaoke_color || '',
+          lyricColor: merged.lyric_color || '',
+          writtenBy: (merged as any).written_by || '',
+          creditsNames: (merged as any).credits_names || '',
         }));
-        setPlainLyrics((data as any).plain_lyrics || "");
+        setPlainLyrics((merged as any).plain_lyrics || "");
 
-        if (data.synced_lyrics) {
-          parseSpecialCommands(data.synced_lyrics);
+        if (merged.synced_lyrics) {
+          parseSpecialCommands(merged.synced_lyrics);
         }
       } else {
         setExistingSong(null);
@@ -335,25 +325,13 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         credits_names: formData.creditsNames || null,
       };
 
-      // Try saving with all fields; if it fails (missing columns), retry without credits fields
-      const trySave = async (data: Record<string, any>) => {
-        if (existingSong) {
-          const { error } = await supabase.from("songs").update(data).eq("id", existingSong.id);
-          return error;
-        } else {
-          const { error } = await supabase.from("songs").insert(data);
-          return error;
-        }
+      // Use resilient save that handles duplicates and missing columns
+      const lookup = { youtubeId: track.youtubeId, title: formData.title, artist: formData.artist, album: formData.album };
+      const insertPayload = {
+        youtube_id: track.youtubeId || null,
+        duration: track.duration,
       };
-
-      let saveError = await trySave(baseSongData);
-      if (saveError) {
-        // Retry without potentially missing columns
-        const { written_by, credits_names, ...safeSongData } = baseSongData;
-        saveError = await trySave(safeSongData);
-        if (saveError) throw saveError;
-        console.warn("Saved without credits columns (may need migration)");
-      }
+      await saveSongRecord(lookup, baseSongData, insertPayload);
 
       toast({ title: "Success", description: "Song updated successfully" });
 
