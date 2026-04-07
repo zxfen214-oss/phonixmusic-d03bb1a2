@@ -278,6 +278,53 @@ export default function Admin() {
     }
   };
 
+  const fetchAccountUsers = async () => {
+    setIsLoadingAccounts(true);
+    try {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, club')
+        .order('created_at', { ascending: false });
+      if (profilesError) throw profilesError;
+
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'admin');
+      const adminIds = new Set((roles || []).map(r => r.user_id));
+
+      // Fetch all library entries
+      const { data: libraryData } = await supabase
+        .from('user_song_library')
+        .select('user_id, song_youtube_id, song_title, song_artist, added_at');
+
+      const libraryMap = new Map<string, AccountUser['library_songs']>();
+      (libraryData || []).forEach(entry => {
+        if (!libraryMap.has(entry.user_id)) libraryMap.set(entry.user_id, []);
+        libraryMap.get(entry.user_id)!.push({
+          song_youtube_id: entry.song_youtube_id,
+          song_title: entry.song_title,
+          song_artist: entry.song_artist,
+          added_at: entry.added_at,
+        });
+      });
+
+      setAccountUsers((profiles || []).map(p => ({
+        id: p.id,
+        display_name: p.display_name,
+        email: (p as any).email || null,
+        club: (p as any).club || null,
+        is_admin: adminIds.has(p.id),
+        library_songs: libraryMap.get(p.id) || [],
+      })));
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+      toast({ title: 'Error', description: 'Failed to load accounts', variant: 'destructive' });
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
   const [formData, setFormData] = useState({
     title: "",
     artist: "",
