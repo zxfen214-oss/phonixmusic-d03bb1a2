@@ -17,8 +17,10 @@ import {
   Palette,
   Volume2,
   Bell,
-  Info
+  Info,
+  Eye
 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
