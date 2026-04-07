@@ -27,6 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchMergedSongRecord, saveSongRecord } from "@/lib/songRecords";
 import { parseLRC, fetchTextUtf8 } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -96,27 +97,25 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
   const loadExistingLyrics = async () => {
     if (!track.youtubeId) return;
     
-    const { data: song } = await supabase
-      .from("songs")
-      .select("lyrics_url")
-      .eq("youtube_id", track.youtubeId)
-      .maybeSingle();
+    try {
+      const { merged } = await fetchMergedSongRecord(
+        { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+        "id, lyrics_url"
+      );
 
-    if (song?.lyrics_url) {
-      try {
-        const response = await fetch(song.lyrics_url);
+      if (merged?.lyrics_url) {
+        const response = await fetch(merged.lyrics_url);
         if (response.ok) {
           const content = await response.text();
           const parsed = parseLRC(content);
           if (parsed.lines.length > 0) {
             setLines(parsed.lines);
-            // Convert back to raw text for editing
             setRawLyricsInput(parsed.lines.map(l => l.text).join("\n"));
           }
         }
-      } catch (error) {
-        console.error("Failed to load existing lyrics:", error);
       }
+    } catch (error) {
+      console.error("Failed to load existing lyrics:", error);
     }
   };
 
@@ -271,28 +270,19 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
         .from("song-assets")
         .getPublicUrl(fileName);
 
-      // Update or insert song record
-      const { data: existingSong } = await supabase
-        .from("songs")
-        .select("id")
-        .eq("youtube_id", track.youtubeId)
-        .maybeSingle();
-
-      if (existingSong) {
-        await supabase
-          .from("songs")
-          .update({ lyrics_url: urlData.publicUrl })
-          .eq("id", existingSong.id);
-      } else {
-        await supabase.from("songs").insert([{
+      // Update or insert song record using resilient helper
+      const lookup = { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album };
+      await saveSongRecord(
+        lookup,
+        { lyrics_url: urlData.publicUrl },
+        {
           title: track.title,
           artist: track.artist,
           album: track.album || null,
           duration: track.duration,
           youtube_id: track.youtubeId,
-          lyrics_url: urlData.publicUrl,
-        }]);
-      }
+        }
+      );
 
       toast({ title: "Success", description: "Lyrics saved successfully" });
       onSave?.();
