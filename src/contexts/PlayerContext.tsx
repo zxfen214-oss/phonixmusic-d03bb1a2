@@ -4,6 +4,7 @@ import { getAudioFile, saveAudioFile } from "@/lib/database";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchMergedSongRecord } from "@/lib/songRecords";
 
 declare global {
   interface Window {
@@ -276,24 +277,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     if (!audioBlob) {
       try {
-        let songQuery = supabase
-          .from("songs")
-          .select("audio_url")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (track.youtubeId) {
-          songQuery = songQuery.eq("youtube_id", track.youtubeId);
-        } else {
-          songQuery = songQuery
-            .eq("title", track.title)
-            .eq("artist", track.artist)
-            .or(`album.eq.${track.album || ""},album.is.null`);
-        }
-
-        const { data } = await songQuery.maybeSingle();
-        if (data?.audio_url) {
-          const resp = await fetch(data.audio_url);
+        const { merged } = await fetchMergedSongRecord(
+          { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+          "id, audio_url"
+        );
+        if (merged?.audio_url) {
+          const resp = await fetch(merged.audio_url);
           if (resp.ok) {
             audioBlob = await resp.blob();
             await saveAudioFile(track.id, audioBlob, audioBlob.type || "audio/mpeg");
