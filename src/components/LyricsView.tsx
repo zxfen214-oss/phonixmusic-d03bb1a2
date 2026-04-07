@@ -642,7 +642,7 @@ function useAppleMusicStyles(
       }
 
       const easing = isMobile ? 'cubic-bezier(0.25, 0.8, 0.25, 1)' : 'cubic-bezier(0.2, 0.9, 0.3, 1.05)';
-      const filterProp = isMobile ? '' : `, filter ${dur}s ${easing} ${delay}s`;
+      const filterProp = blur > 0 ? `, filter ${dur}s ${easing} ${delay}s` : '';
       const transitionStr = `opacity ${dur}s ${easing} ${delay}s${filterProp}, transform ${dur}s ${easing} ${delay}s`;
 
       const makeTransform = (y: number, s: number) =>
@@ -650,7 +650,7 @@ function useAppleMusicStyles(
 
       if (isNew) {
         el.style.transition = 'none';
-        el.style.willChange = isMobile ? 'transform, opacity' : 'transform, opacity';
+        el.style.willChange = 'transform, opacity';
         if (isMobile) {
           // iOS Safari: avoid double-rAF, use simpler single-frame approach
           el.style.opacity = '0';
@@ -683,7 +683,7 @@ function useAppleMusicStyles(
       } else if (posChanged) {
         el.style.transition = transitionStr;
         el.style.opacity = String(opacity);
-        if (!isMobile) el.style.filter = `blur(${blur}px)`;
+        if (blur > 0) el.style.filter = `blur(${blur}px)`;
         el.style.transform = makeTransform(targetY, scale);
       }
     });
