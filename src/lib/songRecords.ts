@@ -17,31 +17,66 @@ type SongRow = Record<string, any> & {
   updated_at?: string | null;
 };
 
-const CREDIT_COLUMNS = new Set(["written_by", "credits_names"]);
+const FALLBACK_UNSUPPORTED_COLUMNS = new Set(["written_by", "credits_names"]);
 
 function normalizeText(value?: string | null) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
 
-function stripUnsupportedCreditColumns(select: string) {
+function extractMissingColumns(error: any) {
+  const message = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
+  const columns = new Set<string>();
+
+  for (const match of message.matchAll(/column\s+["']?([a-zA-Z0-9_]+)["']?/gi)) {
+    if (match[1]) columns.add(match[1]);
+  }
+
+  for (const match of message.matchAll(/["']([a-zA-Z0-9_]+)["']\s+does not exist/gi)) {
+    if (match[1]) columns.add(match[1]);
+  }
+
+  for (const match of message.matchAll(/Could not find the ['"]([a-zA-Z0-9_]+)['"] column/gi)) {
+    if (match[1]) columns.add(match[1]);
+  }
+
+  if (columns.size === 0) {
+    FALLBACK_UNSUPPORTED_COLUMNS.forEach((column) => {
+      if (new RegExp(column, "i").test(message)) columns.add(column);
+    });
+  }
+
+  return Array.from(columns);
+}
+
+function stripUnsupportedColumns(select: string, columns: string[]) {
+  if (columns.length === 0) return select;
+  const unsupported = new Set(columns.map((column) => column.trim()).filter(Boolean));
+
   return select
     .split(",")
     .map((part) => part.trim())
-    .filter((part) => part && !CREDIT_COLUMNS.has(part))
+    .filter((part) => {
+      if (!part) return false;
+      const baseColumn = part.split(/\s+/)[0]?.replace(/['"]/g, "");
+      return baseColumn ? !unsupported.has(baseColumn) : true;
+    })
     .join(", ");
 }
 
-function stripUnsupportedCreditFields<T extends Record<string, any>>(payload: T): Partial<T> {
+function stripUnsupportedFields<T extends Record<string, any>>(payload: T, columns: string[]) {
+  if (columns.length === 0) return payload;
+
   const next = { ...payload };
-  delete (next as any).written_by;
-  delete (next as any).credits_names;
+  columns.forEach((column) => {
+    delete (next as any)[column];
+  });
   return next;
 }
 
-function isMissingCreditColumnError(error: any) {
+function isMissingColumnError(error: any) {
   const message = `${error?.message ?? ""} ${error?.details ?? ""}`;
-  return error?.code === "42703" && /(written_by|credits_names)/i.test(message);
+  return error?.code === "42703" || /does not exist|Could not find the .* column/i.test(message);
 }
 
 function hasValue(value: unknown) {
@@ -89,8 +124,8 @@ async function runSongQuery(select: string, applyFilters: (query: any) => any) {
     query = applyFilters(query);
 
     const result = await query;
-    if (result.error && isMissingCreditColumnError(result.error)) {
-      const fallbackSelect = stripUnsupportedCreditColumns(currentSelect);
+    if (result.error && isMissingColumnError(result.error)) {
+      const fallbackSelect = stripUnsupportedColumns(currentSelect, extractMissingColumns(result.error));
       if (fallbackSelect && fallbackSelect !== currentSelect) {
         currentSelect = fallbackSelect;
         continue;
@@ -183,25 +218,36 @@ export async function saveSongRecord(
   insertPayload: Record<string, any>
 ) {
   const rows = await fetchSongRows(lookup, "id");
-  const payloadAttempts = [payload, stripUnsupportedCreditFields(payload)].filter(
-    (attempt, index, list) => index === 0 || JSON.stringify(attempt) !== JSON.stringify(list[0])
-  );
 
   let lastError: any = null;
+  let currentPayload = { ...payload };
+  let currentInsertPayload = { ...insertPayload };
+  let strippedColumns = false;
 
-  for (const attempt of payloadAttempts) {
+  for (;;) {
     if (rows.length > 0) {
-      const { error } = await supabase.from("songs").update(attempt).in("id", rows.map((row) => row.id));
-      if (!error) return { ids: rows.map((row) => row.id), strippedCredits: attempt !== payload };
+      const { error } = await supabase.from("songs").update(currentPayload).in("id", rows.map((row) => row.id));
+      if (!error) return { ids: rows.map((row) => row.id), strippedCredits: strippedColumns };
       lastError = error;
-      if (!isMissingCreditColumnError(error)) throw error;
-      continue;
+      if (!isMissingColumnError(error)) throw error;
+    } else {
+      const { error } = await supabase.from("songs").insert({ ...currentInsertPayload, ...currentPayload });
+      if (!error) return { ids: [] as string[], strippedCredits: strippedColumns };
+      lastError = error;
+      if (!isMissingColumnError(error)) throw error;
     }
 
-    const { error } = await supabase.from("songs").insert({ ...insertPayload, ...attempt });
-    if (!error) return { ids: [] as string[], strippedCredits: attempt !== payload };
-    lastError = error;
-    if (!isMissingCreditColumnError(error)) throw error;
+    const missingColumns = extractMissingColumns(lastError);
+    const nextPayload = stripUnsupportedFields(currentPayload, missingColumns);
+    const nextInsertPayload = stripUnsupportedFields(currentInsertPayload, missingColumns);
+
+    const payloadUnchanged = JSON.stringify(nextPayload) === JSON.stringify(currentPayload);
+    const insertUnchanged = JSON.stringify(nextInsertPayload) === JSON.stringify(currentInsertPayload);
+    if (payloadUnchanged && insertUnchanged) break;
+
+    strippedColumns = true;
+    currentPayload = nextPayload;
+    currentInsertPayload = nextInsertPayload;
   }
 
   if (lastError) throw lastError;
@@ -211,17 +257,18 @@ export async function saveSongRecord(
 export async function updateSongRecordsByIds(ids: string[], payload: Record<string, any>) {
   if (ids.length === 0) return;
 
-  const payloadAttempts = [payload, stripUnsupportedCreditFields(payload)].filter(
-    (attempt, index, list) => index === 0 || JSON.stringify(attempt) !== JSON.stringify(list[0])
-  );
-
   let lastError: any = null;
+  let currentPayload = { ...payload };
 
-  for (const attempt of payloadAttempts) {
-    const { error } = await supabase.from("songs").update(attempt).in("id", ids);
+  for (;;) {
+    const { error } = await supabase.from("songs").update(currentPayload).in("id", ids);
     if (!error) return;
     lastError = error;
-    if (!isMissingCreditColumnError(error)) throw error;
+    if (!isMissingColumnError(error)) throw error;
+
+    const nextPayload = stripUnsupportedFields(currentPayload, extractMissingColumns(error));
+    if (JSON.stringify(nextPayload) === JSON.stringify(currentPayload)) break;
+    currentPayload = nextPayload;
   }
 
   if (lastError) throw lastError;
