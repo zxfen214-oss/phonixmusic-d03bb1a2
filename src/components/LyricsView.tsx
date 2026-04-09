@@ -807,6 +807,7 @@ function LyricsContent({
                 <p
                   dir="auto"
                   style={{
+                    fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontSize,
                     fontWeight: isActive ? 700 : 600,
                     color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
@@ -1266,7 +1267,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   max={100}
                   step={0.1}
                   onValueChange={([value]) => handleSliderSeek(value)}
-                  className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                  hideThumb
+                  className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
                   <span>{formatTime(currentTime)}</span>
@@ -1303,7 +1305,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   max={100}
                   step={1}
                   onValueChange={([value]) => setVolume(value)}
-                  className="flex-1 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                  hideThumb
+                  className="flex-1 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
               </div>
 
@@ -1336,11 +1339,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
                   title={showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
                 >
-                  {showLyricsPanel ? (
-                    <EyeOff className="h-5 w-5 text-white/60" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-white/60" />
-                  )}
+                  <img
+                    src={lyricsIcon}
+                    alt="Lyrics"
+                    className="h-5 w-5 brightness-0 invert"
+                    style={{ opacity: showLyricsPanel ? 1 : 0.5 }}
+                  />
                 </button>
               </div>
             </motion.div>
@@ -1459,7 +1463,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 max={100}
                 step={0.1}
                 onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
-                className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                hideThumb
+                className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
               />
               <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
                 <span>{formatTime(currentTime)}</span>
