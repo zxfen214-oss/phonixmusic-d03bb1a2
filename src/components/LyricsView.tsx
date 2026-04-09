@@ -15,13 +15,12 @@ import {
   AlignLeft,
   Volume2,
   VolumeX,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
 import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
+import lyricsIcon from "@/assets/lyrics-icon.png";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -414,7 +413,7 @@ function KaraokeWordSpan({
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
           <KaraokeWordSpan
@@ -484,7 +483,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   if (shouldRenderFill) {
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {visualLineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan
@@ -504,7 +503,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   }
 
   return (
-    <span className="font-semibold inline-block" style={{ fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {text}
     </span>
   );
@@ -618,12 +617,12 @@ function useAppleMusicStyles(
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
       } else if (position < 0) {
-        opacity = Math.max(0, 0.3 - (distance - 1) * 0.2);
-        blur = blurEnabled ? 1.5 + distance * 0.8 : 0;
+        opacity = Math.max(0, 0.35 - (distance - 1) * 0.15);
+        blur = blurEnabled ? 2.5 + distance * 2.5 : 0;
         scale = 1;
       } else {
         opacity = Math.max(0.08, 0.5 - (distance - 1) * 0.06);
-        blur = blurEnabled ? Math.min(3, distance * 0.35) : 0;
+        blur = blurEnabled ? Math.min(12, 1.5 + distance * 2.5) : 0;
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
@@ -808,6 +807,7 @@ function LyricsContent({
                 <p
                   dir="auto"
                   style={{
+                    fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontSize,
                     fontWeight: isActive ? 700 : 600,
                     color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
@@ -1267,7 +1267,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   max={100}
                   step={0.1}
                   onValueChange={([value]) => handleSliderSeek(value)}
-                  className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                  hideThumb
+                  className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
                   <span>{formatTime(currentTime)}</span>
@@ -1304,7 +1305,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   max={100}
                   step={1}
                   onValueChange={([value]) => setVolume(value)}
-                  className="flex-1 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                  hideThumb
+                  className="flex-1 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
               </div>
 
@@ -1337,11 +1339,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
                   title={showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
                 >
-                  {showLyricsPanel ? (
-                    <EyeOff className="h-5 w-5 text-white/60" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-white/60" />
-                  )}
+                  <img
+                    src={lyricsIcon}
+                    alt="Lyrics"
+                    className="h-5 w-5 brightness-0 invert"
+                    style={{ opacity: showLyricsPanel ? 1 : 0.5 }}
+                  />
                 </button>
               </div>
             </motion.div>
@@ -1460,7 +1463,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 max={100}
                 step={0.1}
                 onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
-                className="mb-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[data-orientation=horizontal]]:h-1"
+                hideThumb
+                className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
               />
               <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
                 <span>{formatTime(currentTime)}</span>
