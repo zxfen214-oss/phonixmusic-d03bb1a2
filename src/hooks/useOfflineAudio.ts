@@ -44,18 +44,22 @@ export function useOfflineAudio(track: Track | null) {
       // Check if cached locally
       const cached = await isAudioCached(track.youtubeId!);
       
-      // Check if audio URL exists in database
+      // Check if audio URL exists in database — use limit(1) to handle duplicates
       const { data } = await supabase
         .from('songs')
         .select('audio_url')
         .eq('youtube_id', track.youtubeId)
-        .maybeSingle();
+        .not('audio_url', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      const audioUrl = data?.[0]?.audio_url || null;
 
       setStatus(prev => ({
         ...prev,
-        isAvailable: !!data?.audio_url,
+        isAvailable: !!audioUrl,
         isCached: cached,
-        audioUrl: data?.audio_url || null,
+        audioUrl,
       }));
     };
 
