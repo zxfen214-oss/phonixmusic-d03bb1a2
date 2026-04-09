@@ -346,9 +346,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       onSave?.(updatedTrack);
       await checkExistingSong();
       onClose();
-    } catch (error) {
-      console.error("Save error:", error);
-      toast({ title: "Error", description: "Failed to save song", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Save error:", error?.code, error?.message, error?.details, error?.hint, error);
+      toast({ title: "Error", description: `Failed to save song: ${error?.message || 'Unknown error'}`, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
