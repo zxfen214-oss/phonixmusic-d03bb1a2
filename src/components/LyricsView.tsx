@@ -334,41 +334,57 @@ function KaraokeWordSpan({
 
   const visualProgressRef = useRef(0);
   const lastTimeRef = useRef(currentTime);
+  const lastRawRef = useRef(0);
 
   let progress = rawProgress;
   if (frozen) {
     progress = 1;
     visualProgressRef.current = 1;
   } else {
-    // Detect seek (large backward jump in currentTime)
     const timeDelta = currentTime - lastTimeRef.current;
-    if (timeDelta < -0.5) {
-      // Seek detected — allow reset
-      visualProgressRef.current = rawProgress;
-    }
+    const rawDelta = rawProgress - lastRawRef.current;
     lastTimeRef.current = currentTime;
+    lastRawRef.current = rawProgress;
 
-    const prev = visualProgressRef.current;
-    if (rawProgress >= prev) {
-      const delta = rawProgress - prev;
-      const timeLeft = Math.max(0, endTime - currentTime);
-      const urgency = timeLeft < 0.08 ? 0.95 : timeLeft < 0.15 ? 0.85 : timeLeft < 0.3 ? 0.65 : 0;
-      const baseCatchUp = delta > 0.6 ? 0.65 : delta > 0.3 ? 0.5 : 0.35;
-      const catchUp = Math.min(0.96, baseCatchUp + urgency);
-      progress = prev + delta * catchUp;
-      if (rawProgress === 1 && progress > 0.97) progress = 1;
-      if (rawProgress >= 0.95 && timeLeft < 0.05) progress = 1;
+    // Detect seek (large backward jump)
+    if (timeDelta < -0.5) {
+      visualProgressRef.current = rawProgress;
+      progress = rawProgress;
     } else {
-      // Never go backward within a word — hold at previous value
-      progress = prev;
+      const prev = visualProgressRef.current;
+
+      if (rawProgress < 0.01 && prev > 0.5) {
+        // Word reset (new cycle or seek to before word)
+        visualProgressRef.current = rawProgress;
+        progress = rawProgress;
+      } else if (rawProgress >= prev) {
+        const delta = rawProgress - prev;
+        const timeLeft = Math.max(0, endTime - currentTime);
+        const urgency = timeLeft < 0.08 ? 0.95 : timeLeft < 0.15 ? 0.85 : timeLeft < 0.3 ? 0.6 : 0;
+        const baseCatchUp = delta > 0.6 ? 0.7 : delta > 0.3 ? 0.55 : 0.4;
+        const catchUp = Math.min(0.96, baseCatchUp + urgency);
+        progress = prev + delta * catchUp;
+        if (rawProgress === 1 && progress > 0.97) progress = 1;
+        if (rawProgress >= 0.95 && timeLeft < 0.05) progress = 1;
+      } else {
+        // Small backward jitter — allow minor correction to prevent stutter
+        const backDelta = prev - rawProgress;
+        if (backDelta < 0.05) {
+          // Tiny jitter — hold position
+          progress = prev;
+        } else {
+          // Larger backward — snap to raw
+          progress = rawProgress;
+        }
+      }
+      visualProgressRef.current = progress;
     }
-    visualProgressRef.current = progress;
   }
 
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
-  // <em> effect: wave uplift + glow based on karaoke duration
+  // <em> effect
   const emDuration = isEm ? Math.max(0, endTime - startTime) : 0;
   const emActive = isEm && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
   const emScale = emActive ? (emDuration > 1.5 ? 1.12 : emDuration > 1.0 ? 1.08 : 1.04) : 1;
@@ -379,14 +395,16 @@ function KaraokeWordSpan({
     <span
       className="relative inline-block align-baseline"
       style={{
-        transform: `translateY(${isDone ? -1 + emLift : emLift}px) scale(${emScale})`,
+        transform: `translateY(${isDone && !frozen ? -1 + emLift : emLift}px) scale(${emScale})`,
         transition: 'transform 300ms ease-out',
         textShadow: emGlow,
       }}
     >
-      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.2 : 0.35})` }}>
+      {/* Base text — half transparent for done/frozen lines */}
+      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})` }}>
         {word}
       </span>
+      {/* Fill overlay with soft gradient edge */}
       <span
         aria-hidden
         className="absolute left-0 top-0 bottom-0 pointer-events-none"
@@ -394,14 +412,10 @@ function KaraokeWordSpan({
           width: `${fillPercent}%`,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
-          opacity: frozen ? 0.35 : 1,
+          opacity: frozen ? 0.25 : 1,
           transition: 'opacity 300ms ease',
-          ...(isDone
-            ? {}
-            : {
-                maskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to right, white 70%, transparent 100%)',
-              }),
+          maskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
+          WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
@@ -617,12 +631,12 @@ function useAppleMusicStyles(
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
       } else if (position < 0) {
-        opacity = Math.max(0, 0.35 - (distance - 1) * 0.15);
-        blur = blurEnabled ? 2.5 + distance * 2.5 : 0;
+        opacity = Math.max(0.05, 0.35 - (distance - 1) * 0.12);
+        blur = blurEnabled ? 1.5 + distance * 1.2 : 0;
         scale = 1;
       } else {
         opacity = Math.max(0.08, 0.5 - (distance - 1) * 0.06);
-        blur = blurEnabled ? Math.min(12, 1.5 + distance * 2.5) : 0;
+        blur = blurEnabled ? Math.min(8, 0.8 + distance * 1.2) : 0;
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
