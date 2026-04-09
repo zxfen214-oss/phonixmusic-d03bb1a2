@@ -223,17 +223,32 @@ export async function saveSongRecord(
   let currentPayload = { ...payload };
   let currentInsertPayload = { ...insertPayload };
   let strippedColumns = false;
+  let attempts = 0;
+  const MAX_ATTEMPTS = 8;
 
   for (;;) {
+    attempts++;
+    if (attempts > MAX_ATTEMPTS) break;
     if (rows.length > 0) {
-      const { error } = await supabase.from("songs").update(currentPayload).in("id", rows.map((row) => row.id));
-      if (!error) return { ids: rows.map((row) => row.id), strippedCredits: strippedColumns };
+      // Update one row at a time to avoid bulk-update issues
+      const targetId = rows[0].id;
+      const { error } = await supabase.from("songs").update(currentPayload).eq("id", targetId);
+      if (!error) {
+        // Also update remaining rows if any
+        if (rows.length > 1) {
+          await supabase.from("songs").update(currentPayload).in("id", rows.slice(1).map((row) => row.id)).then(() => {});
+        }
+        return { ids: rows.map((row) => row.id), strippedCredits: strippedColumns };
+      }
       lastError = error;
+      console.warn("[songRecords] save error:", error.code, error.message, error.details, error.hint);
       if (!isMissingColumnError(error)) throw error;
     } else {
-      const { error } = await supabase.from("songs").insert({ ...currentInsertPayload, ...currentPayload });
+      const merged = { ...currentInsertPayload, ...currentPayload, needs_metadata: false };
+      const { error } = await supabase.from("songs").insert(merged);
       if (!error) return { ids: [] as string[], strippedCredits: strippedColumns };
       lastError = error;
+      console.warn("[songRecords] insert error:", error.code, error.message, error.details, error.hint);
       if (!isMissingColumnError(error)) throw error;
     }
 
