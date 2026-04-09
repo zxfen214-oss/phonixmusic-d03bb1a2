@@ -162,17 +162,6 @@ export function parseLRC(content: string): ParsedLyrics {
       const lastMatch = matches[matches.length - 1];
       let text = trimmedLine.slice(lastMatch.index).trim();
       
-      // Check for <nl> tag at end of text
-      let isNl = false;
-      if (text.endsWith('<nl>')) {
-        isNl = true;
-        text = text.slice(0, -4).trim();
-      }
-      if (text.startsWith('<nl>')) {
-        isNl = true;
-        text = text.slice(4).trim();
-      }
-
       // Check for inline alignment tags
       let lineAlignment = currentAlignment;
       if (text.startsWith('<right>')) {
@@ -182,31 +171,38 @@ export function parseLRC(content: string): ParsedLyrics {
         lineAlignment = 'left';
         text = text.slice(6).trim();
       }
+
+      // Handle <nl> as inline separator: "[00:05.00]Line A<nl>Line B"
+      // Line A becomes the main line with isNl=true
+      // Line B becomes a separate companion line at the same timestamp
+      let isNl = false;
+      let nlCompanionRaw: string | undefined;
+
+      const nlIdx = text.indexOf('<nl>');
+      if (nlIdx !== -1) {
+        isNl = true;
+        nlCompanionRaw = text.slice(nlIdx + 4).trim();
+        text = text.slice(0, nlIdx).trim();
+      }
+      
+      // Also support <nl> at end without companion (legacy)
+      if (text.endsWith('<nl>')) {
+        isNl = true;
+        text = text.slice(0, -4).trim();
+      }
       
       for (const { time } of matches) {
         if (text) {
-          // Try to parse eLRC word-level timestamps
           const elrcWords = parseELRCWords(text, time);
           
-          // Clean text for display (strip eLRC timestamps)
           let displayText = text;
           if (elrcWords) {
             displayText = elrcWords.map(w => w.word).join(' ');
           }
           
-          // Parse <em> tags — extract which words are emphasized
+          // Parse <em> tags
           const emWords = new Set<number>();
-          let emClean = displayText;
-          // Find <em>...</em> spans and mark word indices
-          const emRegex = /<em>(.*?)<\/em>/gi;
-          let emMatch;
-          // First, build a version without <em> tags to count word indices
-          const withoutEmTags = displayText.replace(/<\/?em>/gi, '');
-          const wordsArr = withoutEmTags.split(/\s+/);
-          // Now find em-tagged words
-          let tempText = displayText;
-          let wordIdx = 0;
-          const parts = tempText.split(/(<em>|<\/em>)/gi);
+          const parts = displayText.split(/(<em>|<\/em>)/gi);
           let inEm = false;
           let finalWords: string[] = [];
           for (const part of parts) {
@@ -218,7 +214,7 @@ export function parseLRC(content: string): ParsedLyrics {
               finalWords.push(w);
             }
           }
-          emClean = finalWords.join(' ');
+          const emClean = finalWords.join(' ');
           
           const { main, secondary } = extractParenthesized(emClean);
           lines.push({ 
@@ -230,6 +226,25 @@ export function parseLRC(content: string): ParsedLyrics {
             elrcWords: elrcWords || undefined,
             emWords: emWords.size > 0 ? emWords : undefined,
           });
+
+          // If there's an inline nl companion, add it as a separate line right after
+          if (nlCompanionRaw) {
+            const companionElrc = parseELRCWords(nlCompanionRaw, time);
+            let companionDisplay = nlCompanionRaw;
+            if (companionElrc) {
+              companionDisplay = companionElrc.map(w => w.word).join(' ');
+            }
+            // Strip any remaining tags
+            companionDisplay = companionDisplay.replace(/<\/?em>/gi, '');
+            const { main: cMain, secondary: cSecondary } = extractParenthesized(companionDisplay);
+            lines.push({
+              time: time + 0.001, // tiny offset so it sorts right after parent
+              text: cMain,
+              secondaryText: cSecondary,
+              alignment: lineAlignment,
+              elrcWords: companionElrc || undefined,
+            });
+          }
         }
       }
     }
