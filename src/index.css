@@ -1,16 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@300;400;500;600;700&display=swap');
 
 @font-face {
-  font-family: 'SF Pro Text';
-  src: url('./assets/SF-Pro-Text-Bold.ttf') format('truetype');
+  font-family: 'SF Pro Display';
+  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'SF Pro Text';
-  src: url('./assets/SF-Pro-Text-Bold.ttf') format('truetype');
+  font-family: 'SF Pro Display';
+  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
