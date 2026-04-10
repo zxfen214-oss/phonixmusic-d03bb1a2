@@ -303,7 +303,42 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
   );
 }
 
-// ─── Karaoke word span with smoothed fill ───
+// ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
+function getMobileBreakIndices(words: { word: string }[]): Set<number> {
+  const breakAfter = new Set<number>();
+  let charCount = 0;
+  for (let i = 0; i < words.length; i++) {
+    charCount += words[i].word.length;
+    if (i < words.length - 1) {
+      charCount += 1; // space
+      if (charCount >= 9) {
+        breakAfter.add(i);
+        charCount = 0;
+      }
+    }
+  }
+  return breakAfter;
+}
+
+// ─── Helper: split plain text into lines for mobile ───
+function splitTextForMobile(text: string): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = '';
+  for (const word of words) {
+    const candidate = currentLine ? currentLine + ' ' + word : word;
+    if (currentLine && candidate.length > 9) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = candidate;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+
 function KaraokeWordSpan({
   word,
   startTime,
@@ -426,6 +461,7 @@ function KaraokeWordSpan({
 
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
+  const breakIndices = useMemo(() => isMobile ? getMobileBreakIndices(words) : new Set<number>(), [words, isMobile]);
   return (
     <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
@@ -439,7 +475,7 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
             frozen={frozen}
             emphasisDuration={Math.max(0, w.endTime - w.startTime)}
           />
-          {idx < words.length - 1 ? " " : null}
+          {idx < words.length - 1 ? (breakIndices.has(idx) ? <br /> : " ") : null}
         </Fragment>
       ))}
     </span>
@@ -495,6 +531,8 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   const shouldRenderFill = visualLineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
+  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(visualLineWords) : new Set<number>(), [visualLineWords, isMobile]);
+
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
@@ -509,7 +547,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
               frozen={frozen}
               emphasisDuration={wordData.emphasisDuration}
             />
-            {idx < visualLineWords.length - 1 ? " " : null}
+            {idx < visualLineWords.length - 1 ? (mobileBreaks.has(idx) ? <br /> : " ") : null}
           </Fragment>
         ))}
       </span>
@@ -518,7 +556,9 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   return (
     <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-      {text}
+      {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+        <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+      )) : text}
     </span>
   );
 }
@@ -829,7 +869,9 @@ function LyricsContent({
                     margin: 0,
                   }}
                 >
-                  {text}
+                  {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+                    <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+                  )) : text}
                 </p>
                 {nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -1045,9 +1087,11 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
-    const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime);
+    // When karaoke is enabled, show lyrics 0.7s early
+    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.7 : 0;
+    const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime, earlyAppearance);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
-  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex]);
+  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, karaokeEnabled, karaokeWords]);
 
   // Unsynced lyrics
   useEffect(() => {

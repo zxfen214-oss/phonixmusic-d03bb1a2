@@ -346,25 +346,42 @@ export async function fetchSyncedLyrics(
 /**
  * Find the current lyric line based on the current playback time
  */
-export function getCurrentLyricIndex(lyrics: LyricLine[], currentTime: number): number {
+export function getCurrentLyricIndex(lyrics: LyricLine[], currentTime: number, earlyAppearance: number = 0): number {
   if (lyrics.length === 0) return -1;
   
   if (lyrics[0].time === -1) {
     return -1;
   }
   
-  if (currentTime < lyrics[0].time) {
+  // With early appearance, we check if the NEXT line should appear early
+  const effectiveTime = currentTime + earlyAppearance;
+  
+  if (currentTime < lyrics[0].time && effectiveTime < lyrics[0].time) {
     return -1;
   }
   
-  let currentIndex = 0;
+  // First, find the normal index based on actual time
+  let normalIndex = -1;
   for (let i = 0; i < lyrics.length; i++) {
     if (lyrics[i].time <= currentTime) {
-      currentIndex = i;
+      normalIndex = i;
     } else {
       break;
     }
   }
   
-  return currentIndex;
+  // Then check if the next line should appear early
+  if (earlyAppearance > 0) {
+    const nextIndex = normalIndex + 1;
+    if (nextIndex < lyrics.length && lyrics[nextIndex].time <= effectiveTime) {
+      return nextIndex;
+    }
+  }
+  
+  // For the very first line with early appearance
+  if (normalIndex === -1 && earlyAppearance > 0 && lyrics[0].time <= effectiveTime) {
+    return 0;
+  }
+  
+  return normalIndex;
 }
