@@ -246,12 +246,13 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
             {formatTime(currentTime)}
           </span>
           <Slider
-            value={[progress]}
-            max={100}
-            step={0.1}
-            onValueChange={([value]) => seekTo(value)}
-            className="flex-1"
-          />
+249:             value={[progress]}
+250:             max={100}
+251:             step={0.1}
+252:             onValueChange={([value]) => seekTo(value)}
+253:             growOnDrag
+254:             className="flex-1"
+255:           />
           <span className="text-xs text-muted-foreground w-10">
             {formatTime(currentTrack.duration)}
           </span>
@@ -363,6 +364,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
           max={100}
           step={1}
           onValueChange={([value]) => setVolume(value)}
+          growOnDrag
           className="flex-1"
         />
       </div>

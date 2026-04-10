@@ -1341,6 +1341,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   step={0.1}
                   onValueChange={([value]) => handleSliderSeek(value)}
                   hideThumb
+                  growOnDrag
                   className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
                 <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
@@ -1379,6 +1380,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   step={1}
                   onValueChange={([value]) => setVolume(value)}
                   hideThumb
+                  growOnDrag
                   className="flex-1 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
               </div>
@@ -1537,6 +1539,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 step={0.1}
                 onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
                 hideThumb
+                growOnDrag
                 className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
               />
               <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
