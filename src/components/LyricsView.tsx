@@ -414,8 +414,8 @@ function KaraokeWordSpan({
           overflow: 'hidden',
           opacity: frozen ? 0.25 : 1,
           transition: 'opacity 300ms ease',
-          maskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
-          WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
+          maskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
+          WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
@@ -427,7 +427,7 @@ function KaraokeWordSpan({
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
           <KaraokeWordSpan
@@ -497,7 +497,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   if (shouldRenderFill) {
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {visualLineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan
@@ -517,7 +517,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   }
 
   return (
-    <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {text}
     </span>
   );
@@ -627,16 +627,15 @@ function useAppleMusicStyles(
       const targetY = positionYMap.get(key) ?? (anchorY + position * 68);
 
       let opacity: number, blur: number, scale: number;
-      const blurEnabled = localStorage.getItem('lyrics-blur-enabled') !== 'false';
       if (isActive) {
         opacity = 1; blur = 0; scale = 1;
       } else if (position < 0) {
         opacity = Math.max(0.05, 0.35 - (distance - 1) * 0.12);
-        blur = blurEnabled ? 1.5 + distance * 1.2 : 0;
+        blur = 0;
         scale = 1;
       } else {
         opacity = Math.max(0.08, 0.5 - (distance - 1) * 0.06);
-        blur = blurEnabled ? Math.min(8, 0.8 + distance * 1.2) : 0;
+        blur = 0;
         scale = Math.max(0.94, 1 - distance * 0.008);
       }
 
@@ -821,7 +820,7 @@ function LyricsContent({
                 <p
                   dir="auto"
                   style={{
-                    fontFamily: "'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontSize,
                     fontWeight: isActive ? 700 : 600,
                     color: isActive ? "#ffffff" : "rgba(255, 255, 255, 0.35)",
