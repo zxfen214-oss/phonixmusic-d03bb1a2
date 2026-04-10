@@ -414,8 +414,8 @@ function KaraokeWordSpan({
           overflow: 'hidden',
           opacity: frozen ? 0.25 : 1,
           transition: 'opacity 300ms ease',
-          maskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
-          WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 6px), transparent 100%)',
+          maskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
+          WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
         }}
       >
         <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
