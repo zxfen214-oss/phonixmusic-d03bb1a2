@@ -461,6 +461,7 @@ function KaraokeWordSpan({
 
 // ─── eLRC line ───
 function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
+  const breakIndices = useMemo(() => isMobile ? getMobileBreakIndices(words) : new Set<number>(), [words, isMobile]);
   return (
     <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
@@ -474,7 +475,7 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
             frozen={frozen}
             emphasisDuration={Math.max(0, w.endTime - w.startTime)}
           />
-          {idx < words.length - 1 ? " " : null}
+          {idx < words.length - 1 ? (breakIndices.has(idx) ? <br /> : " ") : null}
         </Fragment>
       ))}
     </span>
@@ -530,6 +531,8 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   const shouldRenderFill = visualLineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
+  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(visualLineWords) : new Set<number>(), [visualLineWords, isMobile]);
+
   if (shouldRenderFill) {
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
@@ -544,7 +547,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
               frozen={frozen}
               emphasisDuration={wordData.emphasisDuration}
             />
-            {idx < visualLineWords.length - 1 ? " " : null}
+            {idx < visualLineWords.length - 1 ? (mobileBreaks.has(idx) ? <br /> : " ") : null}
           </Fragment>
         ))}
       </span>
@@ -553,7 +556,9 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   return (
     <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-      {text}
+      {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+        <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+      )) : text}
     </span>
   );
 }
