@@ -1045,9 +1045,11 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
-    const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime);
+    // When karaoke is enabled, show lyrics 0.7s early
+    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.7 : 0;
+    const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime, earlyAppearance);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
-  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex]);
+  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, karaokeEnabled, karaokeWords]);
 
   // Unsynced lyrics
   useEffect(() => {
