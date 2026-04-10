@@ -250,6 +250,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
             max={100}
             step={0.1}
             onValueChange={([value]) => seekTo(value)}
+            growOnDrag
             className="flex-1"
           />
           <span className="text-xs text-muted-foreground w-10">
@@ -363,6 +364,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
           max={100}
           step={1}
           onValueChange={([value]) => setVolume(value)}
+          growOnDrag
           className="flex-1"
         />
       </div>
