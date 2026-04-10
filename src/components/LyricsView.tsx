@@ -419,18 +419,31 @@ function KaraokeWordSpan({
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
-  // <em> effect
-  const emDuration = isEm ? Math.max(0, endTime - startTime) : 0;
-  const emActive = isEm && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
-  const emScale = emActive ? (emDuration > 1.5 ? 1.12 : emDuration > 1.0 ? 1.08 : 1.04) : 1;
-  const emLift = emActive ? (emDuration > 1.5 ? -4 : emDuration > 1.0 ? -2 : -1) : 0;
-  const emGlow = emActive ? `0 0 ${emDuration > 1.5 ? 16 : emDuration > 1.0 ? 10 : 6}px rgba(255,255,255,${emDuration > 1.5 ? 0.5 : 0.3})` : 'none';
+  // Emphasis for words longer than 1.5s
+  const wordDuration = Math.max(0, endTime - startTime);
+  const isLongWord = wordDuration > 1.5;
+  const isEmOrLong = isEm || isLongWord;
+
+  const emDuration = isEmOrLong ? wordDuration : 0;
+  const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
+  const emScale = emActive ? (emDuration > 2.5 ? 1.12 : emDuration > 1.5 ? 1.06 : 1.04) : 1;
+  const emGlow = emActive ? `0 0 ${emDuration > 2.5 ? 16 : emDuration > 1.5 ? 8 : 6}px rgba(255,255,255,${emDuration > 2.5 ? 0.5 : 0.25})` : 'none';
+
+  // Subtle uplift: slowly rises during fill, reaches peak at completion
+  const upliftAmount = 1.5; // subtle px
+  let translateY = 0;
+  if (!frozen && progress > 0 && progress < 1) {
+    // Smoothly rise as the word fills
+    translateY = -upliftAmount * progress;
+  } else if (isDone && !frozen) {
+    translateY = -upliftAmount;
+  }
 
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
-        transform: `translateY(${isDone && !frozen ? -1 + emLift : emLift}px) scale(${emScale})`,
+        transform: `translateY(${translateY}px) scale(${emScale})`,
         transition: 'transform 300ms ease-out',
         textShadow: emGlow,
       }}
@@ -531,9 +544,12 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   const shouldRenderFill = visualLineWords.length > 0 && (isCurrentLine || currentTime >= lineEndTime);
   const frozen = !isCurrentLine && currentTime >= lineEndTime;
 
-  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(visualLineWords) : new Set<number>(), [visualLineWords, isMobile]);
+  // Consistent line breaks: compute from text words (same for active, inactive, frozen)
+  const textWords = useMemo(() => text.split(/\s+/), [text]);
+  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(textWords.map(w => ({ word: w }))) : new Set<number>(), [textWords, isMobile]);
 
   if (shouldRenderFill) {
+    // Map visualLineWords to textWords indices for consistent breaks
     return (
       <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
         {visualLineWords.map((wordData, idx) => (
@@ -1087,8 +1103,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
-    // When karaoke is enabled, show lyrics 0.7s early
-    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.7 : 0;
+    // When karaoke is enabled, show lyrics 0.4s early
+    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.4 : 0;
     const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime, earlyAppearance);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
   }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, karaokeEnabled, karaokeWords]);
