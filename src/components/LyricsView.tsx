@@ -869,7 +869,9 @@ function LyricsContent({
                     margin: 0,
                   }}
                 >
-                  {text}
+                  {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+                    <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+                  )) : text}
                 </p>
                 {nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
