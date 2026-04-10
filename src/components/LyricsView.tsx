@@ -303,7 +303,42 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
   );
 }
 
-// ─── Karaoke word span with smoothed fill ───
+// ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
+function getMobileBreakIndices(words: { word: string }[]): Set<number> {
+  const breakAfter = new Set<number>();
+  let charCount = 0;
+  for (let i = 0; i < words.length; i++) {
+    charCount += words[i].word.length;
+    if (i < words.length - 1) {
+      charCount += 1; // space
+      if (charCount >= 9) {
+        breakAfter.add(i);
+        charCount = 0;
+      }
+    }
+  }
+  return breakAfter;
+}
+
+// ─── Helper: split plain text into lines for mobile ───
+function splitTextForMobile(text: string): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = '';
+  for (const word of words) {
+    const candidate = currentLine ? currentLine + ' ' + word : word;
+    if (currentLine && candidate.length > 9) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = candidate;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+
 function KaraokeWordSpan({
   word,
   startTime,
