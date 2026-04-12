@@ -1286,6 +1286,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     bounceIntensity,
     isLoadingLyrics,
     defaultAlignment: parsedLyrics?.defaultAlignment,
+    mobileCharLimit,
   };
 
   return (
