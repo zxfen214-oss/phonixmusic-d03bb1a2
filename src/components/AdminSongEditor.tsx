@@ -80,6 +80,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     lyricColor: '',
     writtenBy: '',
     creditsNames: '',
+    earlyAppearance: 0,
+    mobileCharLimit: 9,
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
@@ -95,6 +97,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     lyric_color: string | null;
     synced_lyrics: string | null;
     plain_lyrics: string | null;
+    karaoke_data: any;
   } | null>(null);
   const [plainLyrics, setPlainLyrics] = useState("");
   
