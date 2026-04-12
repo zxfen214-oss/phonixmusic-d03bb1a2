@@ -120,13 +120,14 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const checkExistingSong = async () => {
     try {
-      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names";
+      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names, karaoke_data";
       const { merged } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
         selectFields
       );
 
       if (merged) {
+        const karaokeData = merged.karaoke_data as any;
         setExistingSong({
           id: merged.id,
           lyrics_url: merged.lyrics_url ?? null,
@@ -137,6 +138,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           lyric_color: merged.lyric_color ?? null,
           synced_lyrics: merged.synced_lyrics ?? null,
           plain_lyrics: (merged as any).plain_lyrics ?? null,
+          karaoke_data: karaokeData ?? null,
         });
         setFormData(prev => ({
           ...prev,
@@ -146,6 +148,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           lyricColor: merged.lyric_color || '',
           writtenBy: (merged as any).written_by || '',
           creditsNames: (merged as any).credits_names || '',
+          earlyAppearance: karaokeData?.early_appearance ?? 0,
+          mobileCharLimit: karaokeData?.mobile_char_limit ?? 9,
         }));
         setPlainLyrics((merged as any).plain_lyrics || "");
 
