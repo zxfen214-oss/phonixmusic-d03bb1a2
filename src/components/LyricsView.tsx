@@ -496,8 +496,8 @@ function ELRCLine({ words, currentTime, isMobile, frozen, charLimit }: { words: 
 }
 
 // ─── Karaoke line (renders for BOTH active and recently-passed lines) ───
-function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
-  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
+function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile, charLimit }: {
+  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean; charLimit?: number;
 }) {
   const hasLineIndex = useMemo(() => words.some((w) => typeof w.lineIndex === "number"), [words]);
 
