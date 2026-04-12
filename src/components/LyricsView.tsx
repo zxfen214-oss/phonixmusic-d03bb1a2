@@ -304,14 +304,14 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
-function getMobileBreakIndices(words: { word: string }[]): Set<number> {
+function getMobileBreakIndices(words: { word: string }[], charLimit: number = 9): Set<number> {
   const breakAfter = new Set<number>();
   let charCount = 0;
   for (let i = 0; i < words.length; i++) {
     charCount += words[i].word.length;
     if (i < words.length - 1) {
       charCount += 1; // space
-      if (charCount >= 9) {
+      if (charCount >= charLimit) {
         breakAfter.add(i);
         charCount = 0;
       }
@@ -321,13 +321,13 @@ function getMobileBreakIndices(words: { word: string }[]): Set<number> {
 }
 
 // ─── Helper: split plain text into lines for mobile ───
-function splitTextForMobile(text: string): string[] {
+function splitTextForMobile(text: string, charLimit: number = 9): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let currentLine = '';
   for (const word of words) {
     const candidate = currentLine ? currentLine + ' ' + word : word;
-    if (currentLine && candidate.length > 9) {
+    if (currentLine && candidate.length > charLimit) {
       lines.push(currentLine);
       currentLine = word;
     } else {
