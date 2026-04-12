@@ -295,6 +295,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       let coverUrl = track.artwork || null;
       let lyricsUrl = existingSong?.lyrics_url || null;
       let audioUrl = existingSong?.audio_url || null;
+      let syncedLyricsContent: string | null = existingSong?.synced_lyrics || null;
 
       if (coverFile) {
         const url = await uploadFile(coverFile, "covers");
@@ -302,6 +303,12 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       }
 
       if (lyricsFile) {
+        // Read file content for synced_lyrics (source of truth)
+        try {
+          syncedLyricsContent = await lyricsFile.text();
+        } catch (e) {
+          console.warn("Failed to read LRC file text:", e);
+        }
         const url = await uploadFile(lyricsFile, "lyrics");
         if (url) lyricsUrl = url;
       }
@@ -313,6 +320,14 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           await saveAudioFile(track.id, audioFile, audioFile.type || "audio/mpeg");
         }
       }
+
+      // Merge early_appearance and mobile_char_limit into karaoke_data
+      const existingKaraokeData = existingSong?.karaoke_data || {};
+      const mergedKaraokeData = {
+        ...existingKaraokeData,
+        early_appearance: formData.earlyAppearance,
+        mobile_char_limit: formData.mobileCharLimit,
+      };
 
       const baseSongData: Record<string, any> = {
         title: formData.title,
@@ -330,6 +345,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         plain_lyrics: plainLyrics || null,
         written_by: formData.writtenBy || null,
         credits_names: formData.creditsNames || null,
+        synced_lyrics: syncedLyricsContent,
+        karaoke_data: mergedKaraokeData,
       };
 
       // Use resilient save that handles duplicates and missing columns
@@ -680,10 +697,10 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               {/* Lyrics Upload */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Synced Lyrics (.lrc)</Label>
-                {existingSong?.lyrics_url ? (
+                {existingSong?.lyrics_url || existingSong?.synced_lyrics ? (
                   <div className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg">
                     <FileText className="h-4 w-4 text-accent" />
-                    <span className="text-sm flex-1 truncate">Lyrics attached</span>
+                    <span className="text-sm flex-1 truncate">Lyrics attached{existingSong?.synced_lyrics ? ' (synced)' : ''}</span>
                     <Button variant="ghost" size="sm" onClick={handleRemoveLyrics} className="text-destructive h-7 text-xs">Remove</Button>
                   </div>
                 ) : (
@@ -693,6 +710,26 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <input type="file" accept=".lrc,.txt" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
                   </label>
                 )}
+              </div>
+
+              {/* Early Appearance */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Early Lyric Appearance</Label>
+                  <span className="text-xs text-muted-foreground">{formData.earlyAppearance === 0 ? 'Disabled' : `${formData.earlyAppearance.toFixed(1)}s`}</span>
+                </div>
+                <Slider value={[formData.earlyAppearance]} min={0} max={1.5} step={0.1} onValueChange={([value]) => setFormData({ ...formData, earlyAppearance: value })} className="w-full" />
+                <p className="text-[10px] text-muted-foreground">Show lyrics ahead of their timestamp (0 = disabled, up to 1.5s early)</p>
+              </div>
+
+              {/* Mobile Line Break Char Limit */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Mobile Line Break (chars)</Label>
+                  <span className="text-xs text-muted-foreground">{formData.mobileCharLimit}</span>
+                </div>
+                <Slider value={[formData.mobileCharLimit]} min={9} max={40} step={1} onValueChange={([value]) => setFormData({ ...formData, mobileCharLimit: value })} className="w-full" />
+                <p className="text-[10px] text-muted-foreground">Character limit before wrapping to next line on mobile (default 9)</p>
               </div>
 
               {/* Static / Plain Lyrics */}
@@ -776,6 +813,11 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   </div>
                 )}
               </div>
+
+              <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
             </motion.div>
           </TabsContent>
 
