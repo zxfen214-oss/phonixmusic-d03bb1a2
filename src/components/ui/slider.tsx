@@ -25,7 +25,7 @@ const Slider = React.forwardRef<
           transition: 'height 200ms ease',
         }}
       >
-        <SliderPrimitive.Range className="absolute h-full bg-primary" />
+        <SliderPrimitive.Range className="absolute inset-y-0 bg-primary" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         className={cn(

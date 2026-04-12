@@ -304,14 +304,14 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
-function getMobileBreakIndices(words: { word: string }[]): Set<number> {
+function getMobileBreakIndices(words: { word: string }[], charLimit: number = 9): Set<number> {
   const breakAfter = new Set<number>();
   let charCount = 0;
   for (let i = 0; i < words.length; i++) {
     charCount += words[i].word.length;
     if (i < words.length - 1) {
       charCount += 1; // space
-      if (charCount >= 9) {
+      if (charCount >= charLimit) {
         breakAfter.add(i);
         charCount = 0;
       }
@@ -321,13 +321,13 @@ function getMobileBreakIndices(words: { word: string }[]): Set<number> {
 }
 
 // ─── Helper: split plain text into lines for mobile ───
-function splitTextForMobile(text: string): string[] {
+function splitTextForMobile(text: string, charLimit: number = 9): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let currentLine = '';
   for (const word of words) {
     const candidate = currentLine ? currentLine + ' ' + word : word;
-    if (currentLine && candidate.length > 9) {
+    if (currentLine && candidate.length > charLimit) {
       lines.push(currentLine);
       currentLine = word;
     } else {
@@ -473,8 +473,8 @@ function KaraokeWordSpan({
 }
 
 // ─── eLRC line ───
-function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean }) {
-  const breakIndices = useMemo(() => isMobile ? getMobileBreakIndices(words) : new Set<number>(), [words, isMobile]);
+function ELRCLine({ words, currentTime, isMobile, frozen, charLimit }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean; charLimit?: number }) {
+  const breakIndices = useMemo(() => isMobile ? getMobileBreakIndices(words, charLimit) : new Set<number>(), [words, isMobile, charLimit]);
   return (
     <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
       {words.map((w, idx) => (
@@ -496,8 +496,8 @@ function ELRCLine({ words, currentTime, isMobile, frozen }: { words: { word: str
 }
 
 // ─── Karaoke line (renders for BOTH active and recently-passed lines) ───
-function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile }: {
-  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean;
+function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, currentTime, isCurrentLine, isMobile, charLimit }: {
+  text: string; words: KaraokeWord[]; lineIndex: number; lineStartTime: number; lineEndTime: number; currentTime: number; isCurrentLine: boolean; isMobile: boolean; charLimit?: number;
 }) {
   const hasLineIndex = useMemo(() => words.some((w) => typeof w.lineIndex === "number"), [words]);
 
@@ -546,7 +546,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   // Consistent line breaks: compute from text words (same for active, inactive, frozen)
   const textWords = useMemo(() => text.split(/\s+/), [text]);
-  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(textWords.map(w => ({ word: w }))) : new Set<number>(), [textWords, isMobile]);
+  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(textWords.map(w => ({ word: w })), charLimit) : new Set<number>(), [textWords, isMobile, charLimit]);
 
   if (shouldRenderFill) {
     // Map visualLineWords to textWords indices for consistent breaks
@@ -572,7 +572,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   return (
     <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-      {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+      {isMobile ? splitTextForMobile(text, charLimit).map((line, i, arr) => (
         <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
       )) : text}
     </span>
@@ -587,7 +587,8 @@ const MemoKaraokeLine = React.memo(KaraokeLine, (prev, next) => {
     prev.lineStartTime !== next.lineStartTime ||
     prev.lineEndTime !== next.lineEndTime ||
     prev.isCurrentLine !== next.isCurrentLine ||
-    prev.isMobile !== next.isMobile
+    prev.isMobile !== next.isMobile ||
+    prev.charLimit !== next.charLimit
   ) {
     return false;
   }
@@ -777,9 +778,9 @@ function useAppleMusicStyles(
 
 // ─── Lyrics content (shared between desktop & mobile) ───
 function LyricsContent({
-  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment,
+  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment, mobileCharLimit,
 }: {
-  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right';
+  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right'; mobileCharLimit?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -835,10 +836,10 @@ function LyricsContent({
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
-                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -853,10 +854,10 @@ function LyricsContent({
               </>
             ) : !isIntro && karaokeEnabled ? (
               <>
-                <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -885,7 +886,7 @@ function LyricsContent({
                     margin: 0,
                   }}
                 >
-                  {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+                  {isMobile ? splitTextForMobile(text, mobileCharLimit).map((line, i, arr) => (
                     <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
                   )) : text}
                 </p>
@@ -955,6 +956,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [creditsWrittenBy, setCreditsWrittenBy] = useState("");
   const [creditsNames, setCreditsNames] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
+  const [earlyAppearance, setEarlyAppearance] = useState(0);
+  const [mobileCharLimit, setMobileCharLimit] = useState(9);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -1059,8 +1062,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
             else setCreditsNames("");
             if (song.karaoke_enabled && song.karaoke_data) {
-              const data = song.karaoke_data as unknown as KaraokeData;
+              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
+              if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
+              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+            } else if (song.karaoke_data) {
+              // No karaoke words but may have settings
+              const data = song.karaoke_data as any;
+              if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
+              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
             }
           } else {
             setStaticLyricsText("");
@@ -1103,11 +1113,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
-    // When karaoke is enabled, show lyrics 0.4s early
-    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.4 : 0;
+    // Use per-song early appearance setting (default 0 = disabled)
     const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime, earlyAppearance);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
-  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, karaokeEnabled, karaokeWords]);
+  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, earlyAppearance]);
 
   // Unsynced lyrics
   useEffect(() => {
@@ -1277,6 +1286,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     bounceIntensity,
     isLoadingLyrics,
     defaultAlignment: parsedLyrics?.defaultAlignment,
+    mobileCharLimit,
   };
 
   return (
