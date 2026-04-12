@@ -546,7 +546,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   // Consistent line breaks: compute from text words (same for active, inactive, frozen)
   const textWords = useMemo(() => text.split(/\s+/), [text]);
-  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(textWords.map(w => ({ word: w }))) : new Set<number>(), [textWords, isMobile]);
+  const mobileBreaks = useMemo(() => isMobile ? getMobileBreakIndices(textWords.map(w => ({ word: w })), charLimit) : new Set<number>(), [textWords, isMobile, charLimit]);
 
   if (shouldRenderFill) {
     // Map visualLineWords to textWords indices for consistent breaks
@@ -572,7 +572,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
 
   return (
     <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-      {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+      {isMobile ? splitTextForMobile(text, charLimit).map((line, i, arr) => (
         <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
       )) : text}
     </span>
