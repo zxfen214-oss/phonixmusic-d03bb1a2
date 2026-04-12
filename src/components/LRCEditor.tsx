@@ -100,18 +100,26 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
     try {
       const { merged } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
-        "id, lyrics_url"
+        "id, lyrics_url, synced_lyrics"
       );
 
+      // Priority 1: synced_lyrics (raw LRC text in DB — source of truth)
+      if (merged?.synced_lyrics) {
+        const parsed = parseLRC(merged.synced_lyrics);
+        if (parsed.lines.length > 0) {
+          setLines(parsed.lines);
+          setRawLyricsInput(parsed.synced_lyrics);
+          return;
+        }
+      }
+
+      // Priority 2: lyrics_url (.lrc file)
       if (merged?.lyrics_url) {
-        const response = await fetch(merged.lyrics_url);
-        if (response.ok) {
-          const content = await response.text();
-          const parsed = parseLRC(content);
-          if (parsed.lines.length > 0) {
-            setLines(parsed.lines);
-            setRawLyricsInput(parsed.lines.map(l => l.text).join("\n"));
-          }
+        const content = await fetchTextUtf8(merged.lyrics_url);
+        const parsed = parseLRC(content);
+        if (parsed.lines.length > 0) {
+          setLines(parsed.lines);
+          setRawLyricsInput(parsed.lines.map(l => l.text).join("\n"));
         }
       }
     } catch (error) {
@@ -255,26 +263,33 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
 
     try {
       const lrcContent = generateLRC();
-      const fileName = `lyrics/${Date.now()}-${Math.random().toString(36).substring(7)}.lrc`;
 
-      // Upload LRC file
-      const { error: uploadError } = await supabase.storage
-        .from("song-assets")
-        .upload(fileName, lrcContent, {
-          contentType: "text/plain",
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("song-assets")
-        .getPublicUrl(fileName);
-
-      // Update or insert song record using resilient helper
+      // Save raw LRC text as synced_lyrics (source of truth) + optionally upload file
       const lookup = { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album };
+      const updatePayload: Record<string, any> = {
+        synced_lyrics: lrcContent,
+      };
+
+      // Also upload as .lrc file for backwards compat
+      try {
+        const fileName = `lyrics/${Date.now()}-${Math.random().toString(36).substring(7)}.lrc`;
+        const { error: uploadError } = await supabase.storage
+          .from("song-assets")
+          .upload(fileName, lrcContent, { contentType: "text/plain" });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("song-assets")
+            .getPublicUrl(fileName);
+          updatePayload.lyrics_url = urlData.publicUrl;
+        }
+      } catch (e) {
+        console.warn("LRC file upload failed, but synced_lyrics will still be saved:", e);
+      }
+
       await saveSongRecord(
         lookup,
-        { lyrics_url: urlData.publicUrl },
+        updatePayload,
         {
           title: track.title,
           artist: track.artist,
