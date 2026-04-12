@@ -1061,8 +1061,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
             else setCreditsNames("");
             if (song.karaoke_enabled && song.karaoke_data) {
-              const data = song.karaoke_data as unknown as KaraokeData;
+              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
+              if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
+              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+            } else if (song.karaoke_data) {
+              // No karaoke words but may have settings
+              const data = song.karaoke_data as any;
+              if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
+              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
             }
           } else {
             setStaticLyricsText("");
@@ -1105,11 +1112,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
-    // When karaoke is enabled, show lyrics 0.4s early
-    const earlyAppearance = karaokeEnabled && karaokeWords.length > 0 ? 0.4 : 0;
+    // Use per-song early appearance setting (default 0 = disabled)
     const newIndex = getCurrentLyricIndex(parsedLyrics.lines, smoothTime, earlyAppearance);
     if (newIndex !== currentLineIndex) setCurrentLineIndex(newIndex);
-  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, karaokeEnabled, karaokeWords]);
+  }, [smoothTime, parsedLyrics, currentTrack, currentLineIndex, earlyAppearance]);
 
   // Unsynced lyrics
   useEffect(() => {
