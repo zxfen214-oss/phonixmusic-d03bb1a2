@@ -392,12 +392,12 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const handleRemoveLyrics = async () => {
     if (!existingSong) return;
-    const { error } = await supabase.from("songs").update({ lyrics_url: null }).eq("id", existingSong.id);
+    const { error } = await supabase.from("songs").update({ lyrics_url: null, synced_lyrics: null }).eq("id", existingSong.id);
     if (error) {
       toast({ title: "Error", description: "Failed to remove lyrics", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "Lyrics removed" });
-      setExistingSong({ ...existingSong, lyrics_url: null });
+      setExistingSong({ ...existingSong, lyrics_url: null, synced_lyrics: null });
     }
   };
 
