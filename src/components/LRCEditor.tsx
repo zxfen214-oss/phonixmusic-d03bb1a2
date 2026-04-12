@@ -105,10 +105,10 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
 
       // Priority 1: synced_lyrics (raw LRC text in DB — source of truth)
       if (merged?.synced_lyrics) {
-        const parsed = parseLRC(merged.synced_lyrics);
+        const parsed = parseLRC(merged.synced_lyrics as string);
         if (parsed.lines.length > 0) {
           setLines(parsed.lines);
-          setRawLyricsInput(parsed.synced_lyrics);
+          setRawLyricsInput(merged.synced_lyrics as string);
           return;
         }
       }
