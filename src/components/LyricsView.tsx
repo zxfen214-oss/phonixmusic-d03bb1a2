@@ -835,10 +835,10 @@ function LyricsContent({
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
-                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} />
+                    <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -853,10 +853,10 @@ function LyricsContent({
               </>
             ) : !isIntro && karaokeEnabled ? (
               <>
-                <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
                   <div style={{ marginTop: '12px', opacity: isActive ? 0.5 : 0.35 }}>
-                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} />
+                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
@@ -885,7 +885,7 @@ function LyricsContent({
                     margin: 0,
                   }}
                 >
-                  {isMobile ? splitTextForMobile(text).map((line, i, arr) => (
+                  {isMobile ? splitTextForMobile(text, mobileCharLimit).map((line, i, arr) => (
                     <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
                   )) : text}
                 </p>
