@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { uploadPublicStorageFile } from "@/lib/storageUploads";
 import { saveAudioFile } from "@/lib/database";
 import { fetchMergedSongRecord, saveSongRecord, updateSongRecordsByIds } from "@/lib/songRecords";
+import { fetchTextUtf8 } from "@/lib/lyrics";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,16 +238,21 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       toast({ title: "Error", description: "Save the song first before adding special commands", variant: "destructive" });
       return;
     }
-    
-    // Fetch current synced_lyrics
-    const { data } = await supabase.from("songs").select("synced_lyrics").eq("id", existingSong.id).single();
-    if (!data?.synced_lyrics) {
+
+    let lyrics = existingSong.synced_lyrics;
+    if (!lyrics && existingSong.lyrics_url) {
+      try {
+        lyrics = await fetchTextUtf8(existingSong.lyrics_url);
+      } catch (error) {
+        console.error("Failed to load attached lyrics file:", error);
+      }
+    }
+
+    if (!lyrics) {
       toast({ title: "Error", description: "No synced lyrics to add commands to", variant: "destructive" });
       return;
     }
-    
-    let lyrics = data.synced_lyrics;
-    
+
     // Remove existing special command lines first
     const lines = lyrics.split('\n').filter(line => {
       // Keep regular lyric lines, remove standalone special commands
@@ -279,13 +285,29 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     });
     
     const newLyrics = lines.join('\n');
-    
-    const { error } = await supabase.from("songs").update({ synced_lyrics: newLyrics }).eq("id", existingSong.id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to apply commands", variant: "destructive" });
-    } else {
+
+    try {
+      await saveSongRecord(
+        {
+          youtubeId: track.youtubeId,
+          title: formData.title,
+          artist: formData.artist,
+          album: formData.album,
+        },
+        { synced_lyrics: newLyrics },
+        {
+          title: formData.title,
+          artist: formData.artist,
+          album: formData.album || null,
+          duration: track.duration,
+          youtube_id: track.youtubeId || null,
+        }
+      );
       toast({ title: "Success", description: `Applied ${specialCommands.length} special command(s)` });
-      setExistingSong({ ...existingSong, synced_lyrics: newLyrics });
+      await checkExistingSong();
+    } catch (error) {
+      console.error("Failed to apply special commands:", error);
+      toast({ title: "Error", description: "Failed to apply commands", variant: "destructive" });
     }
   };
 
@@ -312,10 +334,16 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     setIsSaving(true);
 
     try {
-      let coverUrl = track.artwork || null;
-      let lyricsUrl = existingSong?.lyrics_url || null;
-      let audioUrl = existingSong?.audio_url || null;
-      let syncedLyricsContent: string | null = existingSong?.synced_lyrics || null;
+      const lookup = { youtubeId: track.youtubeId, title: formData.title, artist: formData.artist, album: formData.album };
+      const { merged: latestSong } = await fetchMergedSongRecord(
+        lookup,
+        "id, cover_url, lyrics_url, audio_url, synced_lyrics, karaoke_data, updated_at, created_at"
+      );
+
+      let coverUrl = coverPreview || latestSong?.cover_url || track.artwork || null;
+      let lyricsUrl = latestSong?.lyrics_url || existingSong?.lyrics_url || null;
+      let audioUrl = latestSong?.audio_url || existingSong?.audio_url || null;
+      let syncedLyricsContent: string | null = latestSong?.synced_lyrics || existingSong?.synced_lyrics || null;
 
       if (coverFile) {
         const url = await uploadFile(coverFile, "covers");
@@ -342,7 +370,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       }
 
       // Merge early_appearance and mobile_char_limit into karaoke_data
-      const existingKaraokeData = existingSong?.karaoke_data || {};
+      const existingKaraokeData = latestSong?.karaoke_data || existingSong?.karaoke_data || {};
       const mergedKaraokeData = {
         ...existingKaraokeData,
         early_appearance: formData.earlyAppearance,
@@ -370,7 +398,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       };
 
       // Use resilient save that handles duplicates and missing columns
-      const lookup = { youtubeId: track.youtubeId, title: formData.title, artist: formData.artist, album: formData.album };
       const insertPayload = {
         youtube_id: track.youtubeId || null,
         duration: track.duration,
@@ -576,7 +603,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                         setCoverFile(null);
                         // Save directly
                         if (existingSong) {
-                          await supabase.from("songs").update({ cover_url: thumb }).eq("id", existingSong.id);
+                          await updateSongRecordsByIds(existingSong.match_ids || [existingSong.id], { cover_url: thumb });
                         }
                         toast({ title: "Cover Found", description: "AudioDB cover art applied" });
                       } else {

@@ -25,6 +25,8 @@ type KaraokeDataShape = {
 };
 
 const FALLBACK_UNSUPPORTED_COLUMNS = new Set(["written_by", "credits_names"]);
+const REQUIRED_SELECT_COLUMNS = ["id", "updated_at", "created_at"];
+const NON_PERSISTED_FIELDS = new Set(["id", "match_ids", "created_at", "updated_at"]);
 
 function normalizeText(value?: string | null) {
   const trimmed = value?.trim();
@@ -86,6 +88,26 @@ function isMissingColumnError(error: any) {
   return error?.code === "42703" || /does not exist|Could not find the .* column/i.test(message);
 }
 
+function ensureSelectColumns(select: string, columns: string[]) {
+  const requested = select
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const requestedBaseColumns = new Set(
+    requested
+      .map((part) => part.split(/\s+/)[0]?.replace(/["']/g, ""))
+      .filter(Boolean)
+  );
+
+  const next = [...requested];
+  columns.forEach((column) => {
+    if (!requestedBaseColumns.has(column)) next.push(column);
+  });
+
+  return next.join(", ");
+}
+
 function hasValue(value: unknown) {
   if (value === null || value === undefined) return false;
   if (typeof value === "string") return value.trim().length > 0;
@@ -96,6 +118,22 @@ function hasValue(value: unknown) {
 
 function isPlainObject(value: unknown): value is Record<string, any> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function removeUndefinedFields<T extends Record<string, any>>(payload: T) {
+  const next: Record<string, any> = {};
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined) next[key] = value;
+  });
+  return next as T;
+}
+
+function stripNonPersistedFields<T extends Record<string, any>>(payload: T) {
+  const next = { ...payload };
+  NON_PERSISTED_FIELDS.forEach((field) => {
+    delete (next as any)[field];
+  });
+  return next as T;
 }
 
 function getKaraokeWordCount(value: unknown) {
@@ -159,7 +197,7 @@ function sortRows(rows: SongRow[]) {
 }
 
 async function runSongQuery(select: string, applyFilters: (query: any) => any) {
-  let currentSelect = select;
+  let currentSelect = ensureSelectColumns(select, REQUIRED_SELECT_COLUMNS);
 
   for (;;) {
     let query = supabase
@@ -284,19 +322,40 @@ export async function saveSongRecord(
 ) {
   const rows = await fetchSongRows(
     lookup,
-    "id, karaoke_data, synced_lyrics, lyrics_url, plain_lyrics, karaoke_enabled, updated_at, created_at"
+    "id, title, artist, album, youtube_id, cover_url, lyrics_url, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, written_by, credits_names, updated_at, created_at"
   );
   const mergedExisting = mergeSongRecords(rows);
 
   let lastError: any = null;
-  let currentPayload = { ...payload };
-  if (mergedExisting?.karaoke_data || currentPayload.karaoke_data) {
+  let currentPayload = removeUndefinedFields(
+    stripNonPersistedFields({
+      ...(mergedExisting ? { ...mergedExisting } : {}),
+      ...payload,
+    })
+  );
+
+  if (
+    mergedExisting?.karaoke_data ||
+    Object.prototype.hasOwnProperty.call(payload, "karaoke_data")
+  ) {
+    if (payload.karaoke_data === null) {
+      currentPayload.karaoke_data = null;
+    } else {
     currentPayload.karaoke_data = mergeKaraokeData(
       mergedExisting?.karaoke_data as KaraokeDataShape | undefined,
       currentPayload.karaoke_data as KaraokeDataShape | undefined
     );
+    }
   }
-  let currentInsertPayload = { ...insertPayload };
+
+  let currentInsertPayload = removeUndefinedFields(
+    stripNonPersistedFields({
+      ...(mergedExisting ? { ...mergedExisting } : {}),
+      ...insertPayload,
+      ...currentPayload,
+      needs_metadata: false,
+    })
+  );
   let strippedColumns = false;
   let attempts = 0;
   const MAX_ATTEMPTS = 8;
@@ -305,21 +364,15 @@ export async function saveSongRecord(
     attempts++;
     if (attempts > MAX_ATTEMPTS) break;
     if (rows.length > 0) {
-      // Update one row at a time to avoid bulk-update issues
-      const targetId = rows[0].id;
-      const { error } = await supabase.from("songs").update(currentPayload).eq("id", targetId);
+      const { error } = await supabase.from("songs").update(currentPayload).in("id", rows.map((row) => row.id));
       if (!error) {
-        // Also update remaining rows if any
-        if (rows.length > 1) {
-          await supabase.from("songs").update(currentPayload).in("id", rows.slice(1).map((row) => row.id)).then(() => {});
-        }
         return { ids: rows.map((row) => row.id), strippedCredits: strippedColumns };
       }
       lastError = error;
       console.warn("[songRecords] save error:", error.code, error.message, error.details, error.hint);
       if (!isMissingColumnError(error)) throw error;
     } else {
-      const merged = { ...currentInsertPayload, ...currentPayload, needs_metadata: false };
+      const merged = removeUndefinedFields({ ...currentInsertPayload, ...currentPayload, needs_metadata: false });
       const { error } = await supabase.from("songs").insert(merged);
       if (!error) return { ids: [] as string[], strippedCredits: strippedColumns };
       lastError = error;
@@ -348,7 +401,7 @@ export async function updateSongRecordsByIds(ids: string[], payload: Record<stri
   if (ids.length === 0) return;
 
   let lastError: any = null;
-  let currentPayload = { ...payload };
+  let currentPayload = removeUndefinedFields(stripNonPersistedFields({ ...payload }));
 
   for (;;) {
     const { error } = await supabase.from("songs").update(currentPayload).in("id", ids);
