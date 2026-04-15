@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCallback } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchMergedSongRecord } from "@/lib/songRecords";
 import { getCachedLyrics } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
@@ -1036,22 +1036,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       setKaraokeWords([]);
       try {
         if (currentTrack.youtubeId) {
-          const { data: song } = await supabase
-            .from("songs")
-            .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names")
-            .eq("youtube_id", currentTrack.youtubeId)
-            .maybeSingle()
-            .then(res => {
-              // If query fails (missing columns), retry with safe columns
-              if (res.error) {
-                return supabase
-                  .from("songs")
-                  .select("karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics")
-                  .eq("youtube_id", currentTrack.youtubeId!)
-                  .maybeSingle();
-              }
-              return res;
-            });
+          const { merged: song } = await fetchMergedSongRecord(
+            {
+              youtubeId: currentTrack.youtubeId,
+              title: currentTrack.title,
+              artist: currentTrack.artist,
+              album: currentTrack.album,
+            },
+            "karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names, updated_at, created_at"
+          );
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);

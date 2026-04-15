@@ -17,6 +17,13 @@ type SongRow = Record<string, any> & {
   updated_at?: string | null;
 };
 
+type KaraokeDataShape = {
+  words?: any[];
+  early_appearance?: number;
+  mobile_char_limit?: number;
+  [key: string]: any;
+};
+
 const FALLBACK_UNSUPPORTED_COLUMNS = new Set(["written_by", "credits_names"]);
 
 function normalizeText(value?: string | null) {
@@ -85,6 +92,46 @@ function hasValue(value: unknown) {
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === "object") return Object.keys(value as object).length > 0;
   return true;
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function getKaraokeWordCount(value: unknown) {
+  return Array.isArray((value as KaraokeDataShape | undefined)?.words)
+    ? ((value as KaraokeDataShape).words?.length ?? 0)
+    : 0;
+}
+
+function mergeKaraokeData(
+  baseValue: KaraokeDataShape | null | undefined,
+  nextValue: KaraokeDataShape | null | undefined
+) {
+  const base = isPlainObject(baseValue) ? baseValue : {};
+  const next = isPlainObject(nextValue) ? nextValue : {};
+
+  if (!hasValue(base) && !hasValue(next)) return undefined;
+
+  const merged: KaraokeDataShape = {
+    ...base,
+    ...next,
+  };
+
+  const baseWords = Array.isArray(base.words) ? base.words : undefined;
+  const nextWords = Array.isArray(next.words) ? next.words : undefined;
+
+  if (nextWords && nextWords.length > 0) {
+    merged.words = nextWords;
+  } else if (baseWords && baseWords.length > 0) {
+    merged.words = baseWords;
+  } else if (nextWords) {
+    merged.words = nextWords;
+  } else if (baseWords) {
+    merged.words = baseWords;
+  }
+
+  return merged;
 }
 
 function getTimestampScore(value?: string | null) {
@@ -190,6 +237,24 @@ export function mergeSongRecords<T extends SongRow>(rows: T[]) {
 
   keys.forEach((key) => {
     if (key === "id") return;
+    if (key === "karaoke_data") {
+      const karaokeRows = [...rows]
+        .filter((row) => isPlainObject(row.karaoke_data))
+        .sort((a, b) => {
+          const aTime = getTimestampScore(a.updated_at) || getTimestampScore(a.created_at);
+          const bTime = getTimestampScore(b.updated_at) || getTimestampScore(b.created_at);
+          if (aTime !== bTime) return aTime - bTime;
+          return getKaraokeWordCount(a.karaoke_data) - getKaraokeWordCount(b.karaoke_data);
+        });
+
+      const mergedKaraoke = karaokeRows.reduce<KaraokeDataShape | undefined>((acc, row) => {
+        return mergeKaraokeData(acc, row.karaoke_data as KaraokeDataShape | undefined);
+      }, undefined);
+
+      if (mergedKaraoke) merged[key] = mergedKaraoke;
+      return;
+    }
+
     if (key === "karaoke_enabled") {
       if (sorted.some((row) => row[key] === true)) {
         merged[key] = true;
@@ -217,10 +282,20 @@ export async function saveSongRecord(
   payload: Record<string, any>,
   insertPayload: Record<string, any>
 ) {
-  const rows = await fetchSongRows(lookup, "id");
+  const rows = await fetchSongRows(
+    lookup,
+    "id, karaoke_data, synced_lyrics, lyrics_url, plain_lyrics, karaoke_enabled, updated_at, created_at"
+  );
+  const mergedExisting = mergeSongRecords(rows);
 
   let lastError: any = null;
   let currentPayload = { ...payload };
+  if (mergedExisting?.karaoke_data || currentPayload.karaoke_data) {
+    currentPayload.karaoke_data = mergeKaraokeData(
+      mergedExisting?.karaoke_data as KaraokeDataShape | undefined,
+      currentPayload.karaoke_data as KaraokeDataShape | undefined
+    );
+  }
   let currentInsertPayload = { ...insertPayload };
   let strippedColumns = false;
   let attempts = 0;

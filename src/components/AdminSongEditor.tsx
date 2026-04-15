@@ -89,6 +89,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   const [coverPreview, setCoverPreview] = useState<string | null>(track.artwork || null);
   const [existingSong, setExistingSong] = useState<{
     id: string;
+    match_ids?: string[];
     lyrics_url: string | null;
     lyrics_speed: number | null;
     bounce_intensity: number | null;
@@ -120,16 +121,35 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const checkExistingSong = async () => {
     try {
-      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names, karaoke_data";
-      const { merged } = await fetchMergedSongRecord(
+      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names, karaoke_data, karaoke_enabled, updated_at, created_at";
+      const { merged, rows } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
         selectFields
       );
 
       if (merged) {
         const karaokeData = merged.karaoke_data as any;
+        const recoveredWords = Array.isArray(karaokeData?.words) ? karaokeData.words.length : 0;
+        const shouldRestoreMergedData = rows.length > 1 && rows.some((row: any) => {
+          const rowWords = Array.isArray(row?.karaoke_data?.words) ? row.karaoke_data.words.length : 0;
+          return row.synced_lyrics !== merged.synced_lyrics || row.lyrics_url !== merged.lyrics_url || rowWords !== recoveredWords;
+        });
+
+        if (shouldRestoreMergedData) {
+          const restorePayload: Record<string, any> = {};
+          if (merged.synced_lyrics) restorePayload.synced_lyrics = merged.synced_lyrics;
+          if (merged.lyrics_url) restorePayload.lyrics_url = merged.lyrics_url;
+          if ((merged as any).plain_lyrics) restorePayload.plain_lyrics = (merged as any).plain_lyrics;
+          if (karaokeData && Object.keys(karaokeData).length > 0) restorePayload.karaoke_data = karaokeData;
+          if (typeof merged.karaoke_enabled === "boolean") restorePayload.karaoke_enabled = merged.karaoke_enabled;
+          if (Object.keys(restorePayload).length > 0) {
+            await updateSongRecordsByIds(rows.map((row: any) => row.id), restorePayload);
+          }
+        }
+
         setExistingSong({
           id: merged.id,
+          match_ids: (merged as any).match_ids ?? rows.map((row: any) => row.id),
           lyrics_url: merged.lyrics_url ?? null,
           lyrics_speed: merged.lyrics_speed ?? 0.75,
           bounce_intensity: (merged as any).bounce_intensity ?? 0.5,
@@ -380,24 +400,24 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const handleRemoveAudio = async () => {
     if (!existingSong) return;
-    const { error } = await supabase.from("songs").update({ audio_url: null }).eq("id", existingSong.id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
-    } else {
+    try {
+      await updateSongRecordsByIds(existingSong.match_ids || [existingSong.id], { audio_url: null });
       toast({ title: "Success", description: "Audio removed" });
       setExistingSong({ ...existingSong, audio_url: null });
       setAudioFile(null);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
     }
   };
 
   const handleRemoveLyrics = async () => {
     if (!existingSong) return;
-    const { error } = await supabase.from("songs").update({ lyrics_url: null, synced_lyrics: null }).eq("id", existingSong.id);
-    if (error) {
-      toast({ title: "Error", description: "Failed to remove lyrics", variant: "destructive" });
-    } else {
+    try {
+      await updateSongRecordsByIds(existingSong.match_ids || [existingSong.id], { lyrics_url: null, synced_lyrics: null });
       toast({ title: "Success", description: "Lyrics removed" });
       setExistingSong({ ...existingSong, lyrics_url: null, synced_lyrics: null });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove lyrics", variant: "destructive" });
     }
   };
 
