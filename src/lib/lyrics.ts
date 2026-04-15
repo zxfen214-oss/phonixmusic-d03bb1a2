@@ -266,12 +266,13 @@ export function parseLRC(content: string): ParsedLyrics {
 export async function fetchSyncedLyrics(
   youtubeId: string | undefined,
   artist: string,
-  title: string
+  title: string,
+  album?: string
 ): Promise<ParsedLyrics | null> {
-  if (youtubeId) {
+  if (youtubeId || title || artist) {
     try {
       const { merged: song } = await fetchMergedSongRecord(
-        { youtubeId, title, artist },
+        { youtubeId, title, artist, album },
         "lyrics_url, synced_lyrics, plain_lyrics, updated_at, created_at"
       );
       

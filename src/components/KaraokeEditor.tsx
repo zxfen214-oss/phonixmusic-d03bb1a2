@@ -300,7 +300,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
         }
       } else {
         setExistingKaraokeData(null);
-        const lyrics = await fetchSyncedLyrics(track.youtubeId, track.artist, track.title);
+        const lyrics = await fetchSyncedLyrics(track.youtubeId, track.artist, track.title, track.album);
         if (lyrics && lyrics.lines.length > 0) {
           setLyricsLines(lyrics.lines);
           initializeLineTimings(lyrics.lines);

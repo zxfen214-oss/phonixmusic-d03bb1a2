@@ -1071,7 +1071,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             setCreditsNames("");
           }
         }
-        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title);
+        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title, currentTrack.album);
         
         if (!lyrics?.lines.length && currentTrack.youtubeId) {
           const cached = await getCachedLyrics(currentTrack.youtubeId);
@@ -1088,8 +1088,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           // Synced lyrics available — prefer synced mode
           setStaticLyricsMode(false);
         } else if (staticLyricsText.trim()) {
-          // No synced lyrics but static available — show static
-          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+          const staticLines = staticLyricsText
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .map((text) => ({ time: -1, text }));
+          setParsedLyrics({ lines: staticLines, isSynced: false });
           setStaticLyricsMode(true);
         } else {
           setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });

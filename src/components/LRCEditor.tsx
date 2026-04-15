@@ -119,7 +119,7 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
         const parsed = parseLRC(content);
         if (parsed.lines.length > 0) {
           setLines(parsed.lines);
-          setRawLyricsInput(parsed.lines.map(l => l.text).join("\n"));
+          setRawLyricsInput(content);
         }
       }
     } catch (error) {
