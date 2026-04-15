@@ -416,39 +416,56 @@ function KaraokeWordSpan({
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
-  // Emphasis for words longer than 1.5s
+  // Emphasis wave effect for <em> or long words (>1.5s)
   const wordDuration = Math.max(0, endTime - startTime);
   const isLongWord = wordDuration > 1.5;
   const isEmOrLong = isEm || isLongWord;
-
-  const emDuration = isEmOrLong ? wordDuration : 0;
   const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
-  const emScale = emActive ? (emDuration > 2.5 ? 1.12 : emDuration > 1.5 ? 1.06 : 1.04) : 1;
-  const emGlow = emActive ? `0 0 ${emDuration > 2.5 ? 16 : emDuration > 1.5 ? 8 : 6}px rgba(255,255,255,${emDuration > 2.5 ? 0.5 : 0.25})` : 'none';
 
-  // Subtle uplift: slowly rises during fill, reaches peak at completion
-  const upliftAmount = 1.5; // subtle px
+  // Subtle uplift: slowly rises during fill, reaches peak at completion (no scale to avoid layout shift)
+  const upliftAmount = 1.5;
   let translateY = 0;
   if (!frozen && progress > 0 && progress < 1) {
-    // Smoothly rise as the word fills
     translateY = -upliftAmount * progress;
   } else if (isDone && !frozen) {
     translateY = -upliftAmount;
   }
+
+  // Wave: a slow traveling wave across characters for emphasis words
+  const chars = word.split('');
+  const waveSpeed = 0.6; // seconds per full wave cycle
+  const waveAmplitude = emActive ? 3 : 0; // px of extra lift
+  const waveGlowMax = emActive ? 0.35 : 0;
+  const emElapsed = emActive ? Math.max(0, currentTime - startTime) : 0;
 
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
         overflow: 'visible',
-        transform: `translateY(${translateY}px) scale(${emScale})`,
+        transform: `translateY(${translateY}px)`,
         transition: 'transform 300ms ease-out',
-        textShadow: emGlow,
       }}
     >
-      {/* Base text — half transparent for done/frozen lines */}
-      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})` }}>
-        {word}
+      {/* Base text with per-character wave */}
+      <span style={{ whiteSpace: 'pre' }}>
+        {chars.map((ch, ci) => {
+          const wavePhase = emActive ? Math.sin(((emElapsed / waveSpeed) - ci * 0.35) * Math.PI * 2) : 0;
+          const charLift = waveAmplitude * Math.max(0, wavePhase);
+          const charGlow = waveGlowMax * Math.max(0, wavePhase);
+          return (
+            <span
+              key={ci}
+              style={{
+                display: 'inline-block',
+                color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})`,
+                transform: charLift > 0.1 ? `translateY(${-charLift}px)` : 'none',
+                transition: 'transform 150ms ease-out',
+                textShadow: charGlow > 0.02 ? `0 0 ${8 + charGlow * 12}px rgba(255,255,255,${charGlow})` : 'none',
+              }}
+            >{ch}</span>
+          );
+        })}
       </span>
       {/* Fill overlay with soft gradient edge */}
       <span
@@ -464,7 +481,23 @@ function KaraokeWordSpan({
           WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
         }}
       >
-        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
+        <span style={{ whiteSpace: 'pre' }}>
+          {chars.map((ch, ci) => {
+            const wavePhase = emActive ? Math.sin(((emElapsed / waveSpeed) - ci * 0.35) * Math.PI * 2) : 0;
+            const charLift = waveAmplitude * Math.max(0, wavePhase);
+            return (
+              <span
+                key={ci}
+                style={{
+                  display: 'inline-block',
+                  color: '#ffffff',
+                  transform: charLift > 0.1 ? `translateY(${-charLift}px)` : 'none',
+                  transition: 'transform 150ms ease-out',
+                }}
+              >{ch}</span>
+            );
+          })}
+        </span>
       </span>
     </span>
   );
