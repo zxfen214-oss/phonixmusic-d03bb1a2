@@ -216,6 +216,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
   
   // Existing karaoke words (for loading)
   const [existingWords, setExistingWords] = useState<KaraokeWord[]>([]);
+  const [existingKaraokeData, setExistingKaraokeData] = useState<Record<string, any> | null>(null);
   const [aiWords, setAiWords] = useState<KaraokeWord[] | null>(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
@@ -273,11 +274,12 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
     try {
       const { merged } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
-        "id, karaoke_enabled, karaoke_data, lyrics_url"
+        "id, karaoke_enabled, karaoke_data, synced_lyrics, lyrics_url"
       );
 
       if (merged) {
         setKaraokeEnabled(merged.karaoke_enabled || false);
+        setExistingKaraokeData((merged.karaoke_data as Record<string, any>) || null);
         
         if (merged.karaoke_data) {
           const data = merged.karaoke_data as unknown as KaraokeData;
@@ -286,13 +288,18 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
           }
         }
 
-        if (merged.lyrics_url) {
+        if (merged.synced_lyrics) {
+          const parsed = parseLRC(merged.synced_lyrics);
+          setLyricsLines(parsed.lines);
+          initializeLineTimings(parsed.lines);
+        } else if (merged.lyrics_url) {
           const content = await fetchTextUtf8(merged.lyrics_url);
           const parsed = parseLRC(content);
           setLyricsLines(parsed.lines);
           initializeLineTimings(parsed.lines);
         }
       } else {
+        setExistingKaraokeData(null);
         const lyrics = await fetchSyncedLyrics(track.youtubeId, track.artist, track.title);
         if (lyrics && lyrics.lines.length > 0) {
           setLyricsLines(lyrics.lines);
@@ -634,7 +641,10 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
     try {
       const karaokeWords = aiWords || generateKaraokeWords();
-      const karaokeDataJson = JSON.parse(JSON.stringify({ words: karaokeWords }));
+      const karaokeDataJson = JSON.parse(JSON.stringify({
+        ...(existingKaraokeData || {}),
+        words: karaokeWords,
+      }));
 
       const lookup = { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album };
       await saveSongRecord(
@@ -648,6 +658,8 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
           youtube_id: track.youtubeId,
         }
       );
+
+      setExistingKaraokeData(karaokeDataJson);
 
       toast({ title: "Success", description: "Karaoke settings saved" });
       onSave?.();

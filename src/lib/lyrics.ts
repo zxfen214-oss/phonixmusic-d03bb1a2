@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchMergedSongRecord } from "@/lib/songRecords";
 
 export interface LyricLine {
   time: number; // in seconds
@@ -269,27 +270,26 @@ export async function fetchSyncedLyrics(
 ): Promise<ParsedLyrics | null> {
   if (youtubeId) {
     try {
-      const { data: song } = await supabase
-        .from("songs")
-        .select("lyrics_url, synced_lyrics, plain_lyrics")
-        .eq("youtube_id", youtubeId)
-        .maybeSingle();
+      const { merged: song } = await fetchMergedSongRecord(
+        { youtubeId, title, artist },
+        "lyrics_url, synced_lyrics, plain_lyrics, updated_at, created_at"
+      );
       
-      // Priority 1: lyrics_url (.lrc file)
+      // Priority 1: synced_lyrics (DB source of truth)
+      if (song?.synced_lyrics) {
+        const parsed = parseLRC(song.synced_lyrics);
+        if (parsed.lines.length > 0) {
+          console.log(`Loaded synced lyrics from DB for ${title} with ${parsed.lines.length} lines`);
+          return parsed;
+        }
+      }
+
+      // Priority 2: lyrics_url (.lrc file backup)
       if (song?.lyrics_url) {
         const content = await fetchTextUtf8(song.lyrics_url);
         const parsed = parseLRC(content);
         if (parsed.lines.length > 0) {
           console.log(`Loaded synced lyrics for ${title} with ${parsed.lines.length} lines`);
-          return parsed;
-        }
-      }
-
-      // Priority 2: synced_lyrics (raw LRC string from LRCLIB)
-      if (song?.synced_lyrics) {
-        const parsed = parseLRC(song.synced_lyrics);
-        if (parsed.lines.length > 0) {
-          console.log(`Loaded synced lyrics from DB for ${title} with ${parsed.lines.length} lines`);
           return parsed;
         }
       }
