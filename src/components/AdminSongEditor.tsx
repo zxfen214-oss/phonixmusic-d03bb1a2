@@ -402,12 +402,11 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     if (!existingSong) return;
     try {
       await updateSongRecordsByIds(existingSong.match_ids || [existingSong.id], { audio_url: null });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
-    } else {
       toast({ title: "Success", description: "Audio removed" });
       setExistingSong({ ...existingSong, audio_url: null });
       setAudioFile(null);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
     }
   };
 
@@ -415,11 +414,10 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     if (!existingSong) return;
     try {
       await updateSongRecordsByIds(existingSong.match_ids || [existingSong.id], { lyrics_url: null, synced_lyrics: null });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to remove lyrics", variant: "destructive" });
-    } else {
       toast({ title: "Success", description: "Lyrics removed" });
       setExistingSong({ ...existingSong, lyrics_url: null, synced_lyrics: null });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove lyrics", variant: "destructive" });
     }
   };
 
