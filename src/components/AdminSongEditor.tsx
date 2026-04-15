@@ -79,8 +79,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     bounceIntensity: 0.5,
     karaokeColor: '',
     lyricColor: '',
-    writtenBy: '',
-    creditsNames: '',
     earlyAppearance: 0,
     mobileCharLimit: 9,
   });
@@ -122,7 +120,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const checkExistingSong = async () => {
     try {
-      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, written_by, credits_names, karaoke_data, karaoke_enabled, updated_at, created_at";
+      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, updated_at, created_at";
       const { merged, rows } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
         selectFields
@@ -167,8 +165,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           bounceIntensity: (merged as any).bounce_intensity ?? 0.5,
           karaokeColor: merged.karaoke_color || '',
           lyricColor: merged.lyric_color || '',
-          writtenBy: (merged as any).written_by || '',
-          creditsNames: (merged as any).credits_names || '',
           earlyAppearance: karaokeData?.early_appearance ?? 0,
           mobileCharLimit: karaokeData?.mobile_char_limit ?? 9,
         }));
@@ -391,8 +387,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
         plain_lyrics: plainLyrics || null,
-        written_by: formData.writtenBy || null,
-        credits_names: formData.creditsNames || null,
         synced_lyrics: syncedLyricsContent,
         karaoke_data: mergedKaraokeData,
       };
@@ -671,21 +665,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                       <input type="color" value={formData.karaokeColor || '#ffffff'} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} className="w-8 h-8 rounded border border-border cursor-pointer bg-transparent" />
                       <Input value={formData.karaokeColor} onChange={(e) => setFormData({ ...formData, karaokeColor: e.target.value })} placeholder="Auto" className="h-8 text-xs flex-1" />
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Credits */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Credits (shown after lyrics end)</Label>
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Written By</Label>
-                    <Input value={formData.writtenBy} onChange={(e) => setFormData({ ...formData, writtenBy: e.target.value })} placeholder="Songwriter name(s)" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Names (producers, features, etc.)</Label>
-                    <Input value={formData.creditsNames} onChange={(e) => setFormData({ ...formData, creditsNames: e.target.value })} placeholder="Additional credits" className="h-8 text-xs" />
                   </div>
                 </div>
               </div>

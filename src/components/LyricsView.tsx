@@ -50,9 +50,6 @@ interface VisibleLyricItem {
   lineTime: number;
   nextLineTime: number;
   isIntro?: boolean;
-  isCredits?: boolean;
-  creditsWrittenBy?: string;
-  creditsNames?: string;
   secondaryText?: string;
   alignment?: 'left' | 'right';
   isMusic?: boolean;
@@ -798,9 +795,9 @@ function LyricsContent({
       }}
     >
       {visibleLyrics.map((item) => {
-        const { text, index, position, lineTime, nextLineTime, isIntro, isCredits, creditsWrittenBy: cWrittenBy, creditsNames: cNames, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords, emWords } = item;
+        const { text, index, position, lineTime, nextLineTime, isIntro, secondaryText, alignment, isMusic, musicEnd, nlCompanionText, nlCompanionTime, nlCompanionEndTime, nlCompanionElrcWords, elrcWords, emWords } = item;
         const isActive = position === 0;
-        const key = isCredits ? 'credits' : isIntro ? 'intro' : `lyric-${index}`;
+        const key = isIntro ? 'intro' : `lyric-${index}`;
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
@@ -819,20 +816,7 @@ function LyricsContent({
               top: 0,
             }}
           >
-            {isCredits ? (
-              <div style={{ paddingTop: '24px' }}>
-                {cWrittenBy && (
-                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.6)', fontWeight: 400, lineHeight: 1.6 }}>
-                    <span style={{ fontWeight: 700 }}>Written By</span> — {cWrittenBy}
-                  </p>
-                )}
-                {cNames && (
-                  <p style={{ fontSize: '25px', color: 'rgba(255,255,255,0.4)', fontWeight: 400, lineHeight: 1.6, marginTop: '8px' }}>
-                    {cNames}
-                  </p>
-                )}
-              </div>
-            ) : isMusic && musicEnd ? (
+            {isMusic && musicEnd ? (
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
             ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
               <>
@@ -953,8 +937,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
   const [staticLyricsText, setStaticLyricsText] = useState("");
-  const [creditsWrittenBy, setCreditsWrittenBy] = useState("");
-  const [creditsNames, setCreditsNames] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0);
   const [mobileCharLimit, setMobileCharLimit] = useState(9);
@@ -1043,17 +1025,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               artist: currentTrack.artist,
               album: currentTrack.album,
             },
-            "karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, written_by, credits_names, updated_at, created_at"
+            "karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, updated_at, created_at"
           );
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
             if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
             else setStaticLyricsText("");
-            if ((song as any).written_by) setCreditsWrittenBy((song as any).written_by);
-            else setCreditsWrittenBy("");
-            if ((song as any).credits_names) setCreditsNames((song as any).credits_names);
-            else setCreditsNames("");
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
@@ -1067,8 +1045,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }
           } else {
             setStaticLyricsText("");
-            setCreditsWrittenBy("");
-            setCreditsNames("");
           }
         }
         let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title, currentTrack.album);
@@ -1223,25 +1199,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       });
     }
 
-    // Add credits after last lyric
-    if (creditsWrittenBy || creditsNames) {
-      const lastLine = parsedLyrics.lines[parsedLyrics.lines.length - 1];
-      const lastTime = lastLine ? lastLine.time + 5 : 999;
-      const isLastLineVisible = result.some(r => r.index === parsedLyrics.lines.length - 1);
-      if (isLastLineVisible || effectiveCurrentIndex >= parsedLyrics.lines.length - 2) {
-        const maxPos = Math.max(...result.map(r => r.position), 0);
-        result.push({
-          text: '', index: -99, position: maxPos + 1,
-          lineTime: lastTime, nextLineTime: lastTime + 10,
-          isCredits: true,
-          creditsWrittenBy,
-          creditsNames,
-        });
-      }
-    }
-
     return result;
-  }, [currentLineIndex, parsedLyrics, LINES_AFTER, creditsWrittenBy, creditsNames]);
+  }, [currentLineIndex, parsedLyrics, LINES_AFTER]);
 
   // Auto-hide mobile controls
   const resetMobileControlsTimer = useCallback(() => {

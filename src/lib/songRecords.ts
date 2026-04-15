@@ -24,7 +24,7 @@ type KaraokeDataShape = {
   [key: string]: any;
 };
 
-const FALLBACK_UNSUPPORTED_COLUMNS = new Set(["written_by", "credits_names"]);
+const FALLBACK_UNSUPPORTED_COLUMNS = new Set<string>([]);
 const REQUIRED_SELECT_COLUMNS = ["id", "updated_at", "created_at"];
 const NON_PERSISTED_FIELDS = new Set(["id", "match_ids", "created_at", "updated_at"]);
 
@@ -322,7 +322,7 @@ export async function saveSongRecord(
 ) {
   const rows = await fetchSongRows(
     lookup,
-    "id, title, artist, album, youtube_id, cover_url, lyrics_url, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, written_by, credits_names, updated_at, created_at"
+    "id, title, artist, album, youtube_id, cover_url, lyrics_url, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, updated_at, created_at"
   );
   const mergedExisting = mergeSongRecords(rows);
 
