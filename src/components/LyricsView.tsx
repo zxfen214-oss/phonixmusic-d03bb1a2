@@ -816,6 +816,7 @@ function LyricsContent({
               paddingLeft: isMobile ? '20px' : '0',
               paddingRight: isMobile ? '20px' : '0',
               top: 0,
+              overflow: 'visible',
             }}
           >
             {isMusic && musicEnd ? (
