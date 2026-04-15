@@ -1,0 +1,7 @@
+---
+name: Lyrics Display Timing
+description: Lyric appearance timing defaults and per-song configurability
+type: feature
+---
+Karaoke lines appear 0.2s early by default (configurable per-song 0–1.5s in admin).
+Mobile character line-break limit defaults to 13 (configurable per-song 9–40 in admin).
