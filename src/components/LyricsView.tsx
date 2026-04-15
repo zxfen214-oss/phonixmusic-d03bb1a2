@@ -829,7 +829,9 @@ function LyricsContent({
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
-                    {nlCompanionText}
+                    {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
+                      <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+                    )) : nlCompanionText}
                   </p>
                 )}
                 {secondaryText && (
@@ -847,7 +849,9 @@ function LyricsContent({
                   </div>
                 ) : nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
-                    {nlCompanionText}
+                    {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
+                      <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+                    )) : nlCompanionText}
                   </p>
                 )}
                 {secondaryText && (
@@ -878,7 +882,9 @@ function LyricsContent({
                 </p>
                 {nlCompanionText && (
                   <p dir="auto" style={{ fontSize, fontWeight: isActive ? 700 : 600, color: "rgba(255,255,255,0.35)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
-                    {nlCompanionText}
+                    {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
+                      <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+                    )) : nlCompanionText}
                   </p>
                 )}
                 {secondaryText && (
