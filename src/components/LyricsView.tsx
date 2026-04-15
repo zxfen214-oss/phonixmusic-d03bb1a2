@@ -301,7 +301,7 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
 }
 
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
-function getMobileBreakIndices(words: { word: string }[], charLimit: number = 9): Set<number> {
+function getMobileBreakIndices(words: { word: string }[], charLimit: number = 13): Set<number> {
   const breakAfter = new Set<number>();
   let charCount = 0;
   for (let i = 0; i < words.length; i++) {
@@ -318,7 +318,7 @@ function getMobileBreakIndices(words: { word: string }[], charLimit: number = 9)
 }
 
 // ─── Helper: split plain text into lines for mobile ───
-function splitTextForMobile(text: string, charLimit: number = 9): string[] {
+function splitTextForMobile(text: string, charLimit: number = 13): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let currentLine = '';
@@ -440,6 +440,7 @@ function KaraokeWordSpan({
     <span
       className="relative inline-block align-baseline"
       style={{
+        overflow: 'visible',
         transform: `translateY(${translateY}px) scale(${emScale})`,
         transition: 'transform 300ms ease-out',
         textShadow: emGlow,
@@ -473,7 +474,7 @@ function KaraokeWordSpan({
 function ELRCLine({ words, currentTime, isMobile, frozen, charLimit }: { words: { word: string; startTime: number; endTime: number }[]; currentTime: number; isMobile: boolean; frozen?: boolean; charLimit?: number }) {
   const breakIndices = useMemo(() => isMobile ? getMobileBreakIndices(words, charLimit) : new Set<number>(), [words, isMobile, charLimit]);
   return (
-    <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+    <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '48px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4, overflow: 'visible' }}>
       {words.map((w, idx) => (
         <Fragment key={`${w.word}-${idx}`}>
           <KaraokeWordSpan
@@ -548,7 +549,7 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
   if (shouldRenderFill) {
     // Map visualLineWords to textWords indices for consistent breaks
     return (
-      <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      <span dir="auto" className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '48px', fontWeight: 600, unicodeBidi: "plaintext", lineHeight: 1.4, overflow: 'visible' }}>
         {visualLineWords.map((wordData, idx) => (
           <Fragment key={`${wordData.word}-${idx}`}>
             <KaraokeWordSpan
@@ -567,10 +568,11 @@ function KaraokeLine({ text, words, lineIndex, lineStartTime, lineEndTime, curre
     );
   }
 
+  // Inactive: use same getMobileBreakIndices logic as active for consistency
   return (
-    <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '40px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
-      {isMobile ? splitTextForMobile(text, charLimit).map((line, i, arr) => (
-        <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
+    <span className="font-semibold inline-block" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: isMobile ? '2.2rem' : '48px', fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", unicodeBidi: "plaintext", lineHeight: 1.4 }}>
+      {isMobile ? textWords.map((word, i) => (
+        <Fragment key={i}>{word}{i < textWords.length - 1 ? (mobileBreaks.has(i) ? <br /> : " ") : null}</Fragment>
       )) : text}
     </span>
   );
@@ -784,7 +786,7 @@ function LyricsContent({
 
   useAppleMusicStyles(lineRefs, visibleLyrics, isMobile, containerRef, lyricsSpeed);
 
-  const fontSize = isMobile ? '2.2rem' : '40px';
+  const fontSize = isMobile ? '2.2rem' : '48px';
 
   return (
     <div
@@ -938,8 +940,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
-  const [earlyAppearance, setEarlyAppearance] = useState(0);
-  const [mobileCharLimit, setMobileCharLimit] = useState(9);
+  const [earlyAppearance, setEarlyAppearance] = useState(0.2);
+  const [mobileCharLimit, setMobileCharLimit] = useState(13);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
