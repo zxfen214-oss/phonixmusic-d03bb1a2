@@ -831,6 +831,38 @@ function useAppleMusicStyles(
   }, [visibleLyrics, lineRefs, isMobile, containerRef, LINE_PADDING, ACTIVE_OFFSET, dur]);
 }
 
+// ─── Bracket sub-line: fades in smoothly with padding animation ───
+function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActive: boolean; isMobile: boolean }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (isActive) {
+      const t = setTimeout(() => setVisible(true), 80);
+      return () => clearTimeout(t);
+    }
+    setVisible(false);
+  }, [isActive]);
+  return (
+    <p
+      dir="auto"
+      style={{
+        fontSize: isMobile ? '18px' : '22px',
+        fontWeight: 500,
+        color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
+        unicodeBidi: "plaintext",
+        lineHeight: 1.4,
+        marginTop: visible ? '4px' : '0px',
+        paddingTop: visible ? '0px' : '0px',
+        maxHeight: visible ? '80px' : '0px',
+        opacity: visible ? 1 : 0,
+        overflow: 'hidden',
+        transition: 'opacity 400ms ease-out, max-height 400ms ease-out, margin-top 400ms ease-out',
+      }}
+    >
+      {stripBrackets(text)}
+    </p>
+  );
+}
+
 // ─── Lyrics content (shared between desktop & mobile) ───
 function LyricsContent({
   visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment, mobileCharLimit,
@@ -892,9 +924,7 @@ function LyricsContent({
                   </p>
                 )}
                 {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
+                  <SecondaryTextLine text={secondaryText} isActive={isActive} isMobile={isMobile} />
                 )}
               </>
             ) : !isIntro && karaokeEnabled ? (
@@ -912,9 +942,7 @@ function LyricsContent({
                   </p>
                 )}
                 {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: "rgba(255,255,255,0.6)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
+                  <SecondaryTextLine text={secondaryText} isActive={isActive} isMobile={isMobile} />
                 )}
               </>
             ) : isIntro ? (
@@ -945,9 +973,7 @@ function LyricsContent({
                   </p>
                 )}
                 {secondaryText && (
-                  <p dir="auto" style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)", unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '4px' }}>
-                    {stripBrackets(secondaryText)}
-                  </p>
+                  <SecondaryTextLine text={secondaryText} isActive={isActive} isMobile={isMobile} />
                 )}
               </>
             )}
