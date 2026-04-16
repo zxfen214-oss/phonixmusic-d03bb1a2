@@ -420,23 +420,48 @@ function KaraokeWordSpan({
   const wordDuration = Math.max(0, endTime - startTime);
   const isLongWord = wordDuration > 1.5;
   const isEmOrLong = isEm || isLongWord;
-  const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.3;
+  const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.1;
 
-  // Subtle uplift: slowly rises during fill, reaches peak at completion (no scale to avoid layout shift)
+  // Smooth uplift: rises during fill, smoothly settles back after done
   const upliftAmount = 1.5;
+  const upliftReturnRef = useRef(0);
   let translateY = 0;
   if (!frozen && progress > 0 && progress < 1) {
-    translateY = -upliftAmount * progress;
+    translateY = -upliftAmount * Math.min(1, progress * 3); // quickly rise
+    upliftReturnRef.current = translateY;
   } else if (isDone && !frozen) {
-    translateY = -upliftAmount;
+    // Stay at 0 — the CSS transition handles the smooth return
+    translateY = 0;
   }
 
-  // Wave: a slow traveling wave across characters for emphasis words
+  // Wave: the karaoke cursor position determines which character "grows"
   const chars = word.split('');
-  const waveSpeed = 0.6; // seconds per full wave cycle
-  const waveAmplitude = emActive ? 3 : 0; // px of extra lift
-  const waveGlowMax = emActive ? 0.35 : 0;
-  const emElapsed = emActive ? Math.max(0, currentTime - startTime) : 0;
+  const charCount = chars.length;
+  // Cursor position in character-space (0 to charCount)
+  const cursorPos = progress * charCount;
+  const waveRadius = 2; // neighboring chars affected
+  const emWaveAmplitude = emActive ? 4 : 0; // px of extra lift for em words
+  const emScaleMax = emActive ? 1.12 : 1; // max scale for em words
+
+  const getCharEffects = (ci: number) => {
+    // Distance from karaoke cursor to this character
+    const dist = Math.abs(cursorPos - ci - 0.5);
+    
+    // Only affect chars near the cursor, and only while filling (not after done)
+    if (isDone || progress <= 0 || dist > waveRadius + 0.5) {
+      return { lift: 0, scale: 1, glow: 0 };
+    }
+    
+    const normalizedDist = dist / (waveRadius + 0.5);
+    const factor = Math.max(0, 1 - normalizedDist);
+    const eased = factor * factor * (3 - 2 * factor); // smoothstep
+    
+    return {
+      lift: emWaveAmplitude * eased,
+      scale: 1 + (emScaleMax - 1) * eased,
+      glow: emActive ? 0.35 * eased : 0,
+    };
+  };
 
   return (
     <span
@@ -444,24 +469,24 @@ function KaraokeWordSpan({
       style={{
         overflow: 'visible',
         transform: `translateY(${translateY}px)`,
-        transition: 'transform 300ms ease-out',
+        transition: isDone ? 'transform 600ms ease-out' : 'transform 200ms ease-out',
       }}
     >
       {/* Base text with per-character wave */}
       <span style={{ whiteSpace: 'pre' }}>
         {chars.map((ch, ci) => {
-          const wavePhase = emActive ? Math.sin(((emElapsed / waveSpeed) - ci * 0.35) * Math.PI * 2) : 0;
-          const charLift = waveAmplitude * Math.max(0, wavePhase);
-          const charGlow = waveGlowMax * Math.max(0, wavePhase);
+          const fx = getCharEffects(ci);
           return (
             <span
               key={ci}
               style={{
                 display: 'inline-block',
                 color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})`,
-                transform: charLift > 0.1 ? `translateY(${-charLift}px)` : 'none',
-                transition: 'transform 150ms ease-out',
-                textShadow: charGlow > 0.02 ? `0 0 ${8 + charGlow * 12}px rgba(255,255,255,${charGlow})` : 'none',
+                transform: fx.lift > 0.1 || fx.scale > 1.005
+                  ? `translateY(${-fx.lift}px) scale(${fx.scale})`
+                  : 'none',
+                transition: 'transform 120ms ease-out, text-shadow 120ms ease-out',
+                textShadow: fx.glow > 0.02 ? `0 0 ${8 + fx.glow * 12}px rgba(255,255,255,${fx.glow})` : 'none',
               }}
             >{ch}</span>
           );
@@ -483,16 +508,17 @@ function KaraokeWordSpan({
       >
         <span style={{ whiteSpace: 'pre' }}>
           {chars.map((ch, ci) => {
-            const wavePhase = emActive ? Math.sin(((emElapsed / waveSpeed) - ci * 0.35) * Math.PI * 2) : 0;
-            const charLift = waveAmplitude * Math.max(0, wavePhase);
+            const fx = getCharEffects(ci);
             return (
               <span
                 key={ci}
                 style={{
                   display: 'inline-block',
                   color: '#ffffff',
-                  transform: charLift > 0.1 ? `translateY(${-charLift}px)` : 'none',
-                  transition: 'transform 150ms ease-out',
+                  transform: fx.lift > 0.1 || fx.scale > 1.005
+                    ? `translateY(${-fx.lift}px) scale(${fx.scale})`
+                    : 'none',
+                  transition: 'transform 120ms ease-out',
                 }}
               >{ch}</span>
             );
