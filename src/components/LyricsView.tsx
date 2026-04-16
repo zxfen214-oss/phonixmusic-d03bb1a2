@@ -422,16 +422,13 @@ function KaraokeWordSpan({
   const isEmOrLong = isEm || isLongWord;
   const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.1;
 
-  // Smooth uplift: rises during fill, smoothly settles back after done
+  // Smooth uplift: rises during fill, stays risen after done (never comes back down)
   const upliftAmount = 1.5;
-  const upliftReturnRef = useRef(0);
   let translateY = 0;
-  if (!frozen && progress > 0 && progress < 1) {
+  if (frozen) {
+    translateY = -upliftAmount; // frozen = already filled, stay up
+  } else if (progress > 0) {
     translateY = -upliftAmount * Math.min(1, progress * 3); // quickly rise
-    upliftReturnRef.current = translateY;
-  } else if (isDone && !frozen) {
-    // Stay at 0 — the CSS transition handles the smooth return
-    translateY = 0;
   }
 
   // Wave: the karaoke cursor position determines which character "grows"
@@ -469,7 +466,7 @@ function KaraokeWordSpan({
       style={{
         overflow: 'visible',
         transform: `translateY(${translateY}px)`,
-        transition: isDone ? 'transform 600ms ease-out' : 'transform 200ms ease-out',
+        transition: 'transform 250ms ease-out',
       }}
     >
       {/* Base text with per-character wave */}
@@ -485,7 +482,7 @@ function KaraokeWordSpan({
                 transform: fx.lift > 0.1 || fx.scale > 1.005
                   ? `translateY(${-fx.lift}px) scale(${fx.scale})`
                   : 'none',
-                transition: 'transform 120ms ease-out, text-shadow 120ms ease-out',
+                transition: 'transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), text-shadow 300ms ease-out',
                 textShadow: fx.glow > 0.02 ? `0 0 ${8 + fx.glow * 12}px rgba(255,255,255,${fx.glow})` : 'none',
               }}
             >{ch}</span>
@@ -518,7 +515,7 @@ function KaraokeWordSpan({
                   transform: fx.lift > 0.1 || fx.scale > 1.005
                     ? `translateY(${-fx.lift}px) scale(${fx.scale})`
                     : 'none',
-                  transition: 'transform 120ms ease-out',
+                  transition: 'transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1)',
                 }}
               >{ch}</span>
             );
