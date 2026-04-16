@@ -14,6 +14,7 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
   const navItems = [
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Library },
+    { id: "playlists", label: "Playlists", icon: ListMusic },
     { id: "leaderboard", label: "Top", icon: Trophy },
     { id: "youtube", label: "Search", icon: Search },
     ...(canInstall
