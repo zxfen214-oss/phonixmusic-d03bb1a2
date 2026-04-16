@@ -831,7 +831,7 @@ function useAppleMusicStyles(
   }, [visibleLyrics, lineRefs, isMobile, containerRef, LINE_PADDING, ACTIVE_OFFSET, dur]);
 }
 
-// ─── Bracket sub-line: fades in smoothly with padding animation ───
+// ─── Bracket sub-line: fades in smoothly with padding/space animation ───
 function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActive: boolean; isMobile: boolean }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -842,24 +842,30 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
     setVisible(false);
   }, [isActive]);
   return (
-    <p
-      dir="auto"
+    <div
       style={{
-        fontSize: isMobile ? '18px' : '22px',
-        fontWeight: 500,
-        color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
-        unicodeBidi: "plaintext",
-        lineHeight: 1.4,
-        marginTop: visible ? '4px' : '0px',
-        paddingTop: visible ? '0px' : '0px',
-        maxHeight: visible ? '80px' : '0px',
+        marginTop: visible ? '8px' : '0px',
+        paddingTop: visible ? '4px' : '0px',
+        maxHeight: visible ? '120px' : '0px',
         opacity: visible ? 1 : 0,
         overflow: 'hidden',
-        transition: 'opacity 400ms ease-out, max-height 400ms ease-out, margin-top 400ms ease-out',
+        transition: 'opacity 500ms ease-out, max-height 500ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 500ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 500ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
     >
-      {stripBrackets(text)}
-    </p>
+      <p
+        dir="auto"
+        style={{
+          fontSize: isMobile ? '18px' : '22px',
+          fontWeight: 500,
+          color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
+          unicodeBidi: "plaintext",
+          lineHeight: 1.4,
+          margin: 0,
+        }}
+      >
+        {stripBrackets(text)}
+      </p>
+    </div>
   );
 }
 
