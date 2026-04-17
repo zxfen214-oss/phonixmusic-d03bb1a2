@@ -1106,6 +1106,35 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                     </motion.div>
                   )}
 
+                  {/* WORD-BY-WORD state */}
+                  {syncMode === "wbw" && (
+                    <motion.div
+                      key="wbw"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex-1 overflow-hidden flex flex-col"
+                    >
+                      <WordByWordKaraoke
+                        initialLines={lyricsLines}
+                        duration={track.duration}
+                        currentTime={currentTime}
+                        isPlaying={isPlaying}
+                        syncSpeed={syncSpeed}
+                        onPlay={() => {
+                          if (currentTrack?.id !== track.id) playTrack(track, [track]);
+                          else resumeTrack();
+                        }}
+                        onPause={pauseTrack}
+                        onSeek={(pct) => seekTo(pct)}
+                        onSpeedChange={(rate) => {
+                          setSyncSpeed(rate);
+                          setPlaybackRate(rate);
+                        }}
+                        onComplete={handleWBWComplete}
+                      />
+                    </motion.div>
+                  )}
+
                   {/* DONE state */}
                   {syncMode === "done" && (
                     <motion.div
