@@ -837,10 +837,14 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                             </p>
                           </div>
                           {lyricsLines.length > 0 && (
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap justify-center gap-3">
                               <Button onClick={() => setSyncMode("ready")} variant="outline" className="gap-2" size="lg">
                                 <Mic2 className="h-5 w-5" />
                                 Manual Sync
+                              </Button>
+                              <Button onClick={startWordByWord} variant="outline" className="gap-2" size="lg">
+                                <Keyboard className="h-5 w-5" />
+                                Word-by-word
                               </Button>
                               <Button onClick={generateAIKaraoke} disabled={isGeneratingAI} className="gap-2" size="lg">
                                 {isGeneratingAI ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
