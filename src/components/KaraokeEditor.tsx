@@ -21,6 +21,7 @@ import {
   ChevronRight,
   SkipBack,
   Sparkles,
+  Keyboard,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,7 @@ import { fetchMergedSongRecord, saveSongRecord } from "@/lib/songRecords";
 import { parseLRC, fetchSyncedLyrics, fetchTextUtf8, LyricLine } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { WordByWordKaraoke, WBWWord } from "@/components/WordByWordKaraoke";
 
 function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: number }) {
   const words = text.split(/(\s+)/).filter((part) => part.length > 0);
@@ -201,7 +203,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
   
   // Karaoke state
   const [karaokeEnabled, setKaraokeEnabled] = useState(false);
-  const [syncMode, setSyncMode] = useState<"idle" | "ready" | "syncing" | "done">("idle");
+  const [syncMode, setSyncMode] = useState<"idle" | "ready" | "syncing" | "wbw" | "done">("idle");
   
   // Speed control for easier syncing (0.5 to 1.0)
   const [syncSpeed, setSyncSpeed] = useState(0.8);
@@ -597,6 +599,38 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
 
 
+  // Start word-by-word keyboard recording mode
+  const startWordByWord = () => {
+    if (lyricsLines.length === 0) {
+      toast({
+        title: "No lyrics found",
+        description: "Please add lyrics first using the LRC Editor (or paste them in the next step).",
+        variant: "destructive",
+      });
+      return;
+    }
+    setAiWords(null);
+    setPlaybackRate(syncSpeed);
+    playTrack(track, [track]);
+    setTimeout(() => seekTo(0), 100);
+    setSyncMode("wbw");
+  };
+
+  // Called when WordByWordKaraoke finishes — adopt its timings as the words to save
+  const handleWBWComplete = (words: WBWWord[]) => {
+    if (!words || words.length === 0) {
+      toast({ title: "No timings captured", description: "Try again — capture at least one word.", variant: "destructive" });
+      return;
+    }
+    setAiWords(words as KaraokeWord[]);
+    setExistingWords(words as KaraokeWord[]);
+    setKaraokeEnabled(true);
+    setPlaybackRate(1.0);
+    setSyncMode("done");
+    toast({ title: "Word-by-word captured", description: `${words.length} word timings recorded.` });
+  };
+
+
   // Generate karaoke words from per-word captured timings
   const generateKaraokeWords = (): KaraokeWord[] => {
     const words: KaraokeWord[] = [];
@@ -782,6 +816,10 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                               <RotateCcw className="h-4 w-4" />
                               Re-sync All
                             </Button>
+                            <Button onClick={startWordByWord} variant="outline" className="gap-2">
+                              <Keyboard className="h-4 w-4" />
+                              Word-by-word
+                            </Button>
                             <Button onClick={generateAIKaraoke} disabled={isGeneratingAI} className="gap-2">
                               {isGeneratingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                               {isGeneratingAI ? "Generating..." : "AI Karaoke"}
@@ -799,10 +837,14 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                             </p>
                           </div>
                           {lyricsLines.length > 0 && (
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap justify-center gap-3">
                               <Button onClick={() => setSyncMode("ready")} variant="outline" className="gap-2" size="lg">
                                 <Mic2 className="h-5 w-5" />
                                 Manual Sync
+                              </Button>
+                              <Button onClick={startWordByWord} variant="outline" className="gap-2" size="lg">
+                                <Keyboard className="h-5 w-5" />
+                                Word-by-word
                               </Button>
                               <Button onClick={generateAIKaraoke} disabled={isGeneratingAI} className="gap-2" size="lg">
                                 {isGeneratingAI ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
@@ -1061,6 +1103,35 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                           </div>
                         )}
                       </div>
+                    </motion.div>
+                  )}
+
+                  {/* WORD-BY-WORD state */}
+                  {syncMode === "wbw" && (
+                    <motion.div
+                      key="wbw"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex-1 overflow-hidden flex flex-col"
+                    >
+                      <WordByWordKaraoke
+                        initialLines={lyricsLines}
+                        duration={track.duration}
+                        currentTime={currentTime}
+                        isPlaying={isPlaying}
+                        syncSpeed={syncSpeed}
+                        onPlay={() => {
+                          if (currentTrack?.id !== track.id) playTrack(track, [track]);
+                          else resumeTrack();
+                        }}
+                        onPause={pauseTrack}
+                        onSeek={(pct) => seekTo(pct)}
+                        onSpeedChange={(rate) => {
+                          setSyncSpeed(rate);
+                          setPlaybackRate(rate);
+                        }}
+                        onComplete={handleWBWComplete}
+                      />
                     </motion.div>
                   )}
 
