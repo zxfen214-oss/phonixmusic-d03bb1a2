@@ -674,6 +674,25 @@ function useAppleMusicStyles(
   const LINE_PADDING = isMobile ? 16 : 16;
   const ACTIVE_OFFSET = 0.15;
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
+  // Bumped whenever a tracked line's height changes (e.g. SecondaryTextLine opens/closes).
+  const [resizeTick, setResizeTick] = useState(0);
+
+  // Observe size changes of every tracked line so upcoming lines reposition
+  // smoothly when a SecondaryTextLine expands/collapses.
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    let scheduled = false;
+    const ro = new ResizeObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        setResizeTick((t) => (t + 1) % 1_000_000);
+      });
+    });
+    lineRefs.current.forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
+  }, [lineRefs, visibleLyrics]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
