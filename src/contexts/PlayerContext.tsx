@@ -453,7 +453,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Prefer audioRef (covers both local and cached YouTube playback)
     if (audioRef.current) {
       audioRef.current.currentTime = time;
-    } else if (state.currentTrack.source === 'youtube' && youtubePlayerRef.current) {
+    } else if (state.currentTrack.source === 'youtube' && youtubePlayerRef.current && typeof youtubePlayerRef.current.seekTo === 'function') {
       youtubePlayerRef.current.seekTo(time, true);
     }
     
