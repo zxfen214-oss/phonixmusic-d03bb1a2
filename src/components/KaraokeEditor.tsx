@@ -203,7 +203,7 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
   
   // Karaoke state
   const [karaokeEnabled, setKaraokeEnabled] = useState(false);
-  const [syncMode, setSyncMode] = useState<"idle" | "ready" | "syncing" | "done">("idle");
+  const [syncMode, setSyncMode] = useState<"idle" | "ready" | "syncing" | "wbw" | "done">("idle");
   
   // Speed control for easier syncing (0.5 to 1.0)
   const [syncSpeed, setSyncSpeed] = useState(0.8);
