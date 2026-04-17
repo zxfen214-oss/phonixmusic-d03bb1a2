@@ -21,6 +21,7 @@ import {
   ChevronRight,
   SkipBack,
   Sparkles,
+  Keyboard,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,7 @@ import { fetchMergedSongRecord, saveSongRecord } from "@/lib/songRecords";
 import { parseLRC, fetchSyncedLyrics, fetchTextUtf8, LyricLine } from "@/lib/lyrics";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/contexts/PlayerContext";
+import { WordByWordKaraoke, WBWWord } from "@/components/WordByWordKaraoke";
 
 function SyncPreviewLine({ text, fillProgress }: { text: string; fillProgress: number }) {
   const words = text.split(/(\s+)/).filter((part) => part.length > 0);
