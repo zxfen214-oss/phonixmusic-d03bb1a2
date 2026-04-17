@@ -833,31 +833,32 @@ function useAppleMusicStyles(
 
 // ─── Bracket sub-line: fades in smoothly with padding/space animation ───
 function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActive: boolean; isMobile: boolean }) {
-  // Space (maxHeight/margin/padding) opens when active, and STAYS open afterwards
-  // so upcoming inactive lyrics shift down smoothly *before* the sub-line fades in,
-  // and the space remains occupied when the sub-line fades out.
+  // Space opens when active (pushing upcoming lines down), then collapses on deactivate
+  // (so upcoming lines reclaim the gap as the main lyric scrolls up).
   const [spaceOpen, setSpaceOpen] = useState(false);
   const [textVisible, setTextVisible] = useState(false);
   useEffect(() => {
     if (isActive) {
-      // Open space immediately so layout shifts smoothly first…
       setSpaceOpen(true);
-      // …then fade text in shortly after, once space has begun opening.
-      const t = setTimeout(() => setTextVisible(true), 180);
+      const t = setTimeout(() => setTextVisible(true), 90);
       return () => clearTimeout(t);
     }
-    // On deactivate: fade text out, but KEEP the space occupied.
+    // Fade text out first, then collapse the space shortly after.
     setTextVisible(false);
+    const t = setTimeout(() => setSpaceOpen(false), 180);
+    return () => clearTimeout(t);
   }, [isActive]);
   return (
     <div
       style={{
-        marginTop: spaceOpen ? '8px' : '0px',
+        marginTop: spaceOpen ? '10px' : '0px',
+        marginBottom: spaceOpen ? '14px' : '0px',
         paddingTop: spaceOpen ? '4px' : '0px',
+        paddingBottom: spaceOpen ? '6px' : '0px',
         maxHeight: spaceOpen ? '120px' : '0px',
         opacity: textVisible ? 1 : 0,
         overflow: 'hidden',
-        transition: 'opacity 400ms ease-out, max-height 550ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 550ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 550ms cubic-bezier(0.25, 0.8, 0.25, 1)',
+        transition: 'opacity 220ms ease-out, max-height 380ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 380ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 380ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 380ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-bottom 380ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
     >
       <p
