@@ -847,7 +847,7 @@ function useAppleMusicStyles(
     });
 
     prevPositionsRef.current = newPositions;
-  }, [visibleLyrics, lineRefs, isMobile, containerRef, LINE_PADDING, ACTIVE_OFFSET, dur]);
+  }, [visibleLyrics, lineRefs, isMobile, containerRef, LINE_PADDING, ACTIVE_OFFSET, dur, resizeTick]);
 }
 
 // ─── Bracket sub-line: fades in smoothly with padding/space animation ───
