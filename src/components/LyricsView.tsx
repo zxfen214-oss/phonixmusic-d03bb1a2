@@ -850,49 +850,55 @@ function useAppleMusicStyles(
   }, [visibleLyrics, lineRefs, isMobile, containerRef, LINE_PADDING, ACTIVE_OFFSET, dur, resizeTick]);
 }
 
-// ─── Bracket sub-line: fades in smoothly with padding/space animation ───
+// ─── Bracket sub-line: smoothly opens space (pushing upcoming lines down)
+// before fading text in; collapses space only after the main line moves on.
 function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActive: boolean; isMobile: boolean }) {
-  // Space opens when active (pushing upcoming lines down), then collapses on deactivate
-  // (so upcoming lines reclaim the gap as the main lyric scrolls up).
   const [spaceOpen, setSpaceOpen] = useState(false);
   const [textVisible, setTextVisible] = useState(false);
+
   useEffect(() => {
     if (isActive) {
+      // Open the space first; fade text in slightly after so neighbors finish moving.
       setSpaceOpen(true);
-      const t = setTimeout(() => setTextVisible(true), 90);
+      const t = setTimeout(() => setTextVisible(true), 80);
       return () => clearTimeout(t);
     }
-    // Fade text out first, then collapse the space shortly after.
+    // Becoming inactive: fade text out, then collapse the gap so the next line reclaims it.
     setTextVisible(false);
-    const t = setTimeout(() => setSpaceOpen(false), 180);
+    const t = setTimeout(() => setSpaceOpen(false), 160);
     return () => clearTimeout(t);
   }, [isActive]);
+
+  // CSS grid 0fr→1fr trick gives smooth animation to the natural height
+  // (no fixed maxHeight cap, no overshoot, ResizeObserver picks it up so
+  // upcoming lines reposition in lock-step).
   return (
     <div
       style={{
-        marginTop: spaceOpen ? '10px' : '0px',
-        marginBottom: spaceOpen ? '14px' : '0px',
-        paddingTop: spaceOpen ? '4px' : '0px',
-        paddingBottom: spaceOpen ? '6px' : '0px',
-        maxHeight: spaceOpen ? '120px' : '0px',
-        opacity: textVisible ? 1 : 0,
-        overflow: 'hidden',
-        transition: 'opacity 220ms ease-out, max-height 380ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 380ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 380ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 380ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-bottom 380ms cubic-bezier(0.25, 0.8, 0.25, 1)',
+        display: 'grid',
+        gridTemplateRows: spaceOpen ? '1fr' : '0fr',
+        marginTop: spaceOpen ? '8px' : '0px',
+        marginBottom: spaceOpen ? '6px' : '0px',
+        transition: 'grid-template-rows 280ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 280ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 280ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
     >
-      <p
-        dir="auto"
-        style={{
-          fontSize: isMobile ? '18px' : '22px',
-          fontWeight: 500,
-          color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
-          unicodeBidi: "plaintext",
-          lineHeight: 1.4,
-          margin: 0,
-        }}
-      >
-        {stripBrackets(text)}
-      </p>
+      <div style={{ overflow: 'hidden', minHeight: 0 }}>
+        <p
+          dir="auto"
+          style={{
+            fontSize: isMobile ? '18px' : '22px',
+            fontWeight: 500,
+            color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
+            unicodeBidi: "plaintext",
+            lineHeight: 1.4,
+            margin: 0,
+            opacity: textVisible ? 1 : 0,
+            transition: 'opacity 200ms ease-out, color 200ms ease-out',
+          }}
+        >
+          {stripBrackets(text)}
+        </p>
+      </div>
     </div>
   );
 }
