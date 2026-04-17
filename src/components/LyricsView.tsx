@@ -833,23 +833,31 @@ function useAppleMusicStyles(
 
 // ─── Bracket sub-line: fades in smoothly with padding/space animation ───
 function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActive: boolean; isMobile: boolean }) {
-  const [visible, setVisible] = useState(false);
+  // Space (maxHeight/margin/padding) opens when active, and STAYS open afterwards
+  // so upcoming inactive lyrics shift down smoothly *before* the sub-line fades in,
+  // and the space remains occupied when the sub-line fades out.
+  const [spaceOpen, setSpaceOpen] = useState(false);
+  const [textVisible, setTextVisible] = useState(false);
   useEffect(() => {
     if (isActive) {
-      const t = setTimeout(() => setVisible(true), 80);
+      // Open space immediately so layout shifts smoothly first…
+      setSpaceOpen(true);
+      // …then fade text in shortly after, once space has begun opening.
+      const t = setTimeout(() => setTextVisible(true), 180);
       return () => clearTimeout(t);
     }
-    setVisible(false);
+    // On deactivate: fade text out, but KEEP the space occupied.
+    setTextVisible(false);
   }, [isActive]);
   return (
     <div
       style={{
-        marginTop: visible ? '8px' : '0px',
-        paddingTop: visible ? '4px' : '0px',
-        maxHeight: visible ? '120px' : '0px',
-        opacity: visible ? 1 : 0,
+        marginTop: spaceOpen ? '8px' : '0px',
+        paddingTop: spaceOpen ? '4px' : '0px',
+        maxHeight: spaceOpen ? '120px' : '0px',
+        opacity: textVisible ? 1 : 0,
         overflow: 'hidden',
-        transition: 'opacity 500ms ease-out, max-height 500ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 500ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 500ms cubic-bezier(0.25, 0.8, 0.25, 1)',
+        transition: 'opacity 400ms ease-out, max-height 550ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 550ms cubic-bezier(0.25, 0.8, 0.25, 1), padding-top 550ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
     >
       <p
