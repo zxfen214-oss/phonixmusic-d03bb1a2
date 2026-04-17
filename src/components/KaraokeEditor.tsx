@@ -599,6 +599,38 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
 
 
 
+  // Start word-by-word keyboard recording mode
+  const startWordByWord = () => {
+    if (lyricsLines.length === 0) {
+      toast({
+        title: "No lyrics found",
+        description: "Please add lyrics first using the LRC Editor (or paste them in the next step).",
+        variant: "destructive",
+      });
+      return;
+    }
+    setAiWords(null);
+    setPlaybackRate(syncSpeed);
+    playTrack(track, [track]);
+    setTimeout(() => seekTo(0), 100);
+    setSyncMode("wbw");
+  };
+
+  // Called when WordByWordKaraoke finishes — adopt its timings as the words to save
+  const handleWBWComplete = (words: WBWWord[]) => {
+    if (!words || words.length === 0) {
+      toast({ title: "No timings captured", description: "Try again — capture at least one word.", variant: "destructive" });
+      return;
+    }
+    setAiWords(words as KaraokeWord[]);
+    setExistingWords(words as KaraokeWord[]);
+    setKaraokeEnabled(true);
+    setPlaybackRate(1.0);
+    setSyncMode("done");
+    toast({ title: "Word-by-word captured", description: `${words.length} word timings recorded.` });
+  };
+
+
   // Generate karaoke words from per-word captured timings
   const generateKaraokeWords = (): KaraokeWord[] => {
     const words: KaraokeWord[] = [];
