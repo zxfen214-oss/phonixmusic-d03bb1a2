@@ -816,6 +816,10 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                               <RotateCcw className="h-4 w-4" />
                               Re-sync All
                             </Button>
+                            <Button onClick={startWordByWord} variant="outline" className="gap-2">
+                              <Keyboard className="h-4 w-4" />
+                              Word-by-word
+                            </Button>
                             <Button onClick={generateAIKaraoke} disabled={isGeneratingAI} className="gap-2">
                               {isGeneratingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                               {isGeneratingAI ? "Generating..." : "AI Karaoke"}
