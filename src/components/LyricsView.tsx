@@ -15,6 +15,7 @@ import {
   AlignLeft,
   Volume2,
   VolumeX,
+  Disc3,
 } from "lucide-react";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
@@ -875,8 +876,8 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
       style={{
         display: 'grid',
         gridTemplateRows: spaceOpen ? '1fr' : '0fr',
-        marginTop: spaceOpen ? '10px' : '0px',
-        marginBottom: spaceOpen ? (isMobile ? '18px' : '24px') : '0px',
+        marginTop: spaceOpen ? '12px' : '0px',
+        marginBottom: spaceOpen ? (isMobile ? '32px' : '40px') : '0px',
         transition:
           'grid-template-rows 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 220ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
@@ -1050,7 +1051,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -1444,6 +1445,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(currentTrack.duration)}</span>
                 </div>
+                {isLossless && (
+                  <div className="flex items-center justify-center gap-1 mt-1.5" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, letterSpacing: '0.04em' }}>
+                    <Disc3 className="h-3 w-3" />
+                    Lossless
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: showLyricsPanel ? '360px' : '400px' }}>
@@ -1642,6 +1649,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(currentTrack.duration)}</span>
               </div>
+              {isLossless && (
+                <div className="flex items-center justify-center gap-1 mt-1.5" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, letterSpacing: '0.04em' }}>
+                  <Disc3 className="h-3 w-3" />
+                  Lossless
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-6 mt-3">
