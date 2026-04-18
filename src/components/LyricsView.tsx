@@ -860,26 +860,25 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
     if (isActive) {
       // Open the space first; fade text in slightly after so neighbors finish moving.
       setSpaceOpen(true);
-      const t = setTimeout(() => setTextVisible(true), 80);
+      const t = setTimeout(() => setTextVisible(true), 60);
       return () => clearTimeout(t);
     }
-    // Becoming inactive: fade text out, then collapse the gap so the next line reclaims it.
+    // Becoming inactive: collapse space immediately together with text fade,
+    // so as the active line scrolls up no extra gap appears above the next line.
     setTextVisible(false);
-    const t = setTimeout(() => setSpaceOpen(false), 160);
-    return () => clearTimeout(t);
+    setSpaceOpen(false);
   }, [isActive]);
 
-  // CSS grid 0fr→1fr trick gives smooth animation to the natural height
-  // (no fixed maxHeight cap, no overshoot, ResizeObserver picks it up so
-  // upcoming lines reposition in lock-step).
+  // CSS grid 0fr→1fr trick gives smooth animation to the natural height.
   return (
     <div
       style={{
         display: 'grid',
         gridTemplateRows: spaceOpen ? '1fr' : '0fr',
-        marginTop: spaceOpen ? '8px' : '0px',
-        marginBottom: spaceOpen ? '6px' : '0px',
-        transition: 'grid-template-rows 280ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 280ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 280ms cubic-bezier(0.25, 0.8, 0.25, 1)',
+        marginTop: spaceOpen ? '10px' : '0px',
+        marginBottom: spaceOpen ? (isMobile ? '18px' : '24px') : '0px',
+        transition:
+          'grid-template-rows 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 220ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
     >
       <div style={{ overflow: 'hidden', minHeight: 0 }}>
@@ -888,12 +887,12 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
           style={{
             fontSize: isMobile ? '18px' : '22px',
             fontWeight: 500,
-            color: isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)",
-            unicodeBidi: "plaintext",
+            color: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
+            unicodeBidi: 'plaintext',
             lineHeight: 1.4,
             margin: 0,
             opacity: textVisible ? 1 : 0,
-            transition: 'opacity 200ms ease-out, color 200ms ease-out',
+            transition: 'opacity 160ms ease-out, color 200ms ease-out',
           }}
         >
           {stripBrackets(text)}

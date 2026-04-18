@@ -246,33 +246,45 @@ export function WordByWordKaraoke({
     }
   }, [phase, activeLine, lines.length]);
 
-  // Finish & build words array
+  // Finish & build words array — enforce contiguous timings for smooth fills
   const finish = () => {
     onPause();
-    const words: WBWWord[] = [];
+    type Flat = { word: string; lineIndex: number; wordIndex: number; start: number; end: number };
+    const flat: Flat[] = [];
     timings.forEach((lineRow, li) => {
       const lineWords = lines[li]?.words ?? [];
       lineRow.forEach((t, wi) => {
         const word = lineWords[wi];
         if (!word) return;
         if (t.start < 0) return; // skip un-captured
-        let end = t.end;
-        if (end < 0) {
-          // Try to use next word's start
-          const nextInLine = lineRow[wi + 1];
-          const nextLine = timings[li + 1];
-          if (nextInLine && nextInLine.start >= 0) end = nextInLine.start;
-          else if (nextLine && nextLine[0]?.start >= 0) end = nextLine[0].start;
-          else end = Math.min(duration, t.start + 0.5);
-        }
-        words.push({
-          word,
-          startTime: Number(t.start.toFixed(2)),
-          endTime: Number(Math.max(t.start + 0.05, end).toFixed(2)),
-          lineIndex: li,
-        });
+        flat.push({ word, lineIndex: li, wordIndex: wi, start: t.start, end: t.end });
       });
     });
+
+    // Make per-line timings contiguous: each word ends exactly where the next begins
+    // so karaoke fills move smoothly without gaps or stalls.
+    const words: WBWWord[] = flat.map((cur, i) => {
+      const next = flat[i + 1];
+      const sameLineNext = next && next.lineIndex === cur.lineIndex;
+      let end: number;
+      if (sameLineNext) {
+        end = next.start;
+      } else if (cur.end >= 0) {
+        end = cur.end;
+      } else if (next) {
+        end = next.start;
+      } else {
+        end = Math.min(duration, cur.start + 0.5);
+      }
+      end = Math.max(cur.start + 0.08, end);
+      return {
+        word: cur.word,
+        startTime: Number(cur.start.toFixed(2)),
+        endTime: Number(end.toFixed(2)),
+        lineIndex: cur.lineIndex,
+      };
+    });
+
     setPhase("done");
     onComplete(words);
   };
