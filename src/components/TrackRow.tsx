@@ -158,10 +158,8 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
           <span className="text-sm text-muted-foreground">{formatTime(track.duration)}</span>
         </div>
 
-        {/* Download for Offline - only for YouTube tracks */}
-        {track.source === 'youtube' && (
-          <DownloadButton track={track} variant="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" />
-        )}
+        {/* Download for Offline — appears only when an admin has uploaded an MP3 for this song */}
+        <DownloadButton track={track} variant="icon" className="opacity-0 group-hover:opacity-100 transition-opacity" />
 
         {/* More Menu */}
         <DropdownMenu>
