@@ -9,6 +9,10 @@ interface DownloadableSong {
   audio_url: string | null;
   synced_lyrics: string | null;
   plain_lyrics: string | null;
+  karaoke_data: any | null;
+  karaoke_enabled: boolean | null;
+  lyrics_speed: number | null;
+  bounce_intensity: number | null;
 }
 
 interface ProgressState {
@@ -32,7 +36,7 @@ export function useOfflineLibraryDownload() {
     try {
       const { data, error } = await supabase
         .from("songs")
-        .select("youtube_id, title, artist, audio_url, synced_lyrics, plain_lyrics")
+        .select("youtube_id, title, artist, audio_url, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, lyrics_speed, bounce_intensity")
         .not("audio_url", "is", null)
         .not("youtube_id", "is", null)
         .eq("needs_metadata", false)
@@ -61,8 +65,14 @@ export function useOfflineLibraryDownload() {
           song.title,
           song.artist,
           undefined,
-          song.synced_lyrics,
-          song.plain_lyrics
+          {
+            syncedLyrics: song.synced_lyrics,
+            plainLyrics: song.plain_lyrics,
+            karaokeData: song.karaoke_data,
+            karaokeEnabled: song.karaoke_enabled ?? false,
+            lyricsSpeed: song.lyrics_speed,
+            bounceIntensity: song.bounce_intensity,
+          }
         );
       }
 
