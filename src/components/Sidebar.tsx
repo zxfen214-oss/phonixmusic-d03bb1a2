@@ -18,7 +18,6 @@ import {
   User,
   Shield,
   Download,
-  Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -39,7 +38,6 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Library },
     { id: "playlists", label: "Playlists", icon: ListMusic },
-    { id: "leaderboard", label: "Leaderboard", icon: Trophy },
     { id: "youtube", label: "Search", icon: Search },
   ];
 
