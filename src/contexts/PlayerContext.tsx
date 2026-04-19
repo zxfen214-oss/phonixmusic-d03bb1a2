@@ -424,14 +424,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       
       const nextTrack = prev.queue[nextIndex];
-      
-      // Load the track with offline-first approach
+      const myToken = ++loadTokenRef.current;
+      stopCurrentSource();
+
       if (nextTrack.source === 'youtube' && nextTrack.youtubeId) {
-        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(nextTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadYouTubeVideo(nextTrack.youtubeId!);
         });
       } else {
-        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(nextTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadLocalAudio(nextTrack);
         });
       }
@@ -443,7 +446,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         progress: 0,
       };
     });
-  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio]);
+  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio, stopCurrentSource]);
 
   const previousTrack = useCallback(() => {
     setState(prev => {
@@ -455,13 +458,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       
       const prevTrack = prev.queue[prevIndex];
-      
+      const myToken = ++loadTokenRef.current;
+      stopCurrentSource();
+
       if (prevTrack.source === 'youtube' && prevTrack.youtubeId) {
-        loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(prevTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadYouTubeVideo(prevTrack.youtubeId!);
         });
       } else {
-        loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(prevTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadLocalAudio(prevTrack);
         });
       }
