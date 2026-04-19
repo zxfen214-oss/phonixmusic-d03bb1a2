@@ -1719,12 +1719,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(currentTrack.duration)}</span>
               </div>
-              {isLossless && (
-                <div className="flex items-center justify-center gap-1 mt-1.5" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, letterSpacing: '0.04em' }}>
-                  <Disc3 className="h-3 w-3" />
-                  Lossless
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-center gap-6 mt-3">
@@ -1755,6 +1749,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 <ListPlus className="h-5 w-5 text-white/60" />
               </button>
             </div>
+
+            {isLossless && (
+              <div
+                className="flex items-center justify-center gap-1.5 mt-3"
+                style={{
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.75)',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <Disc3 className="h-4 w-4" />
+                Lossless
+              </div>
+            )}
           </motion.div>
         </div>
 
