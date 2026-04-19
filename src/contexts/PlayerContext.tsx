@@ -58,6 +58,30 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const progressIntervalRef = useRef<number | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const isYouTubeReady = useRef(false);
+  // Token to cancel stale loads when user clicks play multiple times
+  const loadTokenRef = useRef(0);
+
+  // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
+  const stopCurrentSource = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+        audioRef.current.src = '';
+        audioRef.current.load();
+      } catch {}
+      audioRef.current = null;
+    }
+    if (objectUrlRef.current) {
+      try { URL.revokeObjectURL(objectUrlRef.current); } catch {}
+      objectUrlRef.current = null;
+    }
+    if (youtubePlayerRef.current) {
+      try { youtubePlayerRef.current.stopVideo?.(); } catch {}
+      try { youtubePlayerRef.current.destroy?.(); } catch {}
+      youtubePlayerRef.current = null;
+    }
+  }, []);
 
   const applyPreservePitch = useCallback((audio: HTMLAudioElement, preserve: boolean) => {
     // Best-effort: preserve pitch when changing playbackRate (supported in most modern browsers).
