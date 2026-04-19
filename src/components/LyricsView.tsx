@@ -990,6 +990,7 @@ function LyricsContent({
                   <SecondaryTextLine text={secondaryText} isActive={isActive} isMobile={isMobile} />
                 )}
               </>
+            ) : isIntro ? (
               <IntroCircles currentTime={smoothTime} startTime={lineTime} endTime={nextLineTime} />
             ) : (
               <>
