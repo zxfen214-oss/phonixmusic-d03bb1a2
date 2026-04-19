@@ -130,6 +130,42 @@ export async function getCachedLyrics(youtubeId: string): Promise<{ syncedLyrics
 }
 
 /**
+ * Get cached karaoke + lyrics settings for a YouTube ID
+ */
+export async function getCachedKaraoke(youtubeId: string): Promise<{
+  karaokeData: any | null;
+  karaokeEnabled: boolean;
+  lyricsSpeed: number | null;
+  bounceIntensity: number | null;
+} | null> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const request = store.get(youtubeId);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedAudio | undefined;
+        if (result) {
+          resolve({
+            karaokeData: result.karaokeData ?? null,
+            karaokeEnabled: !!result.karaokeEnabled,
+            lyricsSpeed: result.lyricsSpeed ?? null,
+            bounceIntensity: result.bounceIntensity ?? null,
+          });
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get cached audio blob for a YouTube ID
  */
 export async function getCachedAudio(youtubeId: string): Promise<Blob | null> {
