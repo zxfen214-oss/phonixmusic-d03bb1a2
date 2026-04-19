@@ -1503,12 +1503,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(currentTrack.duration)}</span>
                 </div>
-                {isLossless && (
-                  <div className="flex items-center justify-center gap-1 mt-1.5" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, letterSpacing: '0.04em' }}>
-                    <Disc3 className="h-3 w-3" />
-                    Lossless
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: showLyricsPanel ? '360px' : '400px' }}>
