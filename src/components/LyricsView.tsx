@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, Fragment, useLayoutEffect, useCal
 import { usePlayer } from "@/contexts/PlayerContext";
 import { fetchSyncedLyrics, getCurrentLyricIndex, ParsedLyrics, LyricLine, parseLRC } from "@/lib/lyrics";
 import { fetchMergedSongRecord } from "@/lib/songRecords";
-import { getCachedLyrics } from "@/lib/offlineCache";
+import { getCachedLyrics, getCachedKaraoke } from "@/lib/offlineCache";
 import { useDominantColors } from "@/hooks/useDominantColor";
 import { 
   X, 
@@ -1147,66 +1147,124 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
+
+      let appliedFromCache = false;
+      let cachedSyncedText: string | null = null;
+      let cachedPlainText: string | null = null;
+
+      // ── 1. ALWAYS try the offline cache first (works whether online or offline) ──
+      if (currentTrack.youtubeId) {
+        const [cachedLyrics, cachedKaraoke] = await Promise.all([
+          getCachedLyrics(currentTrack.youtubeId),
+          getCachedKaraoke(currentTrack.youtubeId),
+        ]);
+        if (cachedLyrics?.syncedLyrics) cachedSyncedText = cachedLyrics.syncedLyrics;
+        if (cachedLyrics?.plainLyrics) cachedPlainText = cachedLyrics.plainLyrics;
+
+        if (cachedKaraoke) {
+          if (typeof cachedKaraoke.lyricsSpeed === 'number') setLyricsSpeed(cachedKaraoke.lyricsSpeed);
+          if (typeof cachedKaraoke.bounceIntensity === 'number') setBounceIntensity(cachedKaraoke.bounceIntensity);
+          if (cachedKaraoke.karaokeData) {
+            const data = cachedKaraoke.karaokeData as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
+            if (data.words?.length && cachedKaraoke.karaokeEnabled) {
+              setKaraokeEnabled(true);
+              setKaraokeWords(data.words);
+            }
+            if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
+            if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+          }
+        }
+
+        if (cachedSyncedText) {
+          const parsed = parseLRC(cachedSyncedText);
+          if (parsed.lines.length > 0) {
+            setParsedLyrics(parsed);
+            setStaticLyricsMode(false);
+            appliedFromCache = true;
+          }
+        } else if (cachedPlainText) {
+          const lines = cachedPlainText.split('\n').map(l => l.trim()).filter(Boolean).map(text => ({ time: -1, text }));
+          if (lines.length > 0) {
+            setParsedLyrics({ lines, isSynced: false });
+            setStaticLyricsText(cachedPlainText);
+            setStaticLyricsMode(true);
+            appliedFromCache = true;
+          }
+        }
+      }
+
+      // If offline and we already showed cached content, stop here
+      if (!navigator.onLine && appliedFromCache) {
+        setIsLoadingLyrics(false);
+        return;
+      }
+
+      // ── 2. Online path: fetch from DB (with timeout to prevent forever-loading) ──
       try {
-        if (currentTrack.youtubeId) {
-          const { merged: song } = await fetchMergedSongRecord(
-            {
-              youtubeId: currentTrack.youtubeId,
-              title: currentTrack.title,
-              artist: currentTrack.artist,
-              album: currentTrack.album,
-            },
-            "karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, updated_at, created_at"
-          );
+        if (currentTrack.youtubeId && navigator.onLine) {
+          const songFetch = Promise.race([
+            fetchMergedSongRecord(
+              {
+                youtubeId: currentTrack.youtubeId,
+                title: currentTrack.title,
+                artist: currentTrack.artist,
+                album: currentTrack.album,
+              },
+              "karaoke_enabled, karaoke_data, lyrics_speed, bounce_intensity, plain_lyrics, updated_at, created_at"
+            ),
+            new Promise<{ merged: null }>((resolve) => setTimeout(() => resolve({ merged: null }), 4000)),
+          ]);
+          const { merged: song } = await songFetch as any;
           if (song) {
             if (typeof song.lyrics_speed === 'number') setLyricsSpeed(song.lyrics_speed);
             if (typeof (song as any).bounce_intensity === 'number') setBounceIntensity((song as any).bounce_intensity);
             if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
-            else setStaticLyricsText("");
+            else if (!cachedPlainText) setStaticLyricsText("");
             if (song.karaoke_enabled && song.karaoke_data) {
               const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
               if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
             } else if (song.karaoke_data) {
-              // No karaoke words but may have settings
               const data = song.karaoke_data as any;
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
               if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
             }
-          } else {
+          } else if (!appliedFromCache) {
             setStaticLyricsText("");
           }
         }
-        let lyrics = await fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title, currentTrack.album);
-        
-        if (!lyrics?.lines.length && currentTrack.youtubeId) {
-          const cached = await getCachedLyrics(currentTrack.youtubeId);
-          if (cached?.syncedLyrics) {
-            const parsed = parseLRC(cached.syncedLyrics);
-            if (parsed.lines.length > 0) {
-              lyrics = parsed;
-            }
-          }
+
+        // Skip remote lyrics fetch when offline OR when we already loaded from cache
+        let lyrics: ParsedLyrics | null = null;
+        if (navigator.onLine) {
+          lyrics = await Promise.race([
+            fetchSyncedLyrics(currentTrack.youtubeId, currentTrack.artist, currentTrack.title, currentTrack.album),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000)),
+          ]);
         }
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
-          // Synced lyrics available — prefer synced mode
           setStaticLyricsMode(false);
-        } else if (staticLyricsText.trim()) {
-          const staticLines = staticLyricsText
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line.length > 0)
-            .map((text) => ({ time: -1, text }));
-          setParsedLyrics({ lines: staticLines, isSynced: false });
-          setStaticLyricsMode(true);
-        } else {
-          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+        } else if (!appliedFromCache) {
+          // No remote lyrics and nothing from cache — fallback
+          if (staticLyricsText.trim()) {
+            const staticLines = staticLyricsText
+              .split('\n')
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0)
+              .map((text) => ({ time: -1, text }));
+            setParsedLyrics({ lines: staticLines, isSynced: false });
+            setStaticLyricsMode(true);
+          } else {
+            setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: 'for this track' }, { time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Enjoy the music' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+          }
         }
       } catch {
-        setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+        if (!appliedFromCache) {
+          setParsedLyrics({ lines: [{ time: -1, text: '♪ ♪ ♪' }, { time: -1, text: 'Lyrics not available' }, { time: -1, text: '♪ ♪ ♪' }], isSynced: false });
+        }
       } finally {
         setIsLoadingLyrics(false);
       }
