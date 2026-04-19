@@ -1,0 +1,23 @@
+---
+name: Offline Playback
+description: IndexedDB caching, single-audio guard, offline-first lyrics + karaoke, timeouts to prevent forever-loading
+type: feature
+---
+Offline cache (IndexedDB store `cachedAudio`) bundles per track:
+- audioBlob (MP3)
+- syncedLyrics, plainLyrics
+- karaokeData, karaokeEnabled, lyricsSpeed, bounceIntensity
+
+Player rules:
+- Single active audio element enforced via `loadTokenRef` + `stopCurrentSource()` in PlayerContext. Rapid play clicks must never duplicate audio.
+- Audio resolution priority: IndexedDB cached blob > local audioFiles store > remote `audio_url` (only when `navigator.onLine`, with 4s lookup timeout + 8s fetch timeout) > YouTube IFrame fallback.
+- `loadCachedOrRemoteAudio` accepts a token; stale loads abort silently.
+
+Lyrics + karaoke offline:
+- LyricsView always tries `getCachedLyrics` + `getCachedKaraoke` FIRST.
+- When offline AND cache hit, skip all Supabase/lyrics.ovh fetches.
+- Online path wraps `fetchMergedSongRecord` and `fetchSyncedLyrics` in 4s/6s timeouts to prevent infinite loading.
+- Cached karaoke restores: words, early_appearance, mobile_char_limit, lyrics_speed, bounce_intensity.
+
+Lossless badge:
+- Shown below the playback control row (NOT under the time row), 12px UPPERCASE, semibold, with `Disc3` icon — same on desktop and mobile.

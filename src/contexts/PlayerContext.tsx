@@ -58,6 +58,30 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const progressIntervalRef = useRef<number | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const isYouTubeReady = useRef(false);
+  // Token to cancel stale loads when user clicks play multiple times
+  const loadTokenRef = useRef(0);
+
+  // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
+  const stopCurrentSource = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+        audioRef.current.src = '';
+        audioRef.current.load();
+      } catch {}
+      audioRef.current = null;
+    }
+    if (objectUrlRef.current) {
+      try { URL.revokeObjectURL(objectUrlRef.current); } catch {}
+      objectUrlRef.current = null;
+    }
+    if (youtubePlayerRef.current) {
+      try { youtubePlayerRef.current.stopVideo?.(); } catch {}
+      try { youtubePlayerRef.current.destroy?.(); } catch {}
+      youtubePlayerRef.current = null;
+    }
+  }, []);
 
   const applyPreservePitch = useCallback((audio: HTMLAudioElement, preserve: boolean) => {
     // Best-effort: preserve pitch when changing playbackRate (supported in most modern browsers).
@@ -251,16 +275,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled]);
 
-  const loadCachedOrRemoteAudio = useCallback(async (track: Track) => {
+  const loadCachedOrRemoteAudio = useCallback(async (track: Track, token?: number) => {
     // Cleanup previous
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
+    stopCurrentSource();
 
     let audioBlob: Blob | null = null;
 
@@ -275,14 +292,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (!audioBlob) {
+    // If still nothing, try remote — but ONLY if online, with a timeout to avoid forever-loading
+    if (!audioBlob && navigator.onLine) {
       try {
-        const { merged } = await fetchMergedSongRecord(
-          { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
-          "id, audio_url"
-        );
+        const fetchWithTimeout = Promise.race([
+          fetchMergedSongRecord(
+            { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+            "id, audio_url"
+          ),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("song lookup timeout")), 4000)),
+        ]);
+        const { merged } = await fetchWithTimeout as any;
         if (merged?.audio_url) {
-          const resp = await fetch(merged.audio_url);
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 8000);
+          const resp = await fetch(merged.audio_url, { signal: ctrl.signal });
+          clearTimeout(tid);
           if (resp.ok) {
             audioBlob = await resp.blob();
             await saveAudioFile(track.id, audioBlob, audioBlob.type || "audio/mpeg");
@@ -292,6 +317,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.warn("Failed to fetch remote audio:", e);
       }
     }
+
+    // If a newer load was started while we were fetching, abort
+    if (token !== undefined && token !== loadTokenRef.current) return false;
 
     if (audioBlob) {
       const audio = new Audio();
@@ -314,23 +342,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       audioRef.current = audio;
       setIsLossless(true);
-      await audio.play();
+      try { await audio.play(); } catch (e) { console.warn("audio.play failed:", e); }
+      // Re-check token after async play
+      if (token !== undefined && token !== loadTokenRef.current) {
+        stopCurrentSource();
+        return false;
+      }
       setState(prev => ({ ...prev, isPlaying: true }));
       return true;
     }
     return false;
-  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled]);
+  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled, stopCurrentSource]);
 
   const playTrack = useCallback((track: Track, queue?: Track[]) => {
-    // Cleanup previous players
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    if (youtubePlayerRef.current) {
-      try {
-        youtubePlayerRef.current.stopVideo();
-      } catch (e) {}
-    }
+    // Increment load token to invalidate any in-flight loads
+    const myToken = ++loadTokenRef.current;
+    // Hard stop any existing audio/youtube source FIRST
+    stopCurrentSource();
 
     const newQueue = queue || [track];
     const index = newQueue.findIndex(t => t.id === track.id);
@@ -339,26 +367,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ...prev,
       currentTrack: track,
       progress: 0,
+      isPlaying: false,
       queue: newQueue,
       queueIndex: index >= 0 ? index : 0,
     }));
 
     if (track.source === 'youtube' && track.youtubeId) {
       setIsLossless(false);
-      loadCachedOrRemoteAudio(track).then(usedCached => {
+      loadCachedOrRemoteAudio(track, myToken).then(usedCached => {
+        if (myToken !== loadTokenRef.current) return; // stale
         if (!usedCached) {
           setIsLossless(false);
           loadYouTubeVideo(track.youtubeId!);
         }
       });
     } else {
-      loadCachedOrRemoteAudio(track).then(usedCached => {
+      loadCachedOrRemoteAudio(track, myToken).then(usedCached => {
+        if (myToken !== loadTokenRef.current) return; // stale
         if (!usedCached) {
           loadLocalAudio(track);
         }
       });
     }
-  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio]);
+  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio, stopCurrentSource]);
 
   const pauseTrack = useCallback(() => {
     // If we have an active audio element (covers both local tracks AND cached YouTube tracks)
@@ -393,14 +424,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       
       const nextTrack = prev.queue[nextIndex];
-      
-      // Load the track with offline-first approach
+      const myToken = ++loadTokenRef.current;
+      stopCurrentSource();
+
       if (nextTrack.source === 'youtube' && nextTrack.youtubeId) {
-        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(nextTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadYouTubeVideo(nextTrack.youtubeId!);
         });
       } else {
-        loadCachedOrRemoteAudio(nextTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(nextTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadLocalAudio(nextTrack);
         });
       }
@@ -412,7 +446,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         progress: 0,
       };
     });
-  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio]);
+  }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio, stopCurrentSource]);
 
   const previousTrack = useCallback(() => {
     setState(prev => {
@@ -424,13 +458,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       
       const prevTrack = prev.queue[prevIndex];
-      
+      const myToken = ++loadTokenRef.current;
+      stopCurrentSource();
+
       if (prevTrack.source === 'youtube' && prevTrack.youtubeId) {
-        loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(prevTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadYouTubeVideo(prevTrack.youtubeId!);
         });
       } else {
-        loadCachedOrRemoteAudio(prevTrack).then(usedCached => {
+        loadCachedOrRemoteAudio(prevTrack, myToken).then(usedCached => {
+          if (myToken !== loadTokenRef.current) return;
           if (!usedCached) loadLocalAudio(prevTrack);
         });
       }

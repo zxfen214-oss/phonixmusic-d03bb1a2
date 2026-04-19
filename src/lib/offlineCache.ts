@@ -69,6 +69,10 @@ export interface CachedAudio {
   artist: string;
   syncedLyrics?: string | null;
   plainLyrics?: string | null;
+  karaokeData?: any | null;
+  karaokeEnabled?: boolean | null;
+  lyricsSpeed?: number | null;
+  bounceIntensity?: number | null;
 }
 
 export interface CacheInfo {
@@ -126,6 +130,42 @@ export async function getCachedLyrics(youtubeId: string): Promise<{ syncedLyrics
 }
 
 /**
+ * Get cached karaoke + lyrics settings for a YouTube ID
+ */
+export async function getCachedKaraoke(youtubeId: string): Promise<{
+  karaokeData: any | null;
+  karaokeEnabled: boolean;
+  lyricsSpeed: number | null;
+  bounceIntensity: number | null;
+} | null> {
+  try {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const request = store.get(youtubeId);
+
+      request.onsuccess = () => {
+        const result = request.result as CachedAudio | undefined;
+        if (result) {
+          resolve({
+            karaokeData: result.karaokeData ?? null,
+            karaokeEnabled: !!result.karaokeEnabled,
+            lyricsSpeed: result.lyricsSpeed ?? null,
+            bounceIntensity: result.bounceIntensity ?? null,
+          });
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get cached audio blob for a YouTube ID
  */
 export async function getCachedAudio(youtubeId: string): Promise<Blob | null> {
@@ -150,13 +190,21 @@ export async function getCachedAudio(youtubeId: string): Promise<Blob | null> {
 /**
  * Save audio to cache
  */
+export interface CacheExtras {
+  syncedLyrics?: string | null;
+  plainLyrics?: string | null;
+  karaokeData?: any | null;
+  karaokeEnabled?: boolean | null;
+  lyricsSpeed?: number | null;
+  bounceIntensity?: number | null;
+}
+
 export async function cacheAudio(
   youtubeId: string,
   audioBlob: Blob,
   title: string,
   artist: string,
-  syncedLyrics?: string | null,
-  plainLyrics?: string | null
+  extras: CacheExtras = {}
 ): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -171,8 +219,12 @@ export async function cacheAudio(
       cachedAt: new Date(),
       title,
       artist,
-      syncedLyrics: syncedLyrics || null,
-      plainLyrics: plainLyrics || null,
+      syncedLyrics: extras.syncedLyrics ?? null,
+      plainLyrics: extras.plainLyrics ?? null,
+      karaokeData: extras.karaokeData ?? null,
+      karaokeEnabled: extras.karaokeEnabled ?? null,
+      lyricsSpeed: extras.lyricsSpeed ?? null,
+      bounceIntensity: extras.bounceIntensity ?? null,
     };
     
     const request = store.put(cachedAudio);
@@ -258,8 +310,7 @@ export async function downloadAndCacheAudio(
   title: string,
   artist: string,
   onProgress?: (progress: number) => void,
-  syncedLyrics?: string | null,
-  plainLyrics?: string | null
+  extras: CacheExtras = {}
 ): Promise<boolean> {
   try {
     const response = await fetch(audioUrl);
@@ -294,7 +345,7 @@ export async function downloadAndCacheAudio(
     }
 
     const blob = new Blob(chunks, { type: 'audio/mpeg' });
-    await cacheAudio(youtubeId, blob, title, artist, syncedLyrics, plainLyrics);
+    await cacheAudio(youtubeId, blob, title, artist, extras);
     
     return true;
   } catch (error) {
