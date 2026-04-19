@@ -1523,6 +1523,24 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </button>
               </div>
 
+              {isLossless && (
+                <div
+                  className="flex items-center justify-center gap-1.5"
+                  style={{
+                    marginTop: '14px',
+                    width: showLyricsPanel ? '360px' : '400px',
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.75)',
+                    fontWeight: 600,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <Disc3 className="h-4 w-4" />
+                  Lossless
+                </div>
+              )}
+
               {/* Volume control */}
               <div className="flex items-center gap-3 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
                 <button
