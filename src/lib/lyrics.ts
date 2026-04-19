@@ -173,17 +173,20 @@ export function parseLRC(content: string): ParsedLyrics {
         text = text.slice(6).trim();
       }
 
-      // Handle <nl> as inline separator: "[00:05.00]Line A<nl>Line B"
-      // Line A becomes the main line with isNl=true
-      // Line B becomes a separate companion line at the same timestamp
+      // Handle <nl> or <dual> as inline separator: "[00:05.00]Line A<nl>Line B"
+      // or "[00:05.00]Line A<dual>Line B" — Line B becomes a parallel companion line
+      // displayed at the same position, with its own karaoke timing.
       let isNl = false;
       let nlCompanionRaw: string | undefined;
 
+      const dualIdx = text.indexOf('<dual>');
       const nlIdx = text.indexOf('<nl>');
-      if (nlIdx !== -1) {
+      const splitIdx = dualIdx !== -1 ? dualIdx : nlIdx;
+      const splitLen = dualIdx !== -1 ? 6 : 4;
+      if (splitIdx !== -1) {
         isNl = true;
-        nlCompanionRaw = text.slice(nlIdx + 4).trim();
-        text = text.slice(0, nlIdx).trim();
+        nlCompanionRaw = text.slice(splitIdx + splitLen).trim();
+        text = text.slice(0, splitIdx).trim();
       }
       
       // Also support <nl> at end without companion (legacy)
