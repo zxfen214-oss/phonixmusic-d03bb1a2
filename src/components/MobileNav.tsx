@@ -1,4 +1,4 @@
-import { Home, Library, ListMusic, Search, Settings, Download, Trophy } from "lucide-react";
+import { Home, Library, ListMusic, Search, Settings, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
@@ -15,7 +15,6 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Library },
     { id: "playlists", label: "Playlists", icon: ListMusic },
-    { id: "leaderboard", label: "Top", icon: Trophy },
     { id: "youtube", label: "Search", icon: Search },
     ...(canInstall
       ? [{ id: "_install", label: "Install", icon: Download }]

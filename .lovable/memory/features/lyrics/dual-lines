@@ -1,0 +1,17 @@
+---
+name: Dual / Simultaneous Lyric Lines
+description: <dual> tag splits an LRC line into a primary + parallel secondary main line, both keep position; secondary stays dim until its own karaoke fires
+type: feature
+---
+Use case: artist sings two parallel lines at the same time (e.g. "The Color Violet": "Who are you?" overlaps with "It is me, the one").
+
+LRC authoring:
+- Inline `<dual>` tag splits one timestamped line into primary (before tag) + companion (after tag).
+- Example: `[00:42.10]<00:42.10>Who <00:42.40>are <00:42.70>you?<dual><00:42.20>It <00:42.50>is <00:42.80>me`
+- `<dual>` is an alias for the existing `<nl>` inline form — same parser path; both produce a companion line at `time + 0.001`.
+
+Rendering (LyricsView):
+- Primary renders with full karaoke at its position.
+- Companion renders directly below primary at same position/size, NOT shifted.
+- Companion opacity = 0.35 by default, brightens to 1.0 (with 200ms transition) when its OWN karaoke window is active (`smoothTime ∈ [companionTime, companionEndTime]`).
+- Both ELRC karaoke and standard karaoke paths supported; companion can have independent ELRC word-level timings.
