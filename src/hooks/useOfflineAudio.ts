@@ -73,19 +73,29 @@ export function useOfflineAudio(track: Track | null) {
     setStatus(prev => ({ ...prev, isDownloading: true, downloadProgress: 0 }));
 
     try {
-      // Fetch lyrics from songs table to bundle
+      // Fetch lyrics + karaoke from songs table to bundle for offline use
       let syncedLyrics: string | null = null;
       let plainLyrics: string | null = null;
-      
+      let karaokeData: any | null = null;
+      let karaokeEnabled = false;
+      let lyricsSpeed: number | null = null;
+      let bounceIntensity: number | null = null;
+
       const { data: songData } = await supabase
         .from('songs')
-        .select('synced_lyrics, plain_lyrics')
+        .select('synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, lyrics_speed, bounce_intensity')
         .eq('youtube_id', track.youtubeId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
-      
+
       if (songData) {
-        syncedLyrics = songData.synced_lyrics || null;
-        plainLyrics = songData.plain_lyrics || null;
+        syncedLyrics = (songData as any).synced_lyrics || null;
+        plainLyrics = (songData as any).plain_lyrics || null;
+        karaokeData = (songData as any).karaoke_data || null;
+        karaokeEnabled = !!(songData as any).karaoke_enabled;
+        lyricsSpeed = (songData as any).lyrics_speed ?? null;
+        bounceIntensity = (songData as any).bounce_intensity ?? null;
       }
 
       const success = await downloadAndCacheAudio(
@@ -96,8 +106,7 @@ export function useOfflineAudio(track: Track | null) {
         (progress) => {
           setStatus(prev => ({ ...prev, downloadProgress: progress }));
         },
-        syncedLyrics,
-        plainLyrics
+        { syncedLyrics, plainLyrics, karaokeData, karaokeEnabled, lyricsSpeed, bounceIntensity }
       );
 
       if (success) {
