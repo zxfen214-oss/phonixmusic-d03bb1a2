@@ -69,6 +69,10 @@ export interface CachedAudio {
   artist: string;
   syncedLyrics?: string | null;
   plainLyrics?: string | null;
+  karaokeData?: any | null;
+  karaokeEnabled?: boolean | null;
+  lyricsSpeed?: number | null;
+  bounceIntensity?: number | null;
 }
 
 export interface CacheInfo {
@@ -150,13 +154,21 @@ export async function getCachedAudio(youtubeId: string): Promise<Blob | null> {
 /**
  * Save audio to cache
  */
+export interface CacheExtras {
+  syncedLyrics?: string | null;
+  plainLyrics?: string | null;
+  karaokeData?: any | null;
+  karaokeEnabled?: boolean | null;
+  lyricsSpeed?: number | null;
+  bounceIntensity?: number | null;
+}
+
 export async function cacheAudio(
   youtubeId: string,
   audioBlob: Blob,
   title: string,
   artist: string,
-  syncedLyrics?: string | null,
-  plainLyrics?: string | null
+  extras: CacheExtras = {}
 ): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
@@ -171,8 +183,12 @@ export async function cacheAudio(
       cachedAt: new Date(),
       title,
       artist,
-      syncedLyrics: syncedLyrics || null,
-      plainLyrics: plainLyrics || null,
+      syncedLyrics: extras.syncedLyrics ?? null,
+      plainLyrics: extras.plainLyrics ?? null,
+      karaokeData: extras.karaokeData ?? null,
+      karaokeEnabled: extras.karaokeEnabled ?? null,
+      lyricsSpeed: extras.lyricsSpeed ?? null,
+      bounceIntensity: extras.bounceIntensity ?? null,
     };
     
     const request = store.put(cachedAudio);
@@ -258,8 +274,7 @@ export async function downloadAndCacheAudio(
   title: string,
   artist: string,
   onProgress?: (progress: number) => void,
-  syncedLyrics?: string | null,
-  plainLyrics?: string | null
+  extras: CacheExtras = {}
 ): Promise<boolean> {
   try {
     const response = await fetch(audioUrl);
@@ -294,7 +309,7 @@ export async function downloadAndCacheAudio(
     }
 
     const blob = new Blob(chunks, { type: 'audio/mpeg' });
-    await cacheAudio(youtubeId, blob, title, artist, syncedLyrics, plainLyrics);
+    await cacheAudio(youtubeId, blob, title, artist, extras);
     
     return true;
   } catch (error) {
