@@ -92,8 +92,6 @@ function TrialBanner({ onDismiss }: { onDismiss: () => void }) {
           <ArrowRight className="h-4 w-4" />
         </div>
       </a>
-      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute -bottom-16 -left-8 w-56 h-56 rounded-full bg-white/5 blur-3xl" />
     </motion.div>
   );
 }
@@ -137,7 +135,7 @@ function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (tr
           <Play className="h-5 w-5 text-white ml-0.5" />
         </motion.button>
       </div>
-      <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/5 blur-2xl" />
+      
     </motion.div>
   );
 }

@@ -935,7 +935,7 @@ function LyricsContent({
         // Karaoke fills independently per its own word timings.
         const companionActive = nlCompanionTime != null && nlCompanionEndTime != null
           && smoothTime >= nlCompanionTime && smoothTime < nlCompanionEndTime;
-        const companionOpacity = 1;
+        const companionOpacity = companionActive ? 1 : 0.7;
 
         return (
           <div
