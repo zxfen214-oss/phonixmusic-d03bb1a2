@@ -1001,7 +1001,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
-  const [mobileCharLimit, setMobileCharLimit] = useState(13);
+  const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  // Tracks whether the admin explicitly set mobile_char_limit (true) or we should
+  // auto-derive it from <left>/<right> presence (false).
+  const charLimitOverriddenRef = useRef(false);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
