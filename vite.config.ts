@@ -22,17 +22,32 @@ export default defineConfig(({ mode }) => ({
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+        // App-shell fallback: any navigation that fails the network falls back
+        // to the precached index.html, so the app loads fully offline.
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          // Same-origin static assets — cache-first for instant offline loads.
           {
-            urlPattern: /^https:\/\/.*$/i,
+            urlPattern: ({ request, sameOrigin }) =>
+              sameOrigin && ["style", "script", "worker", "image", "font"].includes(request.destination),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "static-assets",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          // External APIs (Supabase, lyrics.ovh, etc.) — network-first with cache fallback.
+          {
+            urlPattern: ({ request, sameOrigin }) =>
+              !sameOrigin && request.method === "GET",
             handler: "NetworkFirst",
             options: {
-              cacheName: "http-assets",
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
+              cacheName: "api-cache",
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],

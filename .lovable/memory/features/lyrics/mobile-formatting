@@ -1,0 +1,11 @@
+---
+name: Lyrics Mobile Formatting
+description: Per-song mobile word-wrapping with auto-default based on alignment tags
+type: feature
+---
+Mobile line wrapping char-limit:
+- Default 14 chars when LRC has NO `<left>` / `<right>` alignment tags.
+- Default 10 chars when LRC contains `<left>` or `<right>` (narrower lines for alignment).
+- Admin can override per-song via `karaoke_data.mobile_char_limit` (range 9–40).
+- Override flag (`charLimitOverriddenRef`) is set true only when admin saved an explicit value;
+  otherwise the default auto-derives from `parsedLyrics.hasAlignmentTags`.

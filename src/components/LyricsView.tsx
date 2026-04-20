@@ -273,32 +273,10 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
   );
 }
 
-// ─── Music indicator ───
+// ─── Music indicator: 3 breathing dots (matches the song intro animation) ───
 function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: number; startTime: number; endTime: number }) {
-  const duration = endTime - startTime;
-  const elapsed = Math.max(0, currentTime - startTime);
-  const progress = duration > 0 ? Math.min(1, elapsed / duration) : 0;
-
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="flex gap-1.5 items-end h-6">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <motion.div
-            key={i}
-            className="w-1 rounded-full bg-white/60"
-            animate={{
-              height: [6, 16, 10, 20, 8][i % 5],
-              opacity: progress > 0 && progress < 1 ? [0.4, 0.8, 0.6, 1, 0.5][i % 5] : 0.3,
-            }}
-            transition={{
-              height: { duration: 0.6, repeat: Infinity, repeatType: 'reverse', delay: i * 0.12 },
-            }}
-          />
-        ))}
-      </div>
-      <span className="text-white/40 text-lg font-medium tracking-wider">♪ ♪ ♪</span>
-    </div>
-  );
+  // Reuse the IntroCircles look so instrumental breaks feel consistent with the song intro.
+  return <IntroCircles currentTime={currentTime} startTime={startTime} endTime={endTime} />;
 }
 
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
@@ -417,78 +395,42 @@ function KaraokeWordSpan({
   const fillPercent = Math.min(100, Math.max(0, progress * 100));
   const isDone = progress >= 1;
 
-  // Emphasis wave effect for <em> or long words (>1.5s)
-  const wordDuration = Math.max(0, endTime - startTime);
-  const isLongWord = wordDuration > 1.5;
-  const isEmOrLong = isEm || isLongWord;
-  const emActive = isEmOrLong && !frozen && currentTime >= startTime && currentTime <= endTime + 0.1;
+  // Emphasis wave effect for <em> words only (long-word auto-trigger removed for stability)
+  const emActive = isEm && !frozen && currentTime >= startTime && currentTime <= endTime + 0.15;
 
-  // Smooth uplift: rises during fill, stays risen after done (never comes back down)
+  // Smooth uplift: rises during fill, stays risen after done (never comes back down).
+  // Strictly upward — no downward motion until the line is done.
   const upliftAmount = 1.5;
   let translateY = 0;
   if (frozen) {
-    translateY = -upliftAmount; // frozen = already filled, stay up
+    translateY = -upliftAmount; // already filled, stay up
   } else if (progress > 0) {
-    translateY = -upliftAmount * Math.min(1, progress * 3); // quickly rise
+    // Rise smoothly to full uplift in the first ~30% of the word, then hold.
+    translateY = -upliftAmount * Math.min(1, progress * 3.5);
   }
 
-  // Wave: the karaoke cursor position determines which character "grows"
-  const chars = word.split('');
-  const charCount = chars.length;
-  // Cursor position in character-space (0 to charCount)
-  const cursorPos = progress * charCount;
-  const waveRadius = 2; // neighboring chars affected
-  const emWaveAmplitude = emActive ? 4 : 0; // px of extra lift for em words
-  const emScaleMax = emActive ? 1.12 : 1; // max scale for em words
-
-  const getCharEffects = (ci: number) => {
-    // Distance from karaoke cursor to this character
-    const dist = Math.abs(cursorPos - ci - 0.5);
-    
-    // Only affect chars near the cursor, and only while filling (not after done)
-    if (isDone || progress <= 0 || dist > waveRadius + 0.5) {
-      return { lift: 0, scale: 1, glow: 0 };
-    }
-    
-    const normalizedDist = dist / (waveRadius + 0.5);
-    const factor = Math.max(0, 1 - normalizedDist);
-    const eased = factor * factor * (3 - 2 * factor); // smoothstep
-    
-    return {
-      lift: emWaveAmplitude * eased,
-      scale: 1 + (emScaleMax - 1) * eased,
-      glow: emActive ? 0.35 * eased : 0,
-    };
-  };
+  // <em> adds a gentle, slow whole-word lift on top of the base uplift.
+  // No per-character wave / scaling — keeps text rock-steady, no wobble or teleport.
+  const emLift = emActive ? 5 : 0;
+  const emScale = emActive ? 1.06 : 1;
+  const emGlow = emActive ? 0.45 : 0;
 
   return (
     <span
       className="relative inline-block align-baseline"
       style={{
         overflow: 'visible',
-        transform: `translateY(${translateY}px)`,
-        transition: 'transform 250ms ease-out',
+        transform: `translateY(${translateY - emLift}px) scale(${emScale})`,
+        transformOrigin: 'center bottom',
+        transition: emActive
+          ? 'transform 600ms cubic-bezier(0.22, 1, 0.36, 1), text-shadow 500ms ease-out'
+          : 'transform 450ms cubic-bezier(0.22, 1, 0.36, 1), text-shadow 400ms ease-out',
+        textShadow: emGlow > 0 ? `0 0 14px rgba(255,255,255,${emGlow})` : 'none',
       }}
     >
-      {/* Base text with per-character wave */}
-      <span style={{ whiteSpace: 'pre' }}>
-        {chars.map((ch, ci) => {
-          const fx = getCharEffects(ci);
-          return (
-            <span
-              key={ci}
-              style={{
-                display: 'inline-block',
-                color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})`,
-                transform: fx.lift > 0.1 || fx.scale > 1.005
-                  ? `translateY(${-fx.lift}px) scale(${fx.scale})`
-                  : 'none',
-                transition: 'transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1), text-shadow 300ms ease-out',
-                textShadow: fx.glow > 0.02 ? `0 0 ${8 + fx.glow * 12}px rgba(255,255,255,${fx.glow})` : 'none',
-              }}
-            >{ch}</span>
-          );
-        })}
+      {/* Base text (no per-char animation — stable, no wobble) */}
+      <span style={{ whiteSpace: 'pre', color: `rgba(255, 255, 255, ${frozen ? 0.15 : 0.35})` }}>
+        {word}
       </span>
       {/* Fill overlay with soft gradient edge */}
       <span
@@ -504,24 +446,7 @@ function KaraokeWordSpan({
           WebkitMaskImage: isDone ? 'none' : 'linear-gradient(to right, white 0%, white calc(100% - 20px), rgba(255,255,255,0.4) calc(100% - 8px), transparent 100%)',
         }}
       >
-        <span style={{ whiteSpace: 'pre' }}>
-          {chars.map((ch, ci) => {
-            const fx = getCharEffects(ci);
-            return (
-              <span
-                key={ci}
-                style={{
-                  display: 'inline-block',
-                  color: '#ffffff',
-                  transform: fx.lift > 0.1 || fx.scale > 1.005
-                    ? `translateY(${-fx.lift}px) scale(${fx.scale})`
-                    : 'none',
-                  transition: 'transform 300ms cubic-bezier(0.25, 0.8, 0.25, 1)',
-                }}
-              >{ch}</span>
-            );
-          })}
-        </span>
+        <span style={{ whiteSpace: 'pre', color: '#ffffff' }}>{word}</span>
       </span>
     </span>
   );
@@ -1076,7 +1001,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
-  const [mobileCharLimit, setMobileCharLimit] = useState(13);
+  const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  // Tracks whether the admin explicitly set mobile_char_limit (true) or we should
+  // auto-derive it from <left>/<right> presence (false).
+  const charLimitOverriddenRef = useRef(false);
 
   const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
 
@@ -1153,6 +1081,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
+      // Reset char-limit override; will be set true if admin saved an explicit value.
+      charLimitOverriddenRef.current = false;
 
       let appliedFromCache = false;
       let cachedSyncedText: string | null = null;
@@ -1177,7 +1107,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               setKaraokeWords(data.words);
             }
             if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-            if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+            if (typeof data.mobile_char_limit === 'number') {
+              setMobileCharLimit(data.mobile_char_limit);
+              charLimitOverriddenRef.current = true;
+            }
           }
         }
 
@@ -1230,11 +1163,17 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+              if (typeof data.mobile_char_limit === 'number') {
+                setMobileCharLimit(data.mobile_char_limit);
+                charLimitOverriddenRef.current = true;
+              }
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+              if (typeof data.mobile_char_limit === 'number') {
+                setMobileCharLimit(data.mobile_char_limit);
+                charLimitOverriddenRef.current = true;
+              }
             }
           } else if (!appliedFromCache) {
             setStaticLyricsText("");
@@ -1277,6 +1216,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     };
     loadLyrics();
   }, [currentTrack?.id]);
+
+  // Derive default mobile char-limit from LRC content when admin hasn't set one:
+  //   • LRC contains <left> or <right> tag → 10 chars per line
+  //   • Otherwise → 14 chars per line
+  useEffect(() => {
+    if (charLimitOverriddenRef.current) return;
+    if (!parsedLyrics) return;
+    setMobileCharLimit(parsedLyrics.hasAlignmentTags ? 10 : 14);
+  }, [parsedLyrics]);
 
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
@@ -1532,8 +1480,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     fontSize: '12px',
                     color: 'rgba(255,255,255,0.75)',
                     fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
                   }}
                 >
                   <Disc3 className="h-4 w-4" />
@@ -1763,8 +1710,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   fontSize: '12px',
                   color: 'rgba(255,255,255,0.75)',
                   fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
                 }}
               >
                 <Disc3 className="h-4 w-4" />
