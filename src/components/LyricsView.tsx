@@ -931,10 +931,11 @@ function LyricsContent({
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
-        // Companion (dual/secondary main line) brightens when its own karaoke window is active
+        // Dual/companion line renders identically to the primary — same size, same opacity.
+        // Karaoke fills independently per its own word timings.
         const companionActive = nlCompanionTime != null && nlCompanionEndTime != null
           && smoothTime >= nlCompanionTime && smoothTime < nlCompanionEndTime;
-        const companionOpacity = companionActive ? 1 : (isActive ? 0.5 : 0.35);
+        const companionOpacity = 1;
 
         return (
           <div
@@ -958,11 +959,11 @@ function LyricsContent({
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
-                  <div style={{ marginTop: '12px', opacity: companionOpacity, transition: 'opacity 200ms ease-out' }}>
+                  <div style={{ marginTop: '12px', opacity: companionOpacity }}>
                     <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: companionActive ? 700 : 600, color: `rgba(255,255,255,${companionOpacity})`, unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0, transition: 'color 200ms ease-out' }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: 700, color: 'rgba(255,255,255,1)', unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
                       <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
                     )) : nlCompanionText}
@@ -976,11 +977,11 @@ function LyricsContent({
               <>
                 <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
-                  <div style={{ marginTop: '12px', opacity: companionOpacity, transition: 'opacity 200ms ease-out' }}>
-                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={companionActive || isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
+                  <div style={{ marginTop: '12px', opacity: companionOpacity }}>
+                    <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: companionActive ? 700 : 600, color: `rgba(255,255,255,${companionOpacity})`, unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0, transition: 'color 200ms ease-out' }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: 700, color: 'rgba(255,255,255,1)', unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
                       <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
                     )) : nlCompanionText}

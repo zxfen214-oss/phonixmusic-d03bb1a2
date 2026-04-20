@@ -113,10 +113,20 @@ export function parseLRC(content: string): ParsedLyrics {
   let currentAlignment: 'left' | 'right' = 'left';
   let defaultAlignment: 'left' | 'right' = 'left';
 
+  // (standalone <nl> between two timestamped lines pairs them — handled inline below)
+
   for (const line of lrcLines) {
     const trimmedLine = line.trim();
     
     if (!trimmedLine || metadataRegex.test(trimmedLine)) {
+      continue;
+    }
+
+    // Standalone <nl> on its own line: marks the previous timestamped line as paired with the next one.
+    if (trimmedLine === '<nl>' || trimmedLine === '<dual>') {
+      if (lines.length > 0) {
+        lines[lines.length - 1].isNl = true;
+      }
       continue;
     }
 
