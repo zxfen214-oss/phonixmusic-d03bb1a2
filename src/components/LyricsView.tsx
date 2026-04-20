@@ -1081,6 +1081,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
+      // Reset char-limit override; will be set true if admin saved an explicit value.
+      charLimitOverriddenRef.current = false;
 
       let appliedFromCache = false;
       let cachedSyncedText: string | null = null;
@@ -1105,7 +1107,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               setKaraokeWords(data.words);
             }
             if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-            if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+            if (typeof data.mobile_char_limit === 'number') {
+              setMobileCharLimit(data.mobile_char_limit);
+              charLimitOverriddenRef.current = true;
+            }
           }
         }
 
@@ -1158,11 +1163,17 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+              if (typeof data.mobile_char_limit === 'number') {
+                setMobileCharLimit(data.mobile_char_limit);
+                charLimitOverriddenRef.current = true;
+              }
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
-              if (typeof data.mobile_char_limit === 'number') setMobileCharLimit(data.mobile_char_limit);
+              if (typeof data.mobile_char_limit === 'number') {
+                setMobileCharLimit(data.mobile_char_limit);
+                charLimitOverriddenRef.current = true;
+              }
             }
           } else if (!appliedFromCache) {
             setStaticLyricsText("");
