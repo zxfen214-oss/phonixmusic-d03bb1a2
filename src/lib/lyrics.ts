@@ -17,6 +17,8 @@ export interface ParsedLyrics {
   lines: LyricLine[];
   isSynced: boolean;
   defaultAlignment?: 'left' | 'right';
+  /** True when the LRC contained any <left> or <right> alignment tag */
+  hasAlignmentTags?: boolean;
 }
 
 export async function fetchTextUtf8(url: string): Promise<string> {
@@ -112,6 +114,7 @@ export function parseLRC(content: string): ParsedLyrics {
   
   let currentAlignment: 'left' | 'right' = 'left';
   let defaultAlignment: 'left' | 'right' = 'left';
+  let hasAlignmentTags = false;
 
   // (standalone <nl> between two timestamped lines pairs them — handled inline below)
 
@@ -133,11 +136,13 @@ export function parseLRC(content: string): ParsedLyrics {
     if (trimmedLine === '<left>') {
       currentAlignment = 'left';
       defaultAlignment = 'left';
+      hasAlignmentTags = true;
       continue;
     }
     if (trimmedLine === '<right>') {
       currentAlignment = 'right';
       defaultAlignment = 'right';
+      hasAlignmentTags = true;
       continue;
     }
 
@@ -177,9 +182,11 @@ export function parseLRC(content: string): ParsedLyrics {
       let lineAlignment = currentAlignment;
       if (text.startsWith('<right>')) {
         lineAlignment = 'right';
+        hasAlignmentTags = true;
         text = text.slice(7).trim();
       } else if (text.startsWith('<left>')) {
         lineAlignment = 'left';
+        hasAlignmentTags = true;
         text = text.slice(6).trim();
       }
 
@@ -270,6 +277,7 @@ export function parseLRC(content: string): ParsedLyrics {
     lines,
     isSynced: lines.length > 0,
     defaultAlignment,
+    hasAlignmentTags,
   };
 }
 
