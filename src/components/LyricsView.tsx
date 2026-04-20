@@ -963,7 +963,7 @@ function LyricsContent({
                     <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
-                  <p dir="auto" style={{ fontSize, fontWeight: companionActive ? 700 : 600, color: `rgba(255,255,255,${companionOpacity})`, unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0, transition: 'color 200ms ease-out' }}>
+                  <p dir="auto" style={{ fontSize, fontWeight: 700, color: 'rgba(255,255,255,1)', unicodeBidi: "plaintext", lineHeight: 1.4, marginTop: '12px', margin: 0 }}>
                     {isMobile ? splitTextForMobile(nlCompanionText, mobileCharLimit).map((line, i, arr) => (
                       <Fragment key={i}>{line}{i < arr.length - 1 ? <br /> : null}</Fragment>
                     )) : nlCompanionText}
