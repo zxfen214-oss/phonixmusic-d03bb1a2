@@ -1,6 +1,6 @@
 ---
 name: Offline Playback
-description: IndexedDB caching, single-audio guard, offline-first lyrics + karaoke, timeouts to prevent forever-loading
+description: IndexedDB caching, SW app-shell fallback, single-audio guard, offline-first lyrics + karaoke
 type: feature
 ---
 Offline cache (IndexedDB store `cachedAudio`) bundles per track:
@@ -8,16 +8,21 @@ Offline cache (IndexedDB store `cachedAudio`) bundles per track:
 - syncedLyrics, plainLyrics
 - karaokeData, karaokeEnabled, lyricsSpeed, bounceIntensity
 
+Service Worker (vite-plugin-pwa, autoUpdate):
+- Precaches js/css/html/ico/png/svg/webp/woff2.
+- `navigateFallback: /index.html` so the app shell loads fully offline.
+- Same-origin static assets → CacheFirst (`static-assets`).
+- Cross-origin GET (Supabase, lyrics.ovh) → NetworkFirst with 4s timeout, cache fallback (`api-cache`).
+- Do NOT use a single catch-all `^https://.*` NetworkFirst — it breaks navigation offline.
+
 Player rules:
-- Single active audio element enforced via `loadTokenRef` + `stopCurrentSource()` in PlayerContext. Rapid play clicks must never duplicate audio.
-- Audio resolution priority: IndexedDB cached blob > local audioFiles store > remote `audio_url` (only when `navigator.onLine`, with 4s lookup timeout + 8s fetch timeout) > YouTube IFrame fallback.
-- `loadCachedOrRemoteAudio` accepts a token; stale loads abort silently.
+- Single active audio element via `loadTokenRef` + `stopCurrentSource()` in PlayerContext.
+- Audio resolution priority: IndexedDB cached blob > local audioFiles store > remote `audio_url` (online only, 4s/8s timeouts) > YouTube IFrame fallback.
 
 Lyrics + karaoke offline:
 - LyricsView always tries `getCachedLyrics` + `getCachedKaraoke` FIRST.
 - When offline AND cache hit, skip all Supabase/lyrics.ovh fetches.
-- Online path wraps `fetchMergedSongRecord` and `fetchSyncedLyrics` in 4s/6s timeouts to prevent infinite loading.
+- Online path wraps `fetchMergedSongRecord` and `fetchSyncedLyrics` in 4s/6s timeouts.
 - Cached karaoke restores: words, early_appearance, mobile_char_limit, lyrics_speed, bounce_intensity.
 
-Lossless badge:
-- Shown below the playback control row (NOT under the time row), 12px UPPERCASE, semibold, with `Disc3` icon — same on desktop and mobile.
+Lossless badge: shown below the playback control row, 12px capitalised "Lossless" (NOT uppercase) with `Disc3` icon — same on desktop, mobile, and lyrics view.
