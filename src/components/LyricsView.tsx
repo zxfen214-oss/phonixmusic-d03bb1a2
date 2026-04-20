@@ -1457,8 +1457,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     fontSize: '12px',
                     color: 'rgba(255,255,255,0.75)',
                     fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
                   }}
                 >
                   <Disc3 className="h-4 w-4" />
@@ -1688,8 +1687,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   fontSize: '12px',
                   color: 'rgba(255,255,255,0.75)',
                   fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
                 }}
               >
                 <Disc3 className="h-4 w-4" />
