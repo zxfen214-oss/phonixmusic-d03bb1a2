@@ -931,10 +931,11 @@ function LyricsContent({
         const lineAlign = (alignment || defaultAlignment || 'left') as 'left' | 'right';
         const textAlignClass = lineAlign === 'right' ? 'text-right' : 'text-left';
 
-        // Companion (dual/secondary main line) brightens when its own karaoke window is active
+        // Dual/companion line renders identically to the primary — same size, same opacity.
+        // Karaoke fills independently per its own word timings.
         const companionActive = nlCompanionTime != null && nlCompanionEndTime != null
           && smoothTime >= nlCompanionTime && smoothTime < nlCompanionEndTime;
-        const companionOpacity = companionActive ? 1 : (isActive ? 0.5 : 0.35);
+        const companionOpacity = 1;
 
         return (
           <div
