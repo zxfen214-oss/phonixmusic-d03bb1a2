@@ -1217,6 +1217,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     loadLyrics();
   }, [currentTrack?.id]);
 
+  // Derive default mobile char-limit from LRC content when admin hasn't set one:
+  //   • LRC contains <left> or <right> tag → 10 chars per line
+  //   • Otherwise → 14 chars per line
+  useEffect(() => {
+    if (charLimitOverriddenRef.current) return;
+    if (!parsedLyrics) return;
+    setMobileCharLimit(parsedLyrics.hasAlignmentTags ? 10 : 14);
+  }, [parsedLyrics]);
+
   // Update current line (synced) - always follow LRC timestamps for line changes
   useEffect(() => {
     if (!parsedLyrics?.isSynced || !currentTrack) return;
