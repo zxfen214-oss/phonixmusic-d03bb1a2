@@ -273,32 +273,10 @@ function IntroCircles({ currentTime, startTime, endTime }: { currentTime: number
   );
 }
 
-// ─── Music indicator ───
+// ─── Music indicator: 3 breathing dots (matches the song intro animation) ───
 function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: number; startTime: number; endTime: number }) {
-  const duration = endTime - startTime;
-  const elapsed = Math.max(0, currentTime - startTime);
-  const progress = duration > 0 ? Math.min(1, elapsed / duration) : 0;
-
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="flex gap-1.5 items-end h-6">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <motion.div
-            key={i}
-            className="w-1 rounded-full bg-white/60"
-            animate={{
-              height: [6, 16, 10, 20, 8][i % 5],
-              opacity: progress > 0 && progress < 1 ? [0.4, 0.8, 0.6, 1, 0.5][i % 5] : 0.3,
-            }}
-            transition={{
-              height: { duration: 0.6, repeat: Infinity, repeatType: 'reverse', delay: i * 0.12 },
-            }}
-          />
-        ))}
-      </div>
-      <span className="text-white/40 text-lg font-medium tracking-wider">♪ ♪ ♪</span>
-    </div>
-  );
+  // Reuse the IntroCircles look so instrumental breaks feel consistent with the song intro.
+  return <IntroCircles currentTime={currentTime} startTime={startTime} endTime={endTime} />;
 }
 
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
