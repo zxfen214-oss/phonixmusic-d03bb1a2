@@ -959,7 +959,7 @@ function LyricsContent({
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
-                  <div style={{ marginTop: '12px', opacity: companionOpacity }}>
+                  <div style={{ marginTop: '12px', opacity: companionOpacity, transition: 'opacity 250ms ease-out' }}>
                     <ELRCLine words={nlCompanionElrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
@@ -977,7 +977,7 @@ function LyricsContent({
               <>
                 <MemoKaraokeLine text={text} words={karaokeWords} lineIndex={index} lineStartTime={lineTime} lineEndTime={nextLineTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionTime != null && nlCompanionEndTime != null ? (
-                  <div style={{ marginTop: '12px', opacity: companionOpacity }}>
+                  <div style={{ marginTop: '12px', opacity: companionOpacity, transition: 'opacity 250ms ease-out' }}>
                     <MemoKaraokeLine text={nlCompanionText} words={karaokeWords} lineIndex={index + 1} lineStartTime={nlCompanionTime} lineEndTime={nlCompanionEndTime} currentTime={smoothTime} isCurrentLine={isActive} isMobile={isMobile} charLimit={mobileCharLimit} />
                   </div>
                 ) : nlCompanionText && (
