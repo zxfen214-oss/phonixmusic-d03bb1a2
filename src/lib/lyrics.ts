@@ -126,7 +126,6 @@ export function parseLRC(content: string): ParsedLyrics {
     if (trimmedLine === '<nl>' || trimmedLine === '<dual>') {
       if (lines.length > 0) {
         lines[lines.length - 1].isNl = true;
-        pendingNlPairing = true;
       }
       continue;
     }
