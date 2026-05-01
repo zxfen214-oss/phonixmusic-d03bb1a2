@@ -1383,6 +1383,23 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   // Lyrics navigator removed
 
+  // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
+  const amllLines = useMemo(
+    () => (syncedLrcText ? parseLrcAmll(syncedLrcText) : []),
+    [syncedLrcText],
+  );
+  const amllSeek = useCallback((ms: number) => {
+    if (!currentTrack || !currentTrack.duration) return;
+    const targetSeconds = ms / 1000;
+    const nextProgress = (targetSeconds / currentTrack.duration) * 100;
+    seekLockRef.current = { time: targetSeconds, until: performance.now() + 600 };
+    baseTimeRef.current = targetSeconds;
+    baseTsRef.current = performance.now();
+    setSmoothTime(targetSeconds);
+    setSeekTick((t) => t + 1);
+    seekTo(Math.max(0, Math.min(100, nextProgress)));
+  }, [currentTrack, seekTo]);
+
   if (!currentTrack) return null;
 
   const lyricsContentProps = {
