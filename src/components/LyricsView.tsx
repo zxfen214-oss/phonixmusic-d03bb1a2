@@ -1002,6 +1002,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  // Raw synced LRC text (for the AMLL renderer)
+  const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
+  const [seekTick, setSeekTick] = useState(0);
   // Tracks whether the admin explicitly set mobile_char_limit (true) or we should
   // auto-derive it from <left>/<right> presence (false).
   const charLimitOverriddenRef = useRef(false);
