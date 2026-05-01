@@ -19,6 +19,8 @@ export interface ParsedLyrics {
   defaultAlignment?: 'left' | 'right';
   /** True when the LRC contained any <left> or <right> alignment tag */
   hasAlignmentTags?: boolean;
+  /** Raw synced LRC text (kept for AMLL parser). Empty/undefined for unsynced sources. */
+  rawSyncedText?: string;
 }
 
 export async function fetchTextUtf8(url: string): Promise<string> {
