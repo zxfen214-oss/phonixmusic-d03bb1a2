@@ -1122,6 +1122,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           const parsed = parseLRC(cachedSyncedText);
           if (parsed.lines.length > 0) {
             setParsedLyrics(parsed);
+            setSyncedLrcText(cachedSyncedText);
             setStaticLyricsMode(false);
             appliedFromCache = true;
           }
