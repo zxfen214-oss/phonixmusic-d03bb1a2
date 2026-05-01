@@ -280,6 +280,7 @@ export function parseLRC(content: string): ParsedLyrics {
     isSynced: lines.length > 0,
     defaultAlignment,
     hasAlignmentTags,
+    rawSyncedText: lines.length > 0 ? content : undefined,
   };
 }
 
