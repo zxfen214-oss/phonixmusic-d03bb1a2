@@ -1007,7 +1007,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
   // Raw synced LRC text (for the AMLL renderer)
   const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
-  const [seekTick, setSeekTick] = useState(0);
+
   // Tracks whether the admin explicitly set mobile_char_limit (true) or we should
   // auto-derive it from <left>/<right> presence (false).
   const charLimitOverriddenRef = useRef(false);
@@ -1613,7 +1613,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                         <AMLLLyricsPlayer
                           lines={amllLines}
                           currentTime={smoothTime * 1000}
-                          isSeek={seekTick > 0}
+                          isSeek={isSeekFlag}
                           fontSize={48}
                           enableBlur={false}
                           onLineClick={amllSeek}
@@ -1686,7 +1686,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <AMLLLyricsPlayer
                     lines={amllLines}
                     currentTime={smoothTime * 1000}
-                    isSeek={seekTick > 0}
+                    isSeek={isSeekFlag}
                     fontSize={32}
                     enableBlur={false}
                     onLineClick={amllSeek}
