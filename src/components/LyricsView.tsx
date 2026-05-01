@@ -1422,7 +1422,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
-        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} isMobile={isMobile} />
+        <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
+          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+        </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
           <motion.button
@@ -1603,7 +1605,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     {staticLyricsMode ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                     ) : (
-                      <LyricsContent {...lyricsContentProps} isMobile={false} />
+                      amllLines.length > 0 ? (
+                        <AMLLLyricsPlayer
+                          lines={amllLines}
+                          currentTime={smoothTime * 1000}
+                          isSeek={seekTick > 0}
+                          fontSize={48}
+                          enableBlur={false}
+                          onLineClick={amllSeek}
+                          className="h-full w-full"
+                        />
+                      ) : (
+                        <LyricsContent {...lyricsContentProps} isMobile={false} />
+                      )
                     )}
                   </div>
                 </div>
@@ -1664,7 +1678,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               {staticLyricsMode ? (
                 <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
-                <LyricsContent {...lyricsContentProps} isMobile />
+                amllLines.length > 0 ? (
+                  <AMLLLyricsPlayer
+                    lines={amllLines}
+                    currentTime={smoothTime * 1000}
+                    isSeek={seekTick > 0}
+                    fontSize={32}
+                    enableBlur={false}
+                    onLineClick={amllSeek}
+                    className="h-full w-full"
+                  />
+                ) : (
+                  <LyricsContent {...lyricsContentProps} isMobile />
+                )
               )}
             </div>
           </div>
