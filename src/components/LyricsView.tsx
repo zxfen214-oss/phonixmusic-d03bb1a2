@@ -27,6 +27,9 @@ import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
+import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
+import LyricsBackground from "@/components/LyricsBackground";
+import { parseLrc as parseLrcAmll } from "@/lib/parseLrc";
 import React from "react";
 
 interface LyricsViewProps {
@@ -1002,6 +1005,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  // Raw synced LRC text (for the AMLL renderer)
+  const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
+
   // Tracks whether the admin explicitly set mobile_char_limit (true) or we should
   // auto-derive it from <left>/<right> presence (false).
   const charLimitOverriddenRef = useRef(false);
@@ -1078,6 +1084,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     const loadLyrics = async () => {
       setIsLoadingLyrics(true);
       setParsedLyrics(null);
+      setSyncedLrcText(null);
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
@@ -1118,6 +1125,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           const parsed = parseLRC(cachedSyncedText);
           if (parsed.lines.length > 0) {
             setParsedLyrics(parsed);
+            setSyncedLrcText(cachedSyncedText);
             setStaticLyricsMode(false);
             appliedFromCache = true;
           }
@@ -1191,6 +1199,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
+          if (lyrics.rawSyncedText) setSyncedLrcText(lyrics.rawSyncedText);
           setStaticLyricsMode(false);
         } else if (!appliedFromCache) {
           // No remote lyrics and nothing from cache — fallback
@@ -1374,6 +1383,27 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   // Lyrics navigator removed
 
+  // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
+  const amllLines = useMemo(
+    () => (syncedLrcText ? parseLrcAmll(syncedLrcText) : []),
+    [syncedLrcText],
+  );
+  const [isSeekFlag, setIsSeekFlag] = useState(false);
+  const seekClearTimer = useRef<number | null>(null);
+  const amllSeek = useCallback((ms: number) => {
+    if (!currentTrack || !currentTrack.duration) return;
+    const targetSeconds = ms / 1000;
+    const nextProgress = (targetSeconds / currentTrack.duration) * 100;
+    seekLockRef.current = { time: targetSeconds, until: performance.now() + 600 };
+    baseTimeRef.current = targetSeconds;
+    baseTsRef.current = performance.now();
+    setSmoothTime(targetSeconds);
+    setIsSeekFlag(true);
+    if (seekClearTimer.current) window.clearTimeout(seekClearTimer.current);
+    seekClearTimer.current = window.setTimeout(() => setIsSeekFlag(false), 80);
+    seekTo(Math.max(0, Math.min(100, nextProgress)));
+  }, [currentTrack, seekTo]);
+
   if (!currentTrack) return null;
 
   const lyricsContentProps = {
@@ -1396,7 +1426,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
-        <CanvasGradientBg artworkUrl={currentTrack.artwork} isClosing={isClosing} isMobile={isMobile} />
+        <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
+          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+        </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
           <motion.button
@@ -1577,7 +1609,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     {staticLyricsMode ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                     ) : (
-                      <LyricsContent {...lyricsContentProps} isMobile={false} />
+                      amllLines.length > 0 ? (
+                        <AMLLLyricsPlayer
+                          lines={amllLines}
+                          currentTime={smoothTime * 1000}
+                          isSeek={isSeekFlag}
+                          fontSize={48}
+                          enableBlur={false}
+                          onLineClick={amllSeek}
+                          className="h-full w-full"
+                        />
+                      ) : (
+                        <LyricsContent {...lyricsContentProps} isMobile={false} />
+                      )
                     )}
                   </div>
                 </div>
@@ -1638,7 +1682,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               {staticLyricsMode ? (
                 <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
-                <LyricsContent {...lyricsContentProps} isMobile />
+                amllLines.length > 0 ? (
+                  <AMLLLyricsPlayer
+                    lines={amllLines}
+                    currentTime={smoothTime * 1000}
+                    isSeek={isSeekFlag}
+                    fontSize={32}
+                    enableBlur={false}
+                    onLineClick={amllSeek}
+                    className="h-full w-full"
+                  />
+                ) : (
+                  <LyricsContent {...lyricsContentProps} isMobile />
+                )
               )}
             </div>
           </div>
