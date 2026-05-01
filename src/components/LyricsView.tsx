@@ -27,6 +27,9 @@ import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
+import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
+import LyricsBackground from "@/components/LyricsBackground";
+import { parseLrc as parseLrcAmll } from "@/lib/parseLrc";
 import React from "react";
 
 interface LyricsViewProps {
