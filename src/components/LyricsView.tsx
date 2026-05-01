@@ -1196,6 +1196,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
+          if (lyrics.rawSyncedText) setSyncedLrcText(lyrics.rawSyncedText);
           setStaticLyricsMode(false);
         } else if (!appliedFromCache) {
           // No remote lyrics and nothing from cache — fallback
