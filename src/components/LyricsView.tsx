@@ -1388,6 +1388,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     () => (syncedLrcText ? parseLrcAmll(syncedLrcText) : []),
     [syncedLrcText],
   );
+  const [isSeekFlag, setIsSeekFlag] = useState(false);
+  const seekClearTimer = useRef<number | null>(null);
   const amllSeek = useCallback((ms: number) => {
     if (!currentTrack || !currentTrack.duration) return;
     const targetSeconds = ms / 1000;
@@ -1396,7 +1398,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     baseTimeRef.current = targetSeconds;
     baseTsRef.current = performance.now();
     setSmoothTime(targetSeconds);
-    setSeekTick((t) => t + 1);
+    setIsSeekFlag(true);
+    if (seekClearTimer.current) window.clearTimeout(seekClearTimer.current);
+    seekClearTimer.current = window.setTimeout(() => setIsSeekFlag(false), 80);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
   }, [currentTrack, seekTo]);
 
