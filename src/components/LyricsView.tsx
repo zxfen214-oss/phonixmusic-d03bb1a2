@@ -1081,6 +1081,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     const loadLyrics = async () => {
       setIsLoadingLyrics(true);
       setParsedLyrics(null);
+      setSyncedLrcText(null);
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
