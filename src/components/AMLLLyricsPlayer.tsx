@@ -17,6 +17,8 @@ interface Props {
   enableBlur?: boolean;
   /** Fired when a lyric line is clicked, with its start time in ms */
   onLineClick?: (timeMs: number, lineIndex: number) => void;
+  /** Mobile mode: lifts the active line higher and applies edge fades */
+  isMobile?: boolean;
   className?: string;
 }
 
@@ -31,6 +33,7 @@ const AMLLLyricsPlayer = ({
   fontSize = 32,
   enableBlur = true,
   onLineClick,
+  isMobile = false,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,11 +94,24 @@ const AMLLLyricsPlayer = ({
     playerRef.current?.setEnableBlur(enableBlur);
   }, [enableBlur]);
 
+  // Mobile: lift the active line higher (≈25% from top instead of center)
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (isMobile) {
+      p.setAlignAnchor("top");
+      p.setAlignPosition(0.22);
+    } else {
+      p.setAlignAnchor("center");
+      p.setAlignPosition(0.5);
+    }
+  }, [isMobile]);
+
   return (
     <div
       ref={containerRef}
       style={{ fontSize: `${fontSize}px`, cursor: onLineClick ? "pointer" : undefined }}
-      className={`relative h-full w-full ${className ?? ""}`}
+      className={`amll-lyrics-host ${isMobile ? "amll-lyrics-host-mobile" : ""} relative h-full w-full ${className ?? ""}`}
     />
   );
 };

@@ -2,7 +2,8 @@
 
 @font-face {
   font-family: 'SF Pro Display';
-  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
+  src: url('./assets/SF-Pro-Display-Heavy-2.ttf') format('truetype'),
+       url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -10,7 +11,8 @@
 
 @font-face {
   font-family: 'SF Pro Display';
-  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
+  src: url('./assets/SF-Pro-Display-Heavy-2.ttf') format('truetype'),
+       url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -18,10 +20,49 @@
 
 @font-face {
   font-family: 'SF Pro Display';
-  src: url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
+  src: url('./assets/SF-Pro-Display-Heavy-2.ttf') format('truetype'),
+       url('./assets/SF-Pro-Display-Heavy.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
+}
+
+/* AMLL lyric player overrides — font + anti-clip line-height + mobile fades */
+.amll-lyrics-host,
+.amll-lyrics-host * {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em;
+}
+.amll-lyrics-host {
+  /* extra line-height + padding so heavy descenders/ascenders never clip */
+  line-height: 1.3 !important;
+  padding-top: 0.35em;
+  padding-bottom: 0.35em;
+}
+.amll-lyrics-host > div {
+  /* AMLL's internal container — give children breathing room */
+  overflow: visible !important;
+}
+
+/* Mobile: shift main lyric up + fade out top/bottom */
+@media (max-width: 767px) {
+  .amll-lyrics-host-mobile {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 14%,
+      black 78%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 14%,
+      black 78%,
+      transparent 100%
+    );
+  }
 }
 
 @tailwind base;
