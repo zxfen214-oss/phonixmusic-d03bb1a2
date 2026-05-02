@@ -5,6 +5,9 @@ import {
   type LyricLineMouseEvent,
 } from "@applemusic-like-lyrics/core";
 
+.amll-lyrics-host * {
+  font-size: 45px !important;
+}
 interface Props {
   lines: LyricLine[];
   currentTime: number;
