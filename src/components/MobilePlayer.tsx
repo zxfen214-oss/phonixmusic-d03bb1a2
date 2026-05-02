@@ -221,8 +221,21 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
             {/* Bottom Actions - 3 icons aligned with playback controls */}
             <div className="flex items-center justify-between px-2">
               {/* Lyrics icon — aligned with back button (left) */}
-              <button onClick={handleLyricsClick} className="p-2">
-                <img src={lyricsIcon} alt="Lyrics" className="w-[22px] h-[22px] object-contain opacity-60" style={{ filter: 'brightness(0) invert(0.7)' }} />
+              <button
+                onClick={hasLyrics ? handleLyricsClick : undefined}
+                disabled={!hasLyrics}
+                className={cn("p-2", !hasLyrics && "cursor-not-allowed")}
+                title={hasLyrics ? "Lyrics" : "No lyrics available"}
+              >
+                <img
+                  src={lyricsIcon}
+                  alt="Lyrics"
+                  className="w-[22px] h-[22px] object-contain"
+                  style={{
+                    filter: hasLyrics ? 'brightness(0) invert(0.7)' : 'brightness(0) invert(0.4)',
+                    opacity: hasLyrics ? 0.85 : 0.35,
+                  }}
+                />
               </button>
 
               {/* Speaker icon — aligned with play/pause (center) */}
