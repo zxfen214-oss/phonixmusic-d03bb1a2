@@ -31,6 +31,8 @@ interface PlayerContextType extends PlayerState {
   playbackRate: number;
   speedPreset: SpeedPreset;
   isLossless: boolean;
+  /** Whether the current track has any lyrics (synced or plain) available */
+  hasLyrics: boolean;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
