@@ -33,6 +33,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
     progress,
     volume,
     isLossless,
+    hasLyrics,
     pauseTrack,
     resumeTrack,
     nextTrack,
@@ -46,15 +47,12 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayPlaying, setDisplayPlaying] = useState(isPlaying);
 
-  const { primary: dominantColor, palette } = useDominantColors(currentTrack?.artwork);
-
   // Preload icons on mount and artwork when track changes
   useEffect(() => { preloadPlayerIcons(); }, []);
   useEffect(() => { preloadArtwork(currentTrack?.artwork); }, [currentTrack?.artwork]);
 
   // Swipe-down to close
   const dragY = useMotionValue(0);
-  const bgOpacity = useTransform(dragY, [0, 300], [1, 0.2]);
 
   useEffect(() => {
     if (!isAnimating) setDisplayPlaying(isPlaying);
@@ -121,8 +119,10 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
           className="fixed inset-0 z-50 flex flex-col"
           /* safe area padding */
         >
-          {/* Canvas gradient background matching lyrics tab */}
-          <MobilePlayerCanvasBg artworkUrl={currentTrack.artwork} palette={palette} dominantColor={dominantColor} />
+          {/* AMLL MeshGradient background — matches the lyrics tab */}
+          <div className="absolute inset-0 z-0" style={{ background: '#000' }}>
+            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          </div>
 
           {/* Content */}
           <div
