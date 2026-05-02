@@ -43,6 +43,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
     playbackRate,
     speedPreset,
     isLossless,
+    hasLyrics,
     pauseTrack,
     resumeTrack,
     nextTrack,
@@ -267,11 +268,15 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
 
       {/* Volume & Lyrics - Desktop only */}
       <div className="hidden md:flex items-center gap-2 w-48">
-        {/* Lyrics Button */}
+        {/* Lyrics Button — disabled & greyed when no lyrics */}
         <button
-          onClick={onOpenLyrics}
-          className="icon-button h-8 w-8 hover:text-accent transition-colors"
-          title="View Lyrics"
+          onClick={hasLyrics ? onOpenLyrics : undefined}
+          disabled={!hasLyrics}
+          className={cn(
+            "icon-button h-8 w-8 transition-colors",
+            hasLyrics ? "hover:text-accent" : "opacity-40 cursor-not-allowed",
+          )}
+          title={hasLyrics ? "View Lyrics" : "No lyrics available"}
         >
           <Mic2 className="h-4 w-4" />
         </button>
