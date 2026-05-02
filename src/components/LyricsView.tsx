@@ -1620,7 +1620,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           lines={amllLines}
                           currentTime={smoothTime * 1000}
                           isSeek={isSeekFlag}
-                          fontSize={48}
+                          fontSize={56}
                           enableBlur={false}
                           onLineClick={amllSeek}
                           className="h-full w-full"
@@ -1693,7 +1693,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     lines={amllLines}
                     currentTime={smoothTime * 1000}
                     isSeek={isSeekFlag}
-                    fontSize={30}
+                    fontSize={36}
                     enableBlur={false}
                     onLineClick={amllSeek}
                     isMobile
