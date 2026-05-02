@@ -29,7 +29,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
-import { parseLrc as parseLrcAmll } from "@/lib/parseLrc";
+import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import React from "react";
 
 interface LyricsViewProps {
@@ -1384,10 +1384,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Lyrics navigator removed
 
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
-  const amllLines = useMemo(
-    () => (syncedLrcText ? parseLrcAmll(syncedLrcText) : []),
-    [syncedLrcText],
-  );
+  // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
+  // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const amllLines = useMemo(() => {
+    if (!syncedLrcText) return [];
+    const base = parseLrcAmll(syncedLrcText);
+    if (karaokeWords.length > 0) {
+      return applyManualKaraoke(base, karaokeWords);
+    }
+    return base;
+  }, [syncedLrcText, karaokeWords]);
   const [isSeekFlag, setIsSeekFlag] = useState(false);
   const seekClearTimer = useRef<number | null>(null);
   const amllSeek = useCallback((ms: number) => {
