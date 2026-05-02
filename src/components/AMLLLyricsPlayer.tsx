@@ -7,30 +7,20 @@ import {
 
 interface Props {
   lines: LyricLine[];
-  /** Current playback time in ms */
   currentTime: number;
-  /** Mark a seek (skips smoothing) */
   isSeek?: boolean;
-  /** Base font size in px for lyrics (default 32) */
   fontSize?: number;
-  /** Enable Apple Music style blur on inactive lines */
   enableBlur?: boolean;
-  /** Fired when a lyric line is clicked, with its start time in ms */
   onLineClick?: (timeMs: number, lineIndex: number) => void;
-  /** Mobile mode: lifts the active line higher and applies edge fades */
   isMobile?: boolean;
   className?: string;
 }
 
-/**
- * AMLL DOM-based lyric player with smooth, word-level animation
- * (Apple Music-style scroll, scale, blur and word-mask transitions).
- */
 const AMLLLyricsPlayer = ({
   lines,
   currentTime,
   isSeek,
-  fontSize = 32,
+  fontSize = 45, // 🔥 changed from 32 → 45
   enableBlur = true,
   onLineClick,
   isMobile = false,
@@ -43,9 +33,9 @@ const AMLLLyricsPlayer = ({
   const onLineClickRef = useRef(onLineClick);
   onLineClickRef.current = onLineClick;
 
-  // Mount player
   useEffect(() => {
     if (!containerRef.current) return;
+
     const player = new DomLyricPlayer();
     const el = player.getElement();
     el.style.width = "100%";
@@ -59,6 +49,7 @@ const AMLLLyricsPlayer = ({
       const start = line?.startTime ?? lines[e.lineIndex]?.startTime ?? 0;
       onLineClickRef.current?.(start, e.lineIndex);
     };
+
     player.addEventListener("line-click", handleClick);
 
     const tick = (now: number) => {
@@ -67,6 +58,7 @@ const AMLLLyricsPlayer = ({
       player.update(delta);
       rafRef.current = requestAnimationFrame(tick);
     };
+
     lastTickRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
 
@@ -78,24 +70,18 @@ const AMLLLyricsPlayer = ({
     };
   }, []);
 
-  // Push lyrics
   useEffect(() => {
     playerRef.current?.setLyricLines(lines, currentTime);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines]);
 
-  // Drive current time
   useEffect(() => {
     playerRef.current?.setCurrentTime(currentTime, isSeek);
   }, [currentTime, isSeek]);
 
-  // Toggle blur
   useEffect(() => {
     playerRef.current?.setEnableBlur(enableBlur);
   }, [enableBlur]);
 
-  // Lift the active line higher on both PC and mobile so the bulk of the
-  // lyric column sits above center (more upcoming context visible).
   useEffect(() => {
     const p = playerRef.current;
     if (!p) return;
@@ -106,8 +92,13 @@ const AMLLLyricsPlayer = ({
   return (
     <div
       ref={containerRef}
-      style={{ fontSize: `${fontSize}px`, cursor: onLineClick ? "pointer" : undefined }}
-      className={`amll-lyrics-host ${isMobile ? "amll-lyrics-host-mobile" : ""} relative h-full w-full ${className ?? ""}`}
+      style={{
+        fontSize: `${fontSize}px`, // now defaults to 45px
+        cursor: onLineClick ? "pointer" : undefined,
+      }}
+      className={`amll-lyrics-host ${
+        isMobile ? "amll-lyrics-host-mobile" : ""
+      } relative h-full w-full ${className ?? ""}`}
     />
   );
 };
