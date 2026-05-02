@@ -5,9 +5,6 @@ import {
   type LyricLineMouseEvent,
 } from "@applemusic-like-lyrics/core";
 
-.amll-lyrics-host * {
-  font-size: 45px !important;
-}
 interface Props {
   lines: LyricLine[];
   currentTime: number;
@@ -24,7 +21,7 @@ const AMLLLyricsPlayer = ({
   currentTime,
   isSeek,
   fontSize = 45, // 🔥 changed from 32 → 45
-  enableBlur = true,
+  enableBlur = false,
   onLineClick,
   isMobile = false,
   className,
