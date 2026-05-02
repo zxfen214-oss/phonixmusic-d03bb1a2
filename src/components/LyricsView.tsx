@@ -1721,18 +1721,43 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
           </div>
 
+          {/* Bottom gradient — purely decorative, never intercepts taps. */}
+          <div
+            className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
+            style={{
+              height: '38%',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.15) 75%, transparent 100%)',
+              opacity: mobileControlsVisible ? 1 : 0,
+              transition: 'opacity 280ms ease-out',
+            }}
+          />
+
+          {/* Bottom tap-zone — small strip at the very bottom that always
+              toggles controls (so lyrics in the rest of the screen stay tappable
+              for AMLL line-click seeking). */}
+          <button
+            type="button"
+            aria-label="Toggle controls"
+            className="absolute left-0 right-0 z-15 bg-transparent"
+            style={{
+              bottom: 0,
+              height: mobileControlsVisible ? '0px' : '90px',
+              pointerEvents: mobileControlsVisible ? 'none' : 'auto',
+            }}
+            onClick={(e) => { e.stopPropagation(); resetMobileControlsTimer(); }}
+          />
+
           <motion.div
             initial={{ opacity: 1, y: 0 }}
-            animate={{ 
+            animate={{
               opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
               y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
             }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             className="absolute bottom-0 left-0 right-0 z-20"
-            style={{ 
+            style={{
               padding: '8px 24px 32px 24px',
               pointerEvents: mobileControlsVisible ? 'auto' : 'none',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
               paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
             }}
           >
