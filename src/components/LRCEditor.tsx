@@ -201,6 +201,25 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
     setLines(updatedLines);
   };
 
+  // Toggle a line's alignment side. We store the marker inline at the start of
+  // the line text: "<left>..." or "<right>...". Default (no tag) is left.
+  const toggleLineSide = (index: number) => {
+    const updatedLines = [...lines];
+    const cur = updatedLines[index].text;
+    let next: string;
+    if (cur.startsWith("<right>")) next = cur.slice(7);
+    else if (cur.startsWith("<left>")) next = "<right>" + cur.slice(6);
+    else next = "<right>" + cur;
+    updatedLines[index] = { ...updatedLines[index], text: next };
+    setLines(updatedLines);
+  };
+
+  const getLineSide = (text: string): 'left' | 'right' =>
+    text.startsWith("<right>") ? 'right' : 'left';
+
+  const stripSideTag = (text: string): string =>
+    text.startsWith("<right>") ? text.slice(7) : text.startsWith("<left>") ? text.slice(6) : text;
+
   // Delete a line
   const deleteLine = (index: number) => {
     const updatedLines = lines.filter((_, i) => i !== index);
@@ -662,37 +681,52 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
                   ref={linesContainerRef}
                   className="flex-1 overflow-y-auto space-y-2 pr-2"
                 >
-                  {lines.map((line, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-secondary"
-                    >
-                      <div className="w-16 text-xs font-mono text-muted-foreground">
-                        {line.time !== -1 ? formatDisplayTime(line.time) : "--:--"}
+                  {lines.map((line, index) => {
+                    const side = getLineSide(line.text);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-secondary"
+                      >
+                        <div className="w-16 text-xs font-mono text-muted-foreground">
+                          {line.time !== -1 ? formatDisplayTime(line.time) : "--:--"}
+                        </div>
+                        <Input
+                          value={stripSideTag(line.text)}
+                          onChange={(e) => {
+                            const prefix = side === 'right' ? '<right>' : '';
+                            editLineText(index, prefix + e.target.value);
+                          }}
+                          className="flex-1 h-8 text-sm"
+                        />
+                        <Button
+                          variant={side === 'right' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => toggleLineSide(index)}
+                          className="h-8 px-2 text-xs"
+                          title={`Currently aligned ${side}. Click to switch.`}
+                        >
+                          {side === 'right' ? 'R' : 'L'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => addLine(index)}
+                          className="h-8 w-8"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteLine(index)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Input
-                        value={line.text}
-                        onChange={(e) => editLineText(index, e.target.value)}
-                        className="flex-1 h-8 text-sm"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => addLine(index)}
-                        className="h-8 w-8"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteLine(index)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Actions */}

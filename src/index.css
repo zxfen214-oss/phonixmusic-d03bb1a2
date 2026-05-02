@@ -35,32 +35,47 @@
   letter-spacing: -0.01em;
 }
 .amll-lyrics-host {
-  /* extra line-height + padding so heavy descenders/ascenders never clip */
-  line-height: 1.3 !important;
-  padding-top: 0.35em;
-  padding-bottom: 0.35em;
+  /* generous line-height + padding so heavy ascenders/descenders never clip,
+     even at the larger font sizes we now use. */
+  line-height: 1.45 !important;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
 }
-.amll-lyrics-host > div {
-  /* AMLL's internal container — give children breathing room */
+.amll-lyrics-host > div,
+.amll-lyrics-host [class*="lyricMainLine"],
+.amll-lyrics-host [class*="lyricLine"] {
+  /* AMLL's internal containers — give children breathing room */
   overflow: visible !important;
 }
 
-/* Mobile: shift main lyric up + fade out top/bottom */
+/* Background lines (parenthesized lyrics): only visible when active.
+   AMLL's class is hashed (e.g. FmKaba_lyricBgLine) — match by substring. */
+.amll-lyrics-host [class*="lyricBgLine"] {
+  opacity: 0 !important;
+  transition: opacity 350ms ease-out;
+  pointer-events: none;
+}
+.amll-lyrics-host [class*="lyricLineActive"][class*="lyricBgLine"],
+.amll-lyrics-host [class*="lyricBgLine"][class*="lyricLineActive"] {
+  opacity: 0.85 !important;
+}
+
+/* Mobile: shift main lyric up + soft fade-out at top/bottom (no hard cut) */
 @media (max-width: 767px) {
   .amll-lyrics-host-mobile {
     -webkit-mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 14%,
-      black 78%,
-      transparent 100%
+      black 8%,
+      black 70%,
+      transparent 96%
     );
     mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 14%,
-      black 78%,
-      transparent 100%
+      black 8%,
+      black 70%,
+      transparent 96%
     );
   }
 }

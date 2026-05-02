@@ -31,6 +31,8 @@ interface PlayerContextType extends PlayerState {
   playbackRate: number;
   speedPreset: SpeedPreset;
   isLossless: boolean;
+  /** Whether the current track has any lyrics (synced or plain) available */
+  hasLyrics: boolean;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -51,6 +53,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [speedPreset, setSpeedPresetState] = useState<SpeedPreset>('normal');
   const [preservePitchEnabled, setPreservePitchEnabled] = useState(true);
   const [isLossless, setIsLossless] = useState(false);
+  const [hasLyrics, setHasLyrics] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const youtubePlayerRef = useRef<any>(null);
@@ -605,6 +608,45 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     onSeekForward: handleSeekForward,
   });
 
+  // Detect lyric availability for the current track (used to grey-out lyric icons)
+  useEffect(() => {
+    const track = state.currentTrack;
+    if (!track || !track.youtubeId) {
+      setHasLyrics(false);
+      return;
+    }
+    let cancelled = false;
+    setHasLyrics(false);
+    (async () => {
+      try {
+        const { getCachedLyrics } = await import("@/lib/offlineCache");
+        const cached = await getCachedLyrics(track.youtubeId!);
+        if (cancelled) return;
+        if (cached?.syncedLyrics?.trim() || cached?.plainLyrics?.trim()) {
+          setHasLyrics(true);
+          return;
+        }
+        if (!navigator.onLine) return;
+        const { merged } = await fetchMergedSongRecord(
+          { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
+          "synced_lyrics, plain_lyrics, lyrics_url",
+        );
+        if (cancelled) return;
+        const m = merged as any;
+        const has =
+          !!(m?.synced_lyrics?.trim?.()) ||
+          !!(m?.plain_lyrics?.trim?.()) ||
+          !!(m?.lyrics_url);
+        setHasLyrics(has);
+      } catch {
+        if (!cancelled) setHasLyrics(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.currentTrack?.id, state.currentTrack?.youtubeId]);
+
   // Update media session position state
   useEffect(() => {
     if (!state.currentTrack) return;
@@ -632,6 +674,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playbackRate,
         speedPreset,
         isLossless,
+        hasLyrics,
       }}
     >
       {children}
@@ -669,6 +712,7 @@ export function usePlayer() {
       playbackRate: 1,
       speedPreset: 'normal' as const,
       isLossless: false,
+      hasLyrics: false,
     } as PlayerContextType;
   }
   return context;

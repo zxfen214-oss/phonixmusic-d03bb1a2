@@ -29,7 +29,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
-import { parseLrc as parseLrcAmll } from "@/lib/parseLrc";
+import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import React from "react";
 
 interface LyricsViewProps {
@@ -1384,10 +1384,27 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Lyrics navigator removed
 
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
-  const amllLines = useMemo(
-    () => (syncedLrcText ? parseLrcAmll(syncedLrcText) : []),
-    [syncedLrcText],
-  );
+  // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
+  // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const amllLines = useMemo(() => {
+    if (!syncedLrcText) return [];
+    const base = parseLrcAmll(syncedLrcText);
+    if (karaokeWords.length > 0) {
+      return applyManualKaraoke(base, karaokeWords);
+    }
+    return base;
+  }, [syncedLrcText, karaokeWords]);
+
+  // Whether ANY lyrics (synced or static) are available for the current track.
+  const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
+
+  // Auto-collapse the desktop lyrics panel (so artwork centers) when
+  // the current track has no lyrics at all.
+  useEffect(() => {
+    if (!hasAnyLyrics) setShowLyricsPanel(false);
+    else setShowLyricsPanel(true);
+  }, [hasAnyLyrics, currentTrack?.id]);
+
   const [isSeekFlag, setIsSeekFlag] = useState(false);
   const seekClearTimer = useRef<number | null>(null);
   const amllSeek = useCallback((ms: number) => {
@@ -1568,15 +1585,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   )}
                 </button>
                 <button
-                  onClick={() => setShowLyricsPanel(!showLyricsPanel)}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                  title={showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
+                  onClick={() => hasAnyLyrics && setShowLyricsPanel(!showLyricsPanel)}
+                  disabled={!hasAnyLyrics}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    hasAnyLyrics ? "hover:bg-white/10" : "cursor-not-allowed",
+                  )}
+                  title={!hasAnyLyrics ? "No lyrics available" : showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
                 >
                   <img
                     src={lyricsIcon}
                     alt="Lyrics"
                     className="h-5 w-5 brightness-0 invert"
-                    style={{ opacity: showLyricsPanel ? 1 : 0.5 }}
+                    style={{ opacity: !hasAnyLyrics ? 0.25 : showLyricsPanel ? 1 : 0.5 }}
                   />
                 </button>
               </div>
@@ -1614,7 +1635,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           lines={amllLines}
                           currentTime={smoothTime * 1000}
                           isSeek={isSeekFlag}
-                          fontSize={48}
+                          fontSize={56}
                           enableBlur={false}
                           onLineClick={amllSeek}
                           className="h-full w-full"
@@ -1630,7 +1651,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           )}
         </div>
 
-        <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
+        <div className="relative h-full flex flex-col md:hidden z-10">
           <div
             className="flex items-center gap-3 flex-shrink-0"
             style={{ padding: '32px 24px 10px 24px' }}
@@ -1687,7 +1708,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     lines={amllLines}
                     currentTime={smoothTime * 1000}
                     isSeek={isSeekFlag}
-                    fontSize={30}
+                    fontSize={36}
                     enableBlur={false}
                     onLineClick={amllSeek}
                     isMobile
@@ -1700,18 +1721,43 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
           </div>
 
+          {/* Bottom gradient — purely decorative, never intercepts taps. */}
+          <div
+            className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
+            style={{
+              height: '38%',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0.15) 75%, transparent 100%)',
+              opacity: mobileControlsVisible ? 1 : 0,
+              transition: 'opacity 280ms ease-out',
+            }}
+          />
+
+          {/* Bottom tap-zone — small strip at the very bottom that always
+              toggles controls (so lyrics in the rest of the screen stay tappable
+              for AMLL line-click seeking). */}
+          <button
+            type="button"
+            aria-label="Toggle controls"
+            className="absolute left-0 right-0 z-15 bg-transparent"
+            style={{
+              bottom: 0,
+              height: mobileControlsVisible ? '0px' : '90px',
+              pointerEvents: mobileControlsVisible ? 'none' : 'auto',
+            }}
+            onClick={(e) => { e.stopPropagation(); resetMobileControlsTimer(); }}
+          />
+
           <motion.div
             initial={{ opacity: 1, y: 0 }}
-            animate={{ 
+            animate={{
               opacity: mobileControlsVisible ? (isClosing ? 0 : 1) : 0,
               y: mobileControlsVisible ? (isClosing ? 20 : 0) : 40,
             }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             className="absolute bottom-0 left-0 right-0 z-20"
-            style={{ 
+            style={{
               padding: '8px 24px 32px 24px',
               pointerEvents: mobileControlsVisible ? 'auto' : 'none',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 70%, transparent 100%)',
               paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
             }}
           >

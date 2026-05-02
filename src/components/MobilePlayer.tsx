@@ -1,15 +1,16 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import MarqueeText from "@/components/MarqueeText";
 import { Volume2, List, Disc3 } from "lucide-react";
-import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, PanInfo } from "framer-motion";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
 import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 import lyricsIcon from "@/assets/lyrics-icon.png";
-import { useDominantColors } from "@/hooks/useDominantColor";
+import LyricsBackground from "@/components/LyricsBackground";
 import { preloadPlayerIcons, preloadArtwork } from "@/lib/preloadPlayerAssets";
+import { cn } from "@/lib/utils";
 
 interface MobilePlayerProps {
   isOpen: boolean;
@@ -23,108 +24,7 @@ const formatTime = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-// Canvas gradient background (matches lyrics tab style)
-function MobilePlayerCanvasBg({ artworkUrl, palette, dominantColor }: { artworkUrl?: string | null; palette: string[]; dominantColor: string | null }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const blobsRef = useRef<{ x: number; y: number; vx: number; vy: number; radius: number; color: [number, number, number] }[]>([]);
-  const rafRef = useRef(0);
-  const opacityRef = useRef(0);
-
-  useEffect(() => {
-    if (!artworkUrl) {
-      blobsRef.current = makeBlobs([
-        [80, 20, 120], [20, 60, 140], [140, 30, 60],
-      ]);
-      return;
-    }
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      const ctx = c.getContext('2d');
-      if (!ctx) return;
-      c.width = img.width; c.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      const data = ctx.getImageData(0, 0, img.width, img.height).data;
-      const colors: [number, number, number][] = [];
-      for (let i = 0; i < 40; i++) {
-        const idx = Math.floor(Math.random() * (data.length / 4)) * 4;
-        colors.push([data[idx], data[idx + 1], data[idx + 2]]);
-      }
-      blobsRef.current = makeBlobs(colors);
-    };
-    img.onerror = () => {
-      blobsRef.current = makeBlobs([[80, 20, 120], [20, 60, 140], [140, 30, 60]]);
-    };
-    img.src = artworkUrl;
-  }, [artworkUrl]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.scale(dpr, dpr);
-
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-
-    const draw = () => {
-      if (opacityRef.current < 1) opacityRef.current = Math.min(1, opacityRef.current + 0.03);
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalAlpha = opacityRef.current * 0.65;
-      ctx.globalCompositeOperation = 'lighter';
-
-      blobsRef.current.forEach(b => {
-        b.x += b.vx; b.y += b.vy;
-        if (b.x < -b.radius) b.x = w + b.radius;
-        if (b.x > w + b.radius) b.x = -b.radius;
-        if (b.y < -b.radius) b.y = h + b.radius;
-        if (b.y > h + b.radius) b.y = -b.radius;
-
-        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-        grad.addColorStop(0, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0.18)`);
-        grad.addColorStop(1, `rgba(${b.color[0]},${b.color[1]},${b.color[2]},0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-      rafRef.current = requestAnimationFrame(draw);
-    };
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0" />;
-}
-
-function makeBlobs(colors: [number, number, number][]) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const blobs: { x: number; y: number; vx: number; vy: number; radius: number; color: [number, number, number] }[] = [];
-  for (let i = 0; i < 8; i++) {
-    blobs.push({
-      x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-      radius: Math.random() * 280 + 180,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    });
-  }
-  return blobs;
-}
+// Background now uses the same AMLL MeshGradient as the lyrics tab.
 
 export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePlayerProps) {
   const {
@@ -133,6 +33,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
     progress,
     volume,
     isLossless,
+    hasLyrics,
     pauseTrack,
     resumeTrack,
     nextTrack,
@@ -146,15 +47,12 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayPlaying, setDisplayPlaying] = useState(isPlaying);
 
-  const { primary: dominantColor, palette } = useDominantColors(currentTrack?.artwork);
-
   // Preload icons on mount and artwork when track changes
   useEffect(() => { preloadPlayerIcons(); }, []);
   useEffect(() => { preloadArtwork(currentTrack?.artwork); }, [currentTrack?.artwork]);
 
   // Swipe-down to close
   const dragY = useMotionValue(0);
-  const bgOpacity = useTransform(dragY, [0, 300], [1, 0.2]);
 
   useEffect(() => {
     if (!isAnimating) setDisplayPlaying(isPlaying);
@@ -221,8 +119,10 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
           className="fixed inset-0 z-50 flex flex-col"
           /* safe area padding */
         >
-          {/* Canvas gradient background matching lyrics tab */}
-          <MobilePlayerCanvasBg artworkUrl={currentTrack.artwork} palette={palette} dominantColor={dominantColor} />
+          {/* AMLL MeshGradient background — matches the lyrics tab */}
+          <div className="absolute inset-0 z-0" style={{ background: '#000' }}>
+            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          </div>
 
           {/* Content */}
           <div
@@ -321,8 +221,21 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
             {/* Bottom Actions - 3 icons aligned with playback controls */}
             <div className="flex items-center justify-between px-2">
               {/* Lyrics icon — aligned with back button (left) */}
-              <button onClick={handleLyricsClick} className="p-2">
-                <img src={lyricsIcon} alt="Lyrics" className="w-[22px] h-[22px] object-contain opacity-60" style={{ filter: 'brightness(0) invert(0.7)' }} />
+              <button
+                onClick={hasLyrics ? handleLyricsClick : undefined}
+                disabled={!hasLyrics}
+                className={cn("p-2", !hasLyrics && "cursor-not-allowed")}
+                title={hasLyrics ? "Lyrics" : "No lyrics available"}
+              >
+                <img
+                  src={lyricsIcon}
+                  alt="Lyrics"
+                  className="w-[22px] h-[22px] object-contain"
+                  style={{
+                    filter: hasLyrics ? 'brightness(0) invert(0.7)' : 'brightness(0) invert(0.4)',
+                    opacity: hasLyrics ? 0.85 : 0.35,
+                  }}
+                />
               </button>
 
               {/* Speaker icon — aligned with play/pause (center) */}

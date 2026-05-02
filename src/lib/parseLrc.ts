@@ -215,3 +215,69 @@ export function getLyricsDuration(lines: LyricLine[]): number {
   if (!lines.length) return 0;
   return lines[lines.length - 1].endTime + 1000;
 }
+
+/**
+ * Inject manual karaoke word timings (PhonixMusic karaoke_data.words) into AMLL
+ * lines that don't already carry true eLRC word-level timing.
+ *
+ * For each line:
+ *   • If the line already has >1 word (eLRC tags produced multiple words), keep it.
+ *   • Otherwise look for karaoke words whose startTime falls within
+ *     [line.startTime, line.endTime] (or matches lineIndex) and rebuild the word array.
+ *
+ * Karaoke words are in seconds. AMLL works in ms.
+ */
+export function applyManualKaraoke(
+  lines: LyricLine[],
+  karaokeWords: { word: string; startTime: number; endTime: number; lineIndex?: number }[],
+): LyricLine[] {
+  if (!karaokeWords?.length || !lines.length) return lines;
+
+  const byLineIndex = new Map<number, typeof karaokeWords>();
+  let hasLineIndex = false;
+  for (const w of karaokeWords) {
+    if (typeof w.lineIndex === "number") {
+      hasLineIndex = true;
+      const arr = byLineIndex.get(w.lineIndex) ?? [];
+      arr.push(w);
+      byLineIndex.set(w.lineIndex, arr);
+    }
+  }
+
+  return lines.map((line, i) => {
+    if (line.words.length > 1) return line;
+
+    let bucket: typeof karaokeWords | undefined;
+    if (hasLineIndex) {
+      bucket = byLineIndex.get(i);
+    } else {
+      bucket = karaokeWords.filter(
+        (w) =>
+          w.startTime * 1000 >= line.startTime - 50 &&
+          w.startTime * 1000 < line.endTime + 50,
+      );
+    }
+    if (!bucket || bucket.length === 0) return line;
+
+    const sorted = [...bucket].sort((a, b) => a.startTime - b.startTime);
+    const newWords: LyricWord[] = sorted.map((w, idx) => {
+      const next = sorted[idx + 1];
+      const startMs = w.startTime * 1000;
+      const endMs = Math.max(
+        startMs + 80,
+        Math.min(
+          (w.endTime || w.startTime + 0.4) * 1000,
+          next ? next.startTime * 1000 : line.endTime,
+        ),
+      );
+      return {
+        word: idx < sorted.length - 1 ? `${w.word} ` : w.word,
+        startTime: startMs,
+        endTime: endMs,
+        obscene: false,
+      };
+    });
+
+    return { ...line, words: newWords };
+  });
+}
