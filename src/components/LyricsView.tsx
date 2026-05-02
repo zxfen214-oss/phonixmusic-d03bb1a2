@@ -1574,15 +1574,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   )}
                 </button>
                 <button
-                  onClick={() => setShowLyricsPanel(!showLyricsPanel)}
-                  className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                  title={showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
+                  onClick={() => hasAnyLyrics && setShowLyricsPanel(!showLyricsPanel)}
+                  disabled={!hasAnyLyrics}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    hasAnyLyrics ? "hover:bg-white/10" : "cursor-not-allowed",
+                  )}
+                  title={!hasAnyLyrics ? "No lyrics available" : showLyricsPanel ? "Hide Lyrics" : "Show Lyrics"}
                 >
                   <img
                     src={lyricsIcon}
                     alt="Lyrics"
                     className="h-5 w-5 brightness-0 invert"
-                    style={{ opacity: showLyricsPanel ? 1 : 0.5 }}
+                    style={{ opacity: !hasAnyLyrics ? 0.25 : showLyricsPanel ? 1 : 0.5 }}
                   />
                 </button>
               </div>
