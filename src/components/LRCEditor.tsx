@@ -201,6 +201,25 @@ export function LRCEditor({ track, isOpen, onClose, onSave }: LRCEditorProps) {
     setLines(updatedLines);
   };
 
+  // Toggle a line's alignment side. We store the marker inline at the start of
+  // the line text: "<left>..." or "<right>...". Default (no tag) is left.
+  const toggleLineSide = (index: number) => {
+    const updatedLines = [...lines];
+    const cur = updatedLines[index].text;
+    let next: string;
+    if (cur.startsWith("<right>")) next = cur.slice(7);
+    else if (cur.startsWith("<left>")) next = "<right>" + cur.slice(6);
+    else next = "<right>" + cur;
+    updatedLines[index] = { ...updatedLines[index], text: next };
+    setLines(updatedLines);
+  };
+
+  const getLineSide = (text: string): 'left' | 'right' =>
+    text.startsWith("<right>") ? 'right' : 'left';
+
+  const stripSideTag = (text: string): string =>
+    text.startsWith("<right>") ? text.slice(7) : text.startsWith("<left>") ? text.slice(6) : text;
+
   // Delete a line
   const deleteLine = (index: number) => {
     const updatedLines = lines.filter((_, i) => i !== index);
