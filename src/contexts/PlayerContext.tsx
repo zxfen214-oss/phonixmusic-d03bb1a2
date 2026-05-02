@@ -53,6 +53,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [speedPreset, setSpeedPresetState] = useState<SpeedPreset>('normal');
   const [preservePitchEnabled, setPreservePitchEnabled] = useState(true);
   const [isLossless, setIsLossless] = useState(false);
+  const [hasLyrics, setHasLyrics] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const youtubePlayerRef = useRef<any>(null);
@@ -634,6 +635,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playbackRate,
         speedPreset,
         isLossless,
+        hasLyrics,
       }}
     >
       {children}
@@ -671,6 +673,7 @@ export function usePlayer() {
       playbackRate: 1,
       speedPreset: 'normal' as const,
       isLossless: false,
+      hasLyrics: false,
     } as PlayerContextType;
   }
   return context;
