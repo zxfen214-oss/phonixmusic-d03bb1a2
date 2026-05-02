@@ -1651,7 +1651,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           )}
         </div>
 
-        <div className="relative h-full flex flex-col md:hidden z-10" onClick={handleMobileTap}>
+        <div className="relative h-full flex flex-col md:hidden z-10">
           <div
             className="flex items-center gap-3 flex-shrink-0"
             style={{ padding: '32px 24px 10px 24px' }}
