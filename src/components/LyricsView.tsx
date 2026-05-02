@@ -1394,6 +1394,17 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     }
     return base;
   }, [syncedLrcText, karaokeWords]);
+
+  // Whether ANY lyrics (synced or static) are available for the current track.
+  const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
+
+  // Auto-collapse the desktop lyrics panel (so artwork centers) when
+  // the current track has no lyrics at all.
+  useEffect(() => {
+    if (!hasAnyLyrics) setShowLyricsPanel(false);
+    else setShowLyricsPanel(true);
+  }, [hasAnyLyrics, currentTrack?.id]);
+
   const [isSeekFlag, setIsSeekFlag] = useState(false);
   const seekClearTimer = useRef<number | null>(null);
   const amllSeek = useCallback((ms: number) => {
