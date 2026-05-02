@@ -94,17 +94,13 @@ const AMLLLyricsPlayer = ({
     playerRef.current?.setEnableBlur(enableBlur);
   }, [enableBlur]);
 
-  // Mobile: lift the active line higher (≈25% from top instead of center)
+  // Lift the active line higher on both PC and mobile so the bulk of the
+  // lyric column sits above center (more upcoming context visible).
   useEffect(() => {
     const p = playerRef.current;
     if (!p) return;
-    if (isMobile) {
-      p.setAlignAnchor("top");
-      p.setAlignPosition(0.22);
-    } else {
-      p.setAlignAnchor("center");
-      p.setAlignPosition(0.5);
-    }
+    p.setAlignAnchor("top");
+    p.setAlignPosition(isMobile ? 0.18 : 0.32);
   }, [isMobile]);
 
   return (
