@@ -161,23 +161,25 @@ export function parseLrc(text: string): LyricLine[] {
     if (companionRaw) companionRaw = companionRaw.replace(/<\/?em>/gi, "");
 
     for (const start of starts) {
-      // Background segment from "(...)" trailing chunk
-      const { main, bg } = extractBgSegment(rest);
-      const mainWords = buildWordsFromText(main || rest, start, offset);
-      if (mainWords.length) {
-        out.push({
-          start,
-          words: mainWords,
-          plain: mainWords.map(w => w.word).join(""),
-          isDuet: lineDuet,
-          isBG: false,
-        });
+      // Background segment detection (smart): trailing "(...)", whole-line "(...)" or stray parens
+      const { main, bg, wholeIsBg } = extractBgSegment(rest);
+      if (!wholeIsBg) {
+        const mainWords = buildWordsFromText(main || rest, start, offset);
+        if (mainWords.length) {
+          out.push({
+            start,
+            words: mainWords,
+            plain: mainWords.map(w => w.word).join(""),
+            isDuet: lineDuet,
+            isBG: false,
+          });
+        }
       }
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
           out.push({
-            start: start + 0.0005,
+            start: wholeIsBg ? start : start + 0.0005,
             words: bgWords,
             plain: bgWords.map(w => w.word).join(""),
             isDuet: lineDuet,
