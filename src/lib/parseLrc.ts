@@ -65,12 +65,36 @@ function buildWordsFromText(rest: string, lineStart: number, offset: number): Ly
  * Split a parenthesized "(...)" segment off the end of a line into a separate
  * AMLL background lyric line (isBG=true). Returns [main, bgRaw|null].
  */
-function extractBgSegment(text: string): { main: string; bg: string | null } {
-  // Match a trailing (...) chunk (allow word-tags inside)
+/**
+ * Smart background-line detection.
+ *
+ * Cases handled:
+ *  1. Trailing "(...)" chunk on a normal line  -> split off as BG.
+ *  2. Whole line is wrapped in parens (possibly with eLRC word tags around the
+ *     parens, e.g. `<00:00.60>( <00:00.65> Hello)`) -> entire line is BG.
+ *  3. Stray paren glyphs anywhere -> stripped from the main line text so they
+ *     don't show as wobbly characters between words.
+ */
+function extractBgSegment(text: string): { main: string; bg: string | null; wholeIsBg: boolean } {
+  // Strip word-tags to evaluate plain content
+  const plain = text.replace(WORD_TAG, "").trim();
+  WORD_TAG.lastIndex = 0;
+
+  // Whole line is bracketed → treat the whole thing as a BG line
+  if (/^\(.*\)$/.test(plain) && !plain.slice(1, -1).includes("(")) {
+    // Remove the outer parens but keep word-tags intact for timing
+    const inner = text
+      .replace(/^\s*\(/, "")
+      .replace(/\)\s*$/, "")
+      .replace(/^(\s*<\d+:\d+(?:\.\d+)?>)\s*\(/, "$1")
+      .replace(/\)\s*(<\d+:\d+(?:\.\d+)?>\s*)?$/, "$1");
+    return { main: "", bg: inner.trim(), wholeIsBg: true };
+  }
+
   const m = text.match(/\s*\(([^()]+)\)\s*$/);
-  if (!m) return { main: text, bg: null };
+  if (!m) return { main: text, bg: null, wholeIsBg: false };
   const main = text.slice(0, m.index).trim();
-  return { main, bg: m[1].trim() };
+  return { main, bg: m[1].trim(), wholeIsBg: false };
 }
 
 export function parseLrc(text: string): LyricLine[] {
