@@ -57,7 +57,7 @@
 }
 .amll-lyrics-host [class*="lyricLineActive"][class*="lyricBgLine"],
 .amll-lyrics-host [class*="lyricBgLine"][class*="lyricLineActive"] {
-  opacity: 0.85 !important;
+  opacity: 1 !important;
 }
 
 /* Mobile: shift main lyric up + soft fade-out at top/bottom (no hard cut) */
