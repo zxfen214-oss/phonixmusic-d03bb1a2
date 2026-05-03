@@ -74,8 +74,17 @@ const AMLLLyricsPlayer = ({
     playerRef.current?.setLyricLines(lines, currentTime);
   }, [lines]);
 
+  // Auto-detect external seeks: if currentTime jumps unexpectedly (e.g. user
+  // scrubbed from the bottom player bar), force AMLL to resync immediately
+  // instead of smoothly tweening — prevents drift after a jump.
+  const lastTimeRef = useRef(currentTime);
   useEffect(() => {
-    playerRef.current?.setCurrentTime(currentTime, isSeek);
+    const prev = lastTimeRef.current;
+    const delta = Math.abs(currentTime - prev);
+    // >300ms jump while we're within a normal playback flow = real seek
+    const detectedSeek = delta > 300;
+    lastTimeRef.current = currentTime;
+    playerRef.current?.setCurrentTime(currentTime, isSeek || detectedSeek);
   }, [currentTime, isSeek]);
 
   useEffect(() => {
