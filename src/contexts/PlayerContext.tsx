@@ -148,7 +148,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         
         const progress = (currentTime / duration) * 100;
         setState(prev => ({ ...prev, progress }));
-      }, 250);
+      }, 100);
     }
 
     return () => {
