@@ -48,15 +48,16 @@
   overflow: visible !important;
 }
 
-/* Background lines (parenthesized lyrics): only visible when active.
-   AMLL's class is hashed (e.g. FmKaba_lyricBgLine) — match by substring. */
+/* Background lines (parenthesized lyrics): only visible when their parent
+   line is the currently active line. AMLL hashes the class names (e.g.
+   FmKaba_lyricBgLine, FmKaba_active), so match by substring. */
 .amll-lyrics-host [class*="lyricBgLine"] {
   opacity: 0 !important;
-  transition: opacity 350ms ease-out;
+  transition: opacity 300ms ease-out;
   pointer-events: none;
 }
-.amll-lyrics-host [class*="lyricLineActive"][class*="lyricBgLine"],
-.amll-lyrics-host [class*="lyricBgLine"][class*="lyricLineActive"] {
+.amll-lyrics-host [class*="_active"] [class*="lyricBgLine"],
+.amll-lyrics-host [class*="lyricBgLine"][class*="_active"] {
   opacity: 1 !important;
 }
 
