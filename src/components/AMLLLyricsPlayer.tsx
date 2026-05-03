@@ -93,7 +93,11 @@ const AMLLLyricsPlayer = ({
     <div
       ref={containerRef}
       style={{
-        fontSize: `${fontSize}px`, // now defaults to 45px
+        // AMLL reads font-size from this CSS variable; setting font-size
+        // alone is ignored because .amll-lyric-player has its own font-size
+        // declaration that uses var(--amll-lp-font-size, fallback).
+        ["--amll-lp-font-size" as any]: `${fontSize}px`,
+        fontSize: `${fontSize}px`,
         cursor: onLineClick ? "pointer" : undefined,
       }}
       className={`amll-lyrics-host ${
