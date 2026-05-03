@@ -91,10 +91,46 @@ function extractBgSegment(text: string): { main: string; bg: string | null; whol
     return { main: "", bg: inner.trim(), wholeIsBg: true };
   }
 
-  const m = text.match(/\s*\(([^()]+)\)\s*$/);
-  if (!m) return { main: text, bg: null, wholeIsBg: false };
-  const main = text.slice(0, m.index).trim();
-  return { main, bg: m[1].trim(), wholeIsBg: false };
+  // Trailing "(...)" segment — detect on plain text (which has word tags
+  // stripped) so eLRC like  ...empty <00:01.20>(<00:01.30>Oh<00:01.50>)
+  // is still recognised. Then strip the bracket from the raw `text` while
+  // preserving word-tags inside it for timing.
+  const plainTrail = plain.match(/\s*\(([^()]+)\)\s*$/);
+  if (plainTrail) {
+    // Find the position of the opening "(" in raw text, ignoring word tags.
+    // Walk through the raw text mirroring `plain` characters.
+    let mainRaw = "";
+    let bgRaw = "";
+    let depth = 0;
+    let i = 0;
+    while (i < text.length) {
+      // Pass through whole word tags to whichever bucket is current.
+      const tagMatch = text.slice(i).match(/^<\d+:\d+(?:\.\d+)?>/);
+      if (tagMatch) {
+        if (depth > 0) bgRaw += tagMatch[0];
+        else mainRaw += tagMatch[0];
+        i += tagMatch[0].length;
+        continue;
+      }
+      const ch = text[i];
+      if (ch === "(") {
+        depth++;
+        i++;
+        continue;
+      }
+      if (ch === ")") {
+        depth--;
+        i++;
+        continue;
+      }
+      if (depth > 0) bgRaw += ch;
+      else mainRaw += ch;
+      i++;
+    }
+    return { main: mainRaw.trim(), bg: bgRaw.trim(), wholeIsBg: false };
+  }
+
+  return { main: text, bg: null, wholeIsBg: false };
 }
 
 export function parseLrc(text: string): LyricLine[] {
