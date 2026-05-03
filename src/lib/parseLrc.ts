@@ -80,15 +80,73 @@ function extractBgSegment(text: string): { main: string; bg: string | null; whol
   const plain = text.replace(WORD_TAG, "").trim();
   WORD_TAG.lastIndex = 0;
 
-  // Whole line is bracketed → treat the whole thing as a BG line
-  if (/^\(.*\)$/.test(plain) && !plain.slice(1, -1).includes("(")) {
-    // Remove the outer parens but keep word-tags intact for timing
-    const inner = text
-      .replace(/^\s*\(/, "")
-      .replace(/\)\s*$/, "")
-      .replace(/^(\s*<\d+:\d+(?:\.\d+)?>)\s*\(/, "$1")
-      .replace(/\)\s*(<\d+:\d+(?:\.\d+)?>\s*)?$/, "$1");
-    return { main: "", bg: inner.trim(), wholeIsBg: true };
+  // Whole line is effectively bracketed (allowing nested or eLRC cases like
+  // `(<00:00.60>( <00:00.65> Hello))`). Strip parens from raw text while
+  // preserving word-tags (for timing) and the inner content order.
+  // Rule: first non-space non-tag char is `(` AND last non-space non-tag char is `)`
+  // AND the bracketed range covers the entire content.
+  const stripped = plain.replace(/\s+/g, "");
+  if (stripped.startsWith("(") && stripped.endsWith(")") && stripped.length >= 2) {
+    // Walk depth to confirm the outermost `(` matches the outermost `)`
+    let depth = 0;
+    let opensAtZero = false;
+    let closesAtEnd = false;
+    let coversAll = true;
+    for (let i = 0; i < stripped.length; i++) {
+      const ch = stripped[i];
+      if (ch === "(") {
+        if (i === 0) opensAtZero = true;
+        depth++;
+      } else if (ch === ")") {
+        depth--;
+        if (depth === 0 && i !== stripped.length - 1) coversAll = false;
+        if (i === stripped.length - 1 && depth === 0) closesAtEnd = true;
+      }
+    }
+    if (opensAtZero && closesAtEnd && coversAll) {
+      // Strip just the outermost matching pair from raw text
+      let bgRaw = "";
+      let d = 0;
+      let i = 0;
+      let strippedOpen = false;
+      // Find outermost ( and ) positions in raw text (ignoring word tags)
+      while (i < text.length) {
+        const tagMatch = text.slice(i).match(/^<\d+:\d+(?:\.\d+)?>/);
+        if (tagMatch) {
+          if (strippedOpen && d > 0) bgRaw += tagMatch[0];
+          else if (strippedOpen) bgRaw += tagMatch[0];
+          else bgRaw += tagMatch[0]; // keep leading tags for timing
+          i += tagMatch[0].length;
+          continue;
+        }
+        const ch = text[i];
+        if (ch === "(") {
+          if (!strippedOpen) {
+            strippedOpen = true; // skip outermost (
+          } else {
+            d++;
+            bgRaw += ch;
+          }
+          i++;
+          continue;
+        }
+        if (ch === ")") {
+          if (d === 0 && strippedOpen) {
+            // outermost closing — skip
+            i++;
+            continue;
+          }
+          d--;
+          bgRaw += ch;
+          i++;
+          continue;
+        }
+        if (strippedOpen) bgRaw += ch;
+        else bgRaw += ch;
+        i++;
+      }
+      return { main: "", bg: bgRaw.trim(), wholeIsBg: true };
+    }
   }
 
   // Trailing "(...)" segment — detect on plain text (which has word tags

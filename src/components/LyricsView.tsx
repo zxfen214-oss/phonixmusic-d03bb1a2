@@ -1708,7 +1708,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     lines={amllLines}
                     currentTime={smoothTime * 1000}
                     isSeek={isSeekFlag}
-                    fontSize={45}
+                    fontSize={36}
                     enableBlur={false}
                     onLineClick={amllSeek}
                     isMobile

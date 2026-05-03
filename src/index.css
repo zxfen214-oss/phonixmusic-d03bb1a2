@@ -55,6 +55,13 @@
   opacity: 0 !important;
   transition: opacity 300ms ease-out;
   pointer-events: none;
+  /* Align background line with its parent main lyric line — same horizontal
+     position, no extra indent / centering offset from AMLL defaults. */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: inherit !important;
 }
 .amll-lyrics-host [class*="_active"] [class*="lyricBgLine"],
 .amll-lyrics-host [class*="lyricBgLine"][class*="_active"] {
