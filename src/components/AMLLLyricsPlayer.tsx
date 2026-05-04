@@ -13,6 +13,8 @@ interface Props {
   enableBlur?: boolean;
   onLineClick?: (timeMs: number, lineIndex: number) => void;
   isMobile?: boolean;
+  /** When true, throttle to 30fps and pause when offscreen. Default false. */
+  lowEnd?: boolean;
   className?: string;
 }
 
@@ -20,10 +22,11 @@ const AMLLLyricsPlayer = ({
   lines,
   currentTime,
   isSeek,
-  fontSize = 45, // 🔥 changed from 32 → 45
+  fontSize = 45,
   enableBlur = false,
   onLineClick,
   isMobile = false,
+  lowEnd = false,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
