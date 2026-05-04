@@ -122,7 +122,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
         >
           {/* AMLL MeshGradient background — matches the lyrics tab */}
           <div className="absolute inset-0 z-0" style={{ background: '#000' }}>
-            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} lowEnd={lowEndMode} />
           </div>
 
           {/* Content */}
