@@ -32,10 +32,7 @@ const LyricsBackground = ({
 
   const effFps = lowEnd ? Math.min(fps, 24) : fps;
   const effScale = lowEnd ? Math.min(renderScale, 0.35) : renderScale;
-  })();
 
-  const effFps = isLowEnd ? Math.min(fps, 24) : fps;
-  const effScale = isLowEnd ? Math.min(renderScale, 0.35) : renderScale;
 
   // Mount renderer once
   useEffect(() => {
