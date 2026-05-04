@@ -44,6 +44,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   } = usePlayer();
 
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+  const [lowEndMode] = usePerformanceMode();
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayPlaying, setDisplayPlaying] = useState(isPlaying);
