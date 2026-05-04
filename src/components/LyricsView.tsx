@@ -30,6 +30,8 @@ import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { usePerformanceMode } from "@/hooks/usePerformanceMode";
+import { Zap } from "lucide-react";
 import React from "react";
 
 interface LyricsViewProps {
