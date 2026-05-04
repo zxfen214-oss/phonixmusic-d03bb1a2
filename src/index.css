@@ -40,6 +40,11 @@
   line-height: 1.45 !important;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
+  /* Perf: isolate paint/layout so AMLL's per-frame transforms don't
+     invalidate the rest of the page. */
+  contain: layout paint style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .amll-lyrics-host > div,
 .amll-lyrics-host [class*="lyricMainLine"],
