@@ -1447,7 +1447,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
-          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} lowEnd={lowEndMode} />
         </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
