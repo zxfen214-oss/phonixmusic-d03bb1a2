@@ -1628,6 +1628,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     >
                       <AlignLeft className="h-4 w-4" />
                     </button>
+                    <button
+                      onClick={() => setLowEndMode(!lowEndMode)}
+                      className={cn("p-1.5 rounded-md transition-colors", lowEndMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
+                      title={lowEndMode ? "Low-end mode: ON" : "Low-end mode: OFF"}
+                      aria-pressed={lowEndMode}
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
                   </div>
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                     {staticLyricsMode ? (
@@ -1640,6 +1648,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           isSeek={isSeekFlag}
                           fontSize={45}
                           enableBlur={false}
+                          lowEnd={lowEndMode}
                           onLineClick={amllSeek}
                           className="h-full w-full"
                         />
