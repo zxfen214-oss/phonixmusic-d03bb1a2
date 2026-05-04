@@ -27,6 +27,17 @@ const LyricsBackground = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<BackgroundRender<MeshGradientRenderer> | null>(null);
 
+  // Detect low-end device — drop GPU cost without changing visual style.
+  const isLowEnd = (() => {
+    if (typeof navigator === "undefined") return false;
+    const cores = (navigator as any).hardwareConcurrency ?? 8;
+    const mem = (navigator as any).deviceMemory ?? 8;
+    return cores <= 4 || mem <= 4;
+  })();
+
+  const effFps = isLowEnd ? Math.min(fps, 24) : fps;
+  const effScale = isLowEnd ? Math.min(renderScale, 0.35) : renderScale;
+
   // Mount renderer once
   useEffect(() => {
     if (!containerRef.current) return;
@@ -35,12 +46,14 @@ const LyricsBackground = ({
     el.style.width = "100%";
     el.style.height = "100%";
     el.style.display = "block";
+    el.style.willChange = "transform";
+    (el.style as any).contain = "layout paint style";
     containerRef.current.appendChild(el);
     bgRef.current = bg;
 
     bg.setFlowSpeed(flowSpeed);
-    bg.setRenderScale(renderScale);
-    bg.setFPS(fps);
+    bg.setRenderScale(effScale);
+    bg.setFPS(effFps);
 
     return () => {
       bg.dispose();
@@ -54,11 +67,11 @@ const LyricsBackground = ({
     bgRef.current?.setFlowSpeed(flowSpeed);
   }, [flowSpeed]);
   useEffect(() => {
-    bgRef.current?.setRenderScale(renderScale);
-  }, [renderScale]);
+    bgRef.current?.setRenderScale(effScale);
+  }, [effScale]);
   useEffect(() => {
-    bgRef.current?.setFPS(fps);
-  }, [fps]);
+    bgRef.current?.setFPS(effFps);
+  }, [effFps]);
 
   // React to album change
   useEffect(() => {

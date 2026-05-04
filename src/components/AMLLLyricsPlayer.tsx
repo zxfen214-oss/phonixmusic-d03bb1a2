@@ -30,8 +30,18 @@ const AMLLLyricsPlayer = ({
   const playerRef = useRef<DomLyricPlayer | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(performance.now());
+  const accumRef = useRef<number>(0);
+  const visibleRef = useRef<boolean>(true);
   const onLineClickRef = useRef(onLineClick);
   onLineClickRef.current = onLineClick;
+
+  // Detect low-end device once: low CPU cores or low memory → throttle harder.
+  const isLowEndRef = useRef<boolean>(false);
+  if (typeof navigator !== "undefined" && !isLowEndRef.current) {
+    const cores = (navigator as any).hardwareConcurrency ?? 8;
+    const mem = (navigator as any).deviceMemory ?? 8;
+    isLowEndRef.current = cores <= 4 || mem <= 4;
+  }
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -40,6 +50,10 @@ const AMLLLyricsPlayer = ({
     const el = player.getElement();
     el.style.width = "100%";
     el.style.height = "100%";
+    // GPU compositing hints — keep AMLL's transforms on their own layer so
+    // lyric scrolling doesn't repaint the rest of the page.
+    el.style.willChange = "transform";
+    (el.style as any).contain = "layout paint style";
     containerRef.current.appendChild(el);
     playerRef.current = player;
 
@@ -52,19 +66,49 @@ const AMLLLyricsPlayer = ({
 
     player.addEventListener("line-click", handleClick);
 
+    // Target frame budget: 60fps on normal devices, 30fps on low-end.
+    // Throttling the update() call (not the rAF loop itself) keeps the
+    // animation timing identical while halving JS/layout work per second.
+    const targetMs = isLowEndRef.current ? 1000 / 30 : 1000 / 60;
+
     const tick = (now: number) => {
       const delta = now - lastTickRef.current;
       lastTickRef.current = now;
-      player.update(delta);
+      // Skip updates entirely while tab/lyrics are hidden.
+      if (visibleRef.current) {
+        accumRef.current += delta;
+        if (accumRef.current >= targetMs) {
+          player.update(accumRef.current);
+          accumRef.current = 0;
+        }
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
 
     lastTickRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
 
+    // Pause work when the lyrics container scrolls offscreen or tab hides.
+    const io = new IntersectionObserver(
+      (entries) => {
+        visibleRef.current = entries[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0 }
+    );
+    io.observe(containerRef.current);
+
+    const onVis = () => {
+      visibleRef.current = !document.hidden;
+      lastTickRef.current = performance.now();
+      accumRef.current = 0;
+    };
+    document.addEventListener("visibilitychange", onVis);
+
     return () => {
       player.removeEventListener("line-click", handleClick);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
       player.dispose();
       playerRef.current = null;
     };
