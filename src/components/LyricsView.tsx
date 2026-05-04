@@ -1735,6 +1735,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     isSeek={isSeekFlag}
                     fontSize={36}
                     enableBlur={false}
+                    lowEnd={lowEndMode}
                     onLineClick={amllSeek}
                     isMobile
                     className="h-full w-full"
