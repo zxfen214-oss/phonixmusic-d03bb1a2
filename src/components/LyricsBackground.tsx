@@ -67,11 +67,11 @@ const LyricsBackground = ({
     bgRef.current?.setFlowSpeed(flowSpeed);
   }, [flowSpeed]);
   useEffect(() => {
-    bgRef.current?.setRenderScale(renderScale);
-  }, [renderScale]);
+    bgRef.current?.setRenderScale(effScale);
+  }, [effScale]);
   useEffect(() => {
-    bgRef.current?.setFPS(fps);
-  }, [fps]);
+    bgRef.current?.setFPS(effFps);
+  }, [effFps]);
 
   // React to album change
   useEffect(() => {
