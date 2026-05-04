@@ -1003,6 +1003,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
+  const [lowEndMode, setLowEndMode] = usePerformanceMode();
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
