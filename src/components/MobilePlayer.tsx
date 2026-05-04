@@ -9,6 +9,7 @@ import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 import lyricsIcon from "@/assets/lyrics-icon.png";
 import LyricsBackground from "@/components/LyricsBackground";
+import { usePerformanceMode } from "@/hooks/usePerformanceMode";
 import { preloadPlayerIcons, preloadArtwork } from "@/lib/preloadPlayerAssets";
 import { cn } from "@/lib/utils";
 
