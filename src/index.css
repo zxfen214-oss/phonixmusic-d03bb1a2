@@ -60,13 +60,28 @@
   opacity: 0 !important;
   transition: opacity 300ms ease-out;
   pointer-events: none;
-  /* Align background line with its parent main lyric line — same horizontal
-     position, no extra indent / centering offset from AMLL defaults. */
+  /* Align background line flush with its parent main lyric line.
+     AMLL applies its own translateX + horizontal padding for the slide-in
+     animation; we strip horizontal offsets so the bg line starts at the
+     exact same x as the main line. */
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
   text-align: inherit !important;
+  text-indent: 0 !important;
+  transform: none !important;
+  left: 0 !important;
+  right: auto !important;
+}
+/* Strip left padding on the inner word/text spans of the bg line so the
+   first character lines up exactly with the first character of the main line. */
+.amll-lyrics-host [class*="lyricBgLine"] > *,
+.amll-lyrics-host [class*="lyricBgLine"] [class*="lyricWord"],
+.amll-lyrics-host [class*="lyricBgLine"] span:first-child {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
 }
 .amll-lyrics-host [class*="_active"] [class*="lyricBgLine"],
 .amll-lyrics-host [class*="lyricBgLine"][class*="_active"] {

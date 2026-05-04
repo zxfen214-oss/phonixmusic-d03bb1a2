@@ -13,6 +13,8 @@ interface Props {
   enableBlur?: boolean;
   onLineClick?: (timeMs: number, lineIndex: number) => void;
   isMobile?: boolean;
+  /** When true, throttle to 30fps and pause when offscreen. Default false. */
+  lowEnd?: boolean;
   className?: string;
 }
 
@@ -20,10 +22,11 @@ const AMLLLyricsPlayer = ({
   lines,
   currentTime,
   isSeek,
-  fontSize = 45, // 🔥 changed from 32 → 45
+  fontSize = 45,
   enableBlur = false,
   onLineClick,
   isMobile = false,
+  lowEnd = false,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,13 +38,9 @@ const AMLLLyricsPlayer = ({
   const onLineClickRef = useRef(onLineClick);
   onLineClickRef.current = onLineClick;
 
-  // Detect low-end device once: low CPU cores or low memory → throttle harder.
-  const isLowEndRef = useRef<boolean>(false);
-  if (typeof navigator !== "undefined" && !isLowEndRef.current) {
-    const cores = (navigator as any).hardwareConcurrency ?? 8;
-    const mem = (navigator as any).deviceMemory ?? 8;
-    isLowEndRef.current = cores <= 4 || mem <= 4;
-  }
+  // User-controlled low-end mode (kept in a ref so the rAF loop reads it live).
+  const lowEndRef = useRef<boolean>(lowEnd);
+  lowEndRef.current = lowEnd;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -66,14 +65,12 @@ const AMLLLyricsPlayer = ({
 
     player.addEventListener("line-click", handleClick);
 
-    // Target frame budget: 60fps on normal devices, 30fps on low-end.
-    // Throttling the update() call (not the rAF loop itself) keeps the
-    // animation timing identical while halving JS/layout work per second.
-    const targetMs = isLowEndRef.current ? 1000 / 30 : 1000 / 60;
-
+    // Target frame budget: 60fps normally; 30fps when low-end mode is on.
+    // Read live from ref so toggling the user setting takes effect instantly.
     const tick = (now: number) => {
       const delta = now - lastTickRef.current;
       lastTickRef.current = now;
+      const targetMs = lowEndRef.current ? 1000 / 30 : 1000 / 60;
       // Skip updates entirely while tab/lyrics are hidden.
       if (visibleRef.current) {
         accumRef.current += delta;

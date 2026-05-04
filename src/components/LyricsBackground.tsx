@@ -10,6 +10,8 @@ interface Props {
   renderScale?: number;
   /** FPS cap, default 30 */
   fps?: number;
+  /** When true, use cheaper render scale + FPS. Default false. */
+  lowEnd?: boolean;
   className?: string;
 }
 
@@ -22,21 +24,15 @@ const LyricsBackground = ({
   flowSpeed = 8,
   renderScale = 0.5,
   fps = 30,
+  lowEnd = false,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<BackgroundRender<MeshGradientRenderer> | null>(null);
 
-  // Detect low-end device — drop GPU cost without changing visual style.
-  const isLowEnd = (() => {
-    if (typeof navigator === "undefined") return false;
-    const cores = (navigator as any).hardwareConcurrency ?? 8;
-    const mem = (navigator as any).deviceMemory ?? 8;
-    return cores <= 4 || mem <= 4;
-  })();
+  const effFps = lowEnd ? Math.min(fps, 24) : fps;
+  const effScale = lowEnd ? Math.min(renderScale, 0.35) : renderScale;
 
-  const effFps = isLowEnd ? Math.min(fps, 24) : fps;
-  const effScale = isLowEnd ? Math.min(renderScale, 0.35) : renderScale;
 
   // Mount renderer once
   useEffect(() => {

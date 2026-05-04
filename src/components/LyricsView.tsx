@@ -30,6 +30,8 @@ import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { usePerformanceMode } from "@/hooks/usePerformanceMode";
+import { Zap } from "lucide-react";
 import React from "react";
 
 interface LyricsViewProps {
@@ -1001,6 +1003,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
+  const [lowEndMode, setLowEndMode] = usePerformanceMode();
   const [staticLyricsText, setStaticLyricsText] = useState("");
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
@@ -1444,7 +1447,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
-          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} lowEnd={lowEndMode} />
         </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
@@ -1625,6 +1628,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     >
                       <AlignLeft className="h-4 w-4" />
                     </button>
+                    <button
+                      onClick={() => setLowEndMode(!lowEndMode)}
+                      className={cn("p-1.5 rounded-md transition-colors", lowEndMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
+                      title={lowEndMode ? "Low-end mode: ON" : "Low-end mode: OFF"}
+                      aria-pressed={lowEndMode}
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
                   </div>
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                     {staticLyricsMode ? (
@@ -1637,6 +1648,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           isSeek={isSeekFlag}
                           fontSize={45}
                           enableBlur={false}
+                          lowEnd={lowEndMode}
                           onLineClick={amllSeek}
                           className="h-full w-full"
                         />
@@ -1686,6 +1698,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </button>
 
             <button
+              className={cn(
+                "flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
+                lowEndMode ? "bg-white/25" : "hover:bg-white/20"
+              )}
+              style={{ width: '36px', height: '36px', background: lowEndMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
+              onClick={(e) => { e.stopPropagation(); setLowEndMode(!lowEndMode); }}
+              title={lowEndMode ? "Low-end mode: ON" : "Low-end mode: OFF"}
+              aria-pressed={lowEndMode}
+            >
+              <Zap className="text-white" style={{ width: '16px', height: '16px' }} />
+            </button>
+
+            <button
               onClick={(e) => { e.stopPropagation(); handleClose(); }}
               className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
               style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
@@ -1710,6 +1735,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     isSeek={isSeekFlag}
                     fontSize={36}
                     enableBlur={false}
+                    lowEnd={lowEndMode}
                     onLineClick={amllSeek}
                     isMobile
                     className="h-full w-full"
