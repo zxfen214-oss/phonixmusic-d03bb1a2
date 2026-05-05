@@ -53,46 +53,21 @@
   overflow: visible !important;
 }
 
-/* Background lines (parenthesized lyrics): only visible when their parent
-   line is the currently active line. AMLL hashes the class names (e.g.
-   FmKaba_lyricBgLine, FmKaba_active), so match by substring. */
+/* Background lines (parenthesized lyrics): hidden by default, fade in only
+   when the parent line is the currently active one. We DO NOT override
+   AMLL's own transform/position/margin — those drive layout and clobbering
+   them makes the bg line render in the wrong place (overlapping neighbors).
+   AMLL hashes its class names (FmKaba_lyricBgLine, FmKaba_active, etc.) so
+   we match by substring. */
 .amll-lyrics-host [class*="lyricBgLine"] {
   opacity: 0 !important;
-  transition: opacity 300ms ease-out;
+  transition: opacity 280ms ease-out;
   pointer-events: none;
-  /* Stack BELOW the main lyric line, never above other lines.
-     AMLL stacks lines via transforms; force bg line to render under its
-     own main line and never overlay neighbors. */
-  position: relative !important;
-  z-index: 0 !important;
-  /* Align background line flush with its parent main lyric line. */
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  text-align: inherit !important;
-  text-indent: 0 !important;
-  transform: none !important;
-  left: 0 !important;
-  right: auto !important;
 }
-/* Ensure the main lyric line itself paints above its bg companion. */
-.amll-lyrics-host [class*="lyricMainLine"] {
-  position: relative;
-  z-index: 1;
-}
-/* Strip left padding on the inner word/text spans of the bg line so the
-   first character lines up exactly with the first character of the main line. */
-.amll-lyrics-host [class*="lyricBgLine"] > *,
-.amll-lyrics-host [class*="lyricBgLine"] [class*="lyricWord"],
-.amll-lyrics-host [class*="lyricBgLine"] span:first-child {
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-  text-indent: 0 !important;
-}
-.amll-lyrics-host [class*="_active"] [class*="lyricBgLine"],
+/* When the bg line itself becomes active (its parent main line is active),
+   AMLL adds the _active class to it. Show it then. */
 .amll-lyrics-host [class*="lyricBgLine"][class*="_active"] {
-  opacity: 1 !important;
+  opacity: 0.55 !important;
 }
 
 /* Mobile: shift main lyric up + soft fade-out at top/bottom (no hard cut) */
