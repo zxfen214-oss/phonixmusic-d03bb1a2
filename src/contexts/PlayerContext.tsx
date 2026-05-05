@@ -148,7 +148,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         
         const progress = (currentTime / duration) * 100;
         setState(prev => ({ ...prev, progress }));
-      }, 100);
+        // 250ms is enough — AMLL interpolates smoothly between updates via
+        // its own rAF loop, so a higher-frequency React state update only
+        // adds re-render cost without improving visual sync.
+      }, 250);
     }
 
     return () => {
