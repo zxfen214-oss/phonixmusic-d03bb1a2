@@ -13,8 +13,6 @@ interface Props {
   enableBlur?: boolean;
   onLineClick?: (timeMs: number, lineIndex: number) => void;
   isMobile?: boolean;
-  /** When true, throttle to 30fps and pause when offscreen. Default false. */
-  lowEnd?: boolean;
   className?: string;
 }
 
@@ -26,21 +24,15 @@ const AMLLLyricsPlayer = ({
   enableBlur = false,
   onLineClick,
   isMobile = false,
-  lowEnd = false,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<DomLyricPlayer | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(performance.now());
-  const accumRef = useRef<number>(0);
   const visibleRef = useRef<boolean>(true);
   const onLineClickRef = useRef(onLineClick);
   onLineClickRef.current = onLineClick;
-
-  // User-controlled low-end mode (kept in a ref so the rAF loop reads it live).
-  const lowEndRef = useRef<boolean>(lowEnd);
-  lowEndRef.current = lowEnd;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -65,19 +57,13 @@ const AMLLLyricsPlayer = ({
 
     player.addEventListener("line-click", handleClick);
 
-    // Target frame budget: 60fps normally; 30fps when low-end mode is on.
-    // Read live from ref so toggling the user setting takes effect instantly.
+    // Always run at the display's native refresh rate (60Hz, 120Hz, 144Hz, …).
+    // No throttling — feed AMLL the real frame delta every rAF tick.
     const tick = (now: number) => {
       const delta = now - lastTickRef.current;
       lastTickRef.current = now;
-      const targetMs = lowEndRef.current ? 1000 / 30 : 1000 / 60;
-      // Skip updates entirely while tab/lyrics are hidden.
       if (visibleRef.current) {
-        accumRef.current += delta;
-        if (accumRef.current >= targetMs) {
-          player.update(accumRef.current);
-          accumRef.current = 0;
-        }
+        player.update(delta);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -97,7 +83,6 @@ const AMLLLyricsPlayer = ({
     const onVis = () => {
       visibleRef.current = !document.hidden;
       lastTickRef.current = performance.now();
-      accumRef.current = 0;
     };
     document.addEventListener("visibilitychange", onVis);
 

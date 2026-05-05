@@ -267,7 +267,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
       </div>
 
       {/* Volume & Lyrics - Desktop only */}
-      <div className="hidden md:flex items-center gap-2 w-48">
+      <div className="hidden md:flex items-center gap-2 w-64 justify-end">
         {/* Lyrics Button — disabled & greyed when no lyrics */}
         <button
           onClick={hasLyrics ? onOpenLyrics : undefined}

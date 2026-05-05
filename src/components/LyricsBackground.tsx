@@ -8,10 +8,8 @@ interface Props {
   flowSpeed?: number;
   /** Render scale 0-1, default 0.5 */
   renderScale?: number;
-  /** FPS cap, default 30 */
+  /** FPS cap, default 60 */
   fps?: number;
-  /** When true, use cheaper render scale + FPS. Default false. */
-  lowEnd?: boolean;
   className?: string;
 }
 
@@ -23,15 +21,14 @@ const LyricsBackground = ({
   albumSrc,
   flowSpeed = 8,
   renderScale = 0.5,
-  fps = 30,
-  lowEnd = false,
+  fps = 60,
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<BackgroundRender<MeshGradientRenderer> | null>(null);
 
-  const effFps = lowEnd ? Math.min(fps, 24) : fps;
-  const effScale = lowEnd ? Math.min(renderScale, 0.35) : renderScale;
+  const effFps = fps;
+  const effScale = renderScale;
 
 
   // Mount renderer once
