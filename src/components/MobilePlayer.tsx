@@ -9,7 +9,7 @@ import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 import lyricsIcon from "@/assets/lyrics-icon.png";
 import LyricsBackground from "@/components/LyricsBackground";
-import { usePerformanceMode } from "@/hooks/usePerformanceMode";
+
 import { preloadPlayerIcons, preloadArtwork } from "@/lib/preloadPlayerAssets";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   } = usePlayer();
 
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
-  const [lowEndMode] = usePerformanceMode();
+  
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayPlaying, setDisplayPlaying] = useState(isPlaying);
@@ -123,7 +123,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
         >
           {/* AMLL MeshGradient background — matches the lyrics tab */}
           <div className="absolute inset-0 z-0" style={{ background: '#000' }}>
-            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} lowEnd={lowEndMode} />
+            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
           </div>
 
           {/* Content */}
