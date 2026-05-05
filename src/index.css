@@ -60,10 +60,12 @@
   opacity: 0 !important;
   transition: opacity 300ms ease-out;
   pointer-events: none;
-  /* Align background line flush with its parent main lyric line.
-     AMLL applies its own translateX + horizontal padding for the slide-in
-     animation; we strip horizontal offsets so the bg line starts at the
-     exact same x as the main line. */
+  /* Stack BELOW the main lyric line, never above other lines.
+     AMLL stacks lines via transforms; force bg line to render under its
+     own main line and never overlay neighbors. */
+  position: relative !important;
+  z-index: 0 !important;
+  /* Align background line flush with its parent main lyric line. */
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding-left: 0 !important;
@@ -73,6 +75,11 @@
   transform: none !important;
   left: 0 !important;
   right: auto !important;
+}
+/* Ensure the main lyric line itself paints above its bg companion. */
+.amll-lyrics-host [class*="lyricMainLine"] {
+  position: relative;
+  z-index: 1;
 }
 /* Strip left padding on the inner word/text spans of the bg line so the
    first character lines up exactly with the first character of the main line. */
