@@ -30,6 +30,7 @@ import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { LosslessBadge } from "@/components/LosslessBadge";
 
 import React from "react";
 
@@ -1510,6 +1511,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </div>
               </div>
 
+              {isLossless && (
+                <div
+                  className="flex items-center justify-center"
+                  style={{ marginTop: '14px', width: showLyricsPanel ? '360px' : '400px' }}
+                >
+                  <LosslessBadge />
+                </div>
+              )}
+
               <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
                   <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
@@ -1521,23 +1531,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
                 </button>
               </div>
-
-              {isLossless && (
-                <div
-                  className="flex items-center justify-center gap-1.5"
-                  style={{
-                    marginTop: '14px',
-                    width: showLyricsPanel ? '360px' : '400px',
-                    fontSize: '12px',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  <Disc3 className="h-4 w-4" />
-                  Lossless
-                </div>
-              )}
 
               {/* Volume control */}
               <div className="flex items-center gap-3 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
@@ -1781,6 +1774,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
             </div>
 
+            {isLossless && (
+              <div className="flex items-center justify-center mt-3">
+                <LosslessBadge />
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-6 mt-3">
               <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 {repeat === 'one' ? (
@@ -1810,20 +1809,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </button>
             </div>
 
-            {isLossless && (
-              <div
-                className="flex items-center justify-center gap-1.5 mt-3"
-                style={{
-                  fontSize: '12px',
-                  color: 'rgba(255,255,255,0.75)',
-                  fontWeight: 600,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <Disc3 className="h-4 w-4" />
-                Lossless
-              </div>
-            )}
           </motion.div>
         </div>
 
