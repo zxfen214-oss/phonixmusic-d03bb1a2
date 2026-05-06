@@ -220,16 +220,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             },
             onStateChange: (event: any) => {
               if (event.data === window.YT.PlayerState.ENDED) {
-                // Handle track end
+                if (repeatRef.current === 'one') {
+                  try {
+                    event.target.seekTo(0, true);
+                    event.target.playVideo();
+                  } catch {}
+                  return;
+                }
                 setState(prev => {
                   const nextIndex = prev.queueIndex + 1;
                   if (nextIndex < prev.queue.length) {
-                    // Play next track
                     const nextTrack = prev.queue[nextIndex];
                     if (nextTrack.source === 'youtube' && nextTrack.youtubeId) {
                       setTimeout(() => loadYouTubeVideo(nextTrack.youtubeId!), 100);
                     }
                     return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+                  }
+                  if (repeatRef.current === 'all' && prev.queue.length > 0) {
+                    const first = prev.queue[0];
+                    if (first.source === 'youtube' && first.youtubeId) {
+                      setTimeout(() => loadYouTubeVideo(first.youtubeId!), 100);
+                    }
+                    return { ...prev, currentTrack: first, queueIndex: 0, progress: 0 };
                   }
                   return { ...prev, isPlaying: false };
                 });
