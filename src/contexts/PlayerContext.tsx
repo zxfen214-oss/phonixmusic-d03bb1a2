@@ -756,6 +756,7 @@ export function usePlayer() {
       playbackRate: 1,
       speedPreset: 'normal' as const,
       isLossless: false,
+      audioFormat: null,
       hasLyrics: false,
     } as PlayerContextType;
   }
