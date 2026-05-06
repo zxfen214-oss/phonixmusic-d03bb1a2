@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import MarqueeText from "@/components/MarqueeText";
-import { Volume2, List, Disc3 } from "lucide-react";
+import { Volume2, List } from "lucide-react";
+import { LosslessBadge } from "./LosslessBadge";
 import { motion, AnimatePresence, useMotionValue, PanInfo } from "framer-motion";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
