@@ -30,6 +30,7 @@ import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { LosslessBadge } from "@/components/LosslessBadge";
 
 import React from "react";
 
