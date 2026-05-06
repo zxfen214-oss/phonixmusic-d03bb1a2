@@ -352,11 +352,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.playbackRate = playbackRate;
 
       audio.onended = () => {
+        if (repeatRef.current === 'one' && audioRef.current) {
+          try {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          } catch {}
+          return;
+        }
         setState(prev => {
           const nextIndex = prev.queueIndex + 1;
           if (nextIndex < prev.queue.length) {
             const nextTrack = prev.queue[nextIndex];
             return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+          }
+          if (repeatRef.current === 'all' && prev.queue.length > 0) {
+            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
           }
           return { ...prev, isPlaying: false };
         });
