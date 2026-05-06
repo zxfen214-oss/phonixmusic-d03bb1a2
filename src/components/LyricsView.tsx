@@ -987,7 +987,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -1511,12 +1511,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 </div>
               </div>
 
-              {isLossless && (
+              {(audioFormat || isLossless) && (
                 <div
                   className="flex items-center justify-center"
                   style={{ marginTop: '14px', width: showLyricsPanel ? '360px' : '400px' }}
                 >
-                  <LosslessBadge />
+                  <LosslessBadge format={audioFormat ?? 'lossless'} />
                 </div>
               )}
 
@@ -1774,9 +1774,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
             </div>
 
-            {isLossless && (
+            {(audioFormat || isLossless) && (
               <div className="flex items-center justify-center mt-3">
-                <LosslessBadge />
+                <LosslessBadge format={audioFormat ?? 'lossless'} />
               </div>
             )}
 

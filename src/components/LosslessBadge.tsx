@@ -7,11 +7,23 @@ interface Props {
   fontSize?: number;
 }
 
-export function LosslessBadge({ className, iconSize = 14, fontSize = 11 }: Props) {
+type BadgeFormat = "lossless" | "dolby";
+
+interface BadgeFullProps extends Props {
+  format?: BadgeFormat;
+}
+
+export function LosslessBadge({
+  className,
+  iconSize = 14,
+  fontSize = 11,
+  format = "lossless",
+}: BadgeFullProps) {
+  const label = format === "dolby" ? "Dolby Audio" : "Lossless";
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 backdrop-blur-sm",
+        "inline-flex items-center gap-1.5 px-2 py-1 backdrop-blur-sm",
         className
       )}
       style={{
@@ -20,6 +32,7 @@ export function LosslessBadge({ className, iconSize = 14, fontSize = 11 }: Props
         fontSize: `${fontSize}px`,
         fontWeight: 600,
         letterSpacing: "0.06em",
+        borderRadius: "4px",
       }}
     >
       <img
@@ -29,7 +42,7 @@ export function LosslessBadge({ className, iconSize = 14, fontSize = 11 }: Props
         className="select-none"
         draggable={false}
       />
-      <span>Lossless</span>
+      <span>{label}</span>
     </div>
   );
 }

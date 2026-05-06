@@ -31,6 +31,7 @@ interface PlayerContextType extends PlayerState {
   playbackRate: number;
   speedPreset: SpeedPreset;
   isLossless: boolean;
+  audioFormat: 'lossless' | 'dolby' | null;
   /** Whether the current track has any lyrics (synced or plain) available */
   hasLyrics: boolean;
 }
@@ -53,6 +54,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [speedPreset, setSpeedPresetState] = useState<SpeedPreset>('normal');
   const [preservePitchEnabled, setPreservePitchEnabled] = useState(true);
   const [isLossless, setIsLossless] = useState(false);
+  const [audioFormat, setAudioFormat] = useState<'lossless' | 'dolby' | null>(null);
   const [hasLyrics, setHasLyrics] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +65,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const isYouTubeReady = useRef(false);
   // Token to cancel stale loads when user clicks play multiple times
   const loadTokenRef = useRef(0);
+  // Always-current repeat mode for use inside onended/onStateChange callbacks
+  const repeatRef = useRef<'none' | 'one' | 'all'>('none');
+  useEffect(() => { repeatRef.current = state.repeat; }, [state.repeat]);
+
 
   // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
   const stopCurrentSource = useCallback(() => {
@@ -216,16 +222,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             },
             onStateChange: (event: any) => {
               if (event.data === window.YT.PlayerState.ENDED) {
-                // Handle track end
+                if (repeatRef.current === 'one') {
+                  try {
+                    event.target.seekTo(0, true);
+                    event.target.playVideo();
+                  } catch {}
+                  return;
+                }
                 setState(prev => {
                   const nextIndex = prev.queueIndex + 1;
                   if (nextIndex < prev.queue.length) {
-                    // Play next track
                     const nextTrack = prev.queue[nextIndex];
                     if (nextTrack.source === 'youtube' && nextTrack.youtubeId) {
                       setTimeout(() => loadYouTubeVideo(nextTrack.youtubeId!), 100);
                     }
                     return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+                  }
+                  if (repeatRef.current === 'all' && prev.queue.length > 0) {
+                    const first = prev.queue[0];
+                    if (first.source === 'youtube' && first.youtubeId) {
+                      setTimeout(() => loadYouTubeVideo(first.youtubeId!), 100);
+                    }
+                    return { ...prev, currentTrack: first, queueIndex: 0, progress: 0 };
                   }
                   return { ...prev, isPlaying: false };
                 });
@@ -265,11 +283,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.playbackRate = playbackRate;
       
       audio.onended = () => {
+        // Repeat current track
+        if (repeatRef.current === 'one' && audioRef.current) {
+          try {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          } catch {}
+          return;
+        }
         setState(prev => {
           const nextIndex = prev.queueIndex + 1;
           if (nextIndex < prev.queue.length) {
             const nextTrack = prev.queue[nextIndex];
             return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+          }
+          // End of queue: loop back if repeat=all
+          if (repeatRef.current === 'all' && prev.queue.length > 0) {
+            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
           }
           return { ...prev, isPlaying: false };
         });
@@ -336,11 +366,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.playbackRate = playbackRate;
 
       audio.onended = () => {
+        if (repeatRef.current === 'one' && audioRef.current) {
+          try {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          } catch {}
+          return;
+        }
         setState(prev => {
           const nextIndex = prev.queueIndex + 1;
           if (nextIndex < prev.queue.length) {
             const nextTrack = prev.queue[nextIndex];
             return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+          }
+          if (repeatRef.current === 'all' && prev.queue.length > 0) {
+            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
           }
           return { ...prev, isPlaying: false };
         });
@@ -616,10 +656,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const track = state.currentTrack;
     if (!track || !track.youtubeId) {
       setHasLyrics(false);
+      setAudioFormat(null);
       return;
     }
     let cancelled = false;
     setHasLyrics(false);
+    setAudioFormat(null);
     (async () => {
       try {
         const { getCachedLyrics } = await import("@/lib/offlineCache");
@@ -627,12 +669,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (cached?.syncedLyrics?.trim() || cached?.plainLyrics?.trim()) {
           setHasLyrics(true);
-          return;
         }
         if (!navigator.onLine) return;
         const { merged } = await fetchMergedSongRecord(
           { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
-          "synced_lyrics, plain_lyrics, lyrics_url",
+          "synced_lyrics, plain_lyrics, lyrics_url, karaoke_data",
         );
         if (cancelled) return;
         const m = merged as any;
@@ -640,7 +681,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           !!(m?.synced_lyrics?.trim?.()) ||
           !!(m?.plain_lyrics?.trim?.()) ||
           !!(m?.lyrics_url);
-        setHasLyrics(has);
+        setHasLyrics((prev) => prev || has);
+        const fmt = m?.karaoke_data?.audio_format;
+        if (fmt === 'lossless' || fmt === 'dolby') setAudioFormat(fmt);
+        else setAudioFormat(null);
       } catch {
         if (!cancelled) setHasLyrics(false);
       }
@@ -677,6 +721,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playbackRate,
         speedPreset,
         isLossless,
+        audioFormat,
         hasLyrics,
       }}
     >
@@ -715,6 +760,7 @@ export function usePlayer() {
       playbackRate: 1,
       speedPreset: 'normal' as const,
       isLossless: false,
+      audioFormat: null,
       hasLyrics: false,
     } as PlayerContextType;
   }

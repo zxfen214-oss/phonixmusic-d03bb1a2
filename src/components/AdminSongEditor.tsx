@@ -81,6 +81,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     lyricColor: '',
     earlyAppearance: 0,
     mobileCharLimit: 9,
+    audioFormat: 'none' as 'none' | 'lossless' | 'dolby',
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
@@ -167,6 +168,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           lyricColor: merged.lyric_color || '',
           earlyAppearance: karaokeData?.early_appearance ?? 0,
           mobileCharLimit: karaokeData?.mobile_char_limit ?? 9,
+          audioFormat: (karaokeData?.audio_format as any) ?? 'none',
         }));
         setPlainLyrics((merged as any).plain_lyrics || "");
 
@@ -371,6 +373,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         ...existingKaraokeData,
         early_appearance: formData.earlyAppearance,
         mobile_char_limit: formData.mobileCharLimit,
+        audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
       };
 
       const baseSongData: Record<string, any> = {
@@ -703,6 +706,28 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <input type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
                   </label>
                 )}
+              </div>
+
+              {/* Audio format badge */}
+              <div className="space-y-2">
+                <Label className="text-sm">Audio quality badge</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['none', 'lossless', 'dolby'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, audioFormat: opt })}
+                      className={`px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+                        formData.audioFormat === opt
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-secondary/50 hover:bg-secondary text-muted-foreground'
+                      }`}
+                    >
+                      {opt === 'none' ? 'None' : opt === 'lossless' ? 'Lossless' : 'Dolby Audio'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Shown above the playback controls.</p>
               </div>
 
               <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">

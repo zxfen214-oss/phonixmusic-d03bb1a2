@@ -43,6 +43,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
     playbackRate,
     speedPreset,
     isLossless,
+    audioFormat,
     hasLyrics,
     pauseTrack,
     resumeTrack,
@@ -203,8 +204,12 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
       </div>
 
       {/* Desktop Controls - Full */}
-      <div className="hidden md:flex flex-1 flex-col items-center gap-1 max-w-xl">
-        {isLossless && <LosslessBadge />}
+      <div className="hidden md:flex flex-1 flex-col items-center gap-2 max-w-xl relative">
+        {(audioFormat || isLossless) && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none">
+            <LosslessBadge format={audioFormat ?? 'lossless'} />
+          </div>
+        )}
         <div className="flex items-center gap-4">
           <button
             onClick={toggleShuffle}
