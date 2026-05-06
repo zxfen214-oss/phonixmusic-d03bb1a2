@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import {
   DomLyricPlayer,
   type LyricLine,
@@ -142,4 +142,4 @@ const AMLLLyricsPlayer = ({
   );
 };
 
-export default AMLLLyricsPlayer;
+export default memo(AMLLLyricsPlayer);
