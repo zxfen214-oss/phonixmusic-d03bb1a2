@@ -656,10 +656,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const track = state.currentTrack;
     if (!track || !track.youtubeId) {
       setHasLyrics(false);
+      setAudioFormat(null);
       return;
     }
     let cancelled = false;
     setHasLyrics(false);
+    setAudioFormat(null);
     (async () => {
       try {
         const { getCachedLyrics } = await import("@/lib/offlineCache");
@@ -667,12 +669,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (cached?.syncedLyrics?.trim() || cached?.plainLyrics?.trim()) {
           setHasLyrics(true);
-          return;
         }
         if (!navigator.onLine) return;
         const { merged } = await fetchMergedSongRecord(
           { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
-          "synced_lyrics, plain_lyrics, lyrics_url",
+          "synced_lyrics, plain_lyrics, lyrics_url, karaoke_data",
         );
         if (cancelled) return;
         const m = merged as any;
@@ -680,7 +681,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           !!(m?.synced_lyrics?.trim?.()) ||
           !!(m?.plain_lyrics?.trim?.()) ||
           !!(m?.lyrics_url);
-        setHasLyrics(has);
+        setHasLyrics((prev) => prev || has);
+        const fmt = m?.karaoke_data?.audio_format;
+        if (fmt === 'lossless' || fmt === 'dolby') setAudioFormat(fmt);
+        else setAudioFormat(null);
       } catch {
         if (!cancelled) setHasLyrics(false);
       }
