@@ -31,6 +31,7 @@ interface PlayerContextType extends PlayerState {
   playbackRate: number;
   speedPreset: SpeedPreset;
   isLossless: boolean;
+  audioFormat: 'lossless' | 'dolby' | null;
   /** Whether the current track has any lyrics (synced or plain) available */
   hasLyrics: boolean;
 }
@@ -53,6 +54,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [speedPreset, setSpeedPresetState] = useState<SpeedPreset>('normal');
   const [preservePitchEnabled, setPreservePitchEnabled] = useState(true);
   const [isLossless, setIsLossless] = useState(false);
+  const [audioFormat, setAudioFormat] = useState<'lossless' | 'dolby' | null>(null);
   const [hasLyrics, setHasLyrics] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
