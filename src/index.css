@@ -37,20 +37,21 @@
 .amll-lyrics-host {
   /* generous line-height + padding so heavy ascenders/descenders never clip,
      even at the larger font sizes we now use. */
-  line-height: 1.45 !important;
+  line-height: 1.6 !important;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
-  /* Perf: isolate paint/layout so AMLL's per-frame transforms don't
-     invalidate the rest of the page. */
-  contain: layout paint style;
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 .amll-lyrics-host > div,
 .amll-lyrics-host [class*="lyricMainLine"],
-.amll-lyrics-host [class*="lyricLine"] {
-  /* AMLL's internal containers — give children breathing room */
+.amll-lyrics-host [class*="lyricLine"],
+.amll-lyrics-host [class*="lyricBgLine"],
+.amll-lyrics-host span,
+.amll-lyrics-host div {
+  /* AMLL's internal containers — give children breathing room so
+     letter ascenders/descenders never get clipped by overflow:hidden
+     applied to the karaoke gradient masks. */
   overflow: visible !important;
+  line-height: 1.6 !important;
 }
 
 /* Background lines (parenthesized lyrics): hidden by default, fade in only
