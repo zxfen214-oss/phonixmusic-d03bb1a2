@@ -717,6 +717,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playbackRate,
         speedPreset,
         isLossless,
+        audioFormat,
         hasLyrics,
       }}
     >
