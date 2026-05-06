@@ -41,10 +41,6 @@ const AMLLLyricsPlayer = ({
     const el = player.getElement();
     el.style.width = "100%";
     el.style.height = "100%";
-    // GPU compositing hints — keep AMLL's transforms on their own layer so
-    // lyric scrolling doesn't repaint the rest of the page.
-    el.style.willChange = "transform";
-    (el.style as any).contain = "layout paint style";
     containerRef.current.appendChild(el);
     playerRef.current = player;
 
