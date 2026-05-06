@@ -63,6 +63,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const isYouTubeReady = useRef(false);
   // Token to cancel stale loads when user clicks play multiple times
   const loadTokenRef = useRef(0);
+  // Always-current repeat mode for use inside onended/onStateChange callbacks
+  const repeatRef = useRef<'none' | 'one' | 'all'>('none');
+  useEffect(() => { repeatRef.current = state.repeat; }, [state.repeat]);
+
 
   // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
   const stopCurrentSource = useCallback(() => {
@@ -265,11 +269,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.playbackRate = playbackRate;
       
       audio.onended = () => {
+        // Repeat current track
+        if (repeatRef.current === 'one' && audioRef.current) {
+          try {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          } catch {}
+          return;
+        }
         setState(prev => {
           const nextIndex = prev.queueIndex + 1;
           if (nextIndex < prev.queue.length) {
             const nextTrack = prev.queue[nextIndex];
             return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
+          }
+          // End of queue: loop back if repeat=all
+          if (repeatRef.current === 'all' && prev.queue.length > 0) {
+            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
           }
           return { ...prev, isPlaying: false };
         });
