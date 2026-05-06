@@ -96,21 +96,28 @@ const AMLLLyricsPlayer = ({
     };
   }, []);
 
+  // Initial sync when lyrics change
   useEffect(() => {
     playerRef.current?.setLyricLines(lines, currentTime);
+    playerRef.current?.setCurrentTime(currentTime, true);
+    lastTimeRef.current = currentTime;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines]);
 
-  // Auto-detect external seeks: if currentTime jumps unexpectedly (e.g. user
-  // scrubbed from the bottom player bar), force AMLL to resync immediately
-  // instead of smoothly tweening — prevents drift after a jump.
+  // Only resync on detected seeks. Between seeks, AMLL's internal rAF
+  // (player.update(delta)) advances time naturally — no per-tick React work.
   const lastTimeRef = useRef(currentTime);
   useEffect(() => {
     const prev = lastTimeRef.current;
-    const delta = Math.abs(currentTime - prev);
-    // >300ms jump while we're within a normal playback flow = real seek
-    const detectedSeek = delta > 300;
+    const delta = currentTime - prev;
     lastTimeRef.current = currentTime;
-    playerRef.current?.setCurrentTime(currentTime, isSeek || detectedSeek);
+    // Real seek = jump backwards, or jump forward by far more than the
+    // ~250ms throttled tick (state interval is 250ms, so anything >700ms
+    // signals a scrub or programmatic jump).
+    const detectedSeek = delta < -200 || delta > 700;
+    if (isSeek || detectedSeek) {
+      playerRef.current?.setCurrentTime(currentTime, true);
+    }
   }, [currentTime, isSeek]);
 
   useEffect(() => {
