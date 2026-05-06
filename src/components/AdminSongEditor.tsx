@@ -81,6 +81,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     lyricColor: '',
     earlyAppearance: 0,
     mobileCharLimit: 9,
+    audioFormat: 'none' as 'none' | 'lossless' | 'dolby',
   });
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyricsFile, setLyricsFile] = useState<File | null>(null);
@@ -167,6 +168,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           lyricColor: merged.lyric_color || '',
           earlyAppearance: karaokeData?.early_appearance ?? 0,
           mobileCharLimit: karaokeData?.mobile_char_limit ?? 9,
+          audioFormat: (karaokeData?.audio_format as any) ?? 'none',
         }));
         setPlainLyrics((merged as any).plain_lyrics || "");
 
@@ -371,6 +373,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         ...existingKaraokeData,
         early_appearance: formData.earlyAppearance,
         mobile_char_limit: formData.mobileCharLimit,
+        audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
       };
 
       const baseSongData: Record<string, any> = {
