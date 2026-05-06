@@ -708,6 +708,28 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                 )}
               </div>
 
+              {/* Audio format badge */}
+              <div className="space-y-2">
+                <Label className="text-sm">Audio quality badge</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['none', 'lossless', 'dolby'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, audioFormat: opt })}
+                      className={`px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+                        formData.audioFormat === opt
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-secondary/50 hover:bg-secondary text-muted-foreground'
+                      }`}
+                    >
+                      {opt === 'none' ? 'None' : opt === 'lossless' ? 'Lossless' : 'Dolby Audio'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Shown above the playback controls.</p>
+              </div>
+
               <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {isSaving ? "Saving..." : "Save Changes"}
