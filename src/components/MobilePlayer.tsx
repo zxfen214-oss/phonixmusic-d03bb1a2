@@ -179,9 +179,9 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
               </div>
             </div>
 
-            {isLossless && (
+            {(audioFormat || isLossless) && (
               <div className="flex items-center justify-center mb-3">
-                <LosslessBadge />
+                <LosslessBadge format={audioFormat ?? 'lossless'} />
               </div>
             )}
 
