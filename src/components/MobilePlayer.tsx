@@ -35,6 +35,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
     progress,
     volume,
     isLossless,
+    audioFormat,
     hasLyrics,
     pauseTrack,
     resumeTrack,
