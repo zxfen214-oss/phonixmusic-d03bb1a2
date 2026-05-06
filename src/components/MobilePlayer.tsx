@@ -173,15 +173,15 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
               </div>
               <div className="flex justify-between mt-2 text-[11px] font-medium text-white/50 tracking-wide">
                 <span>{formatTime(currentTime)}</span>
-                {isLossless && (
-                  <span className="flex items-center gap-1">
-                    <Disc3 className="w-3 h-3 text-white/50" />
-                    Lossless
-                  </span>
-                )}
                 <span>-{formatTime(remaining)}</span>
               </div>
             </div>
+
+            {isLossless && (
+              <div className="flex items-center justify-center mb-3">
+                <LosslessBadge />
+              </div>
+            )}
 
             {/* Playback Controls - white icons */}
             <div className="flex items-center justify-center gap-10 mb-6">
