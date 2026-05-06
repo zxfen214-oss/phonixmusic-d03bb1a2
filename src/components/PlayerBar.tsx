@@ -9,8 +9,8 @@ import {
   Mic2,
   Gauge,
   WifiOff,
-  Disc3
 } from "lucide-react";
+import { LosslessBadge } from "./LosslessBadge";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -203,7 +203,8 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
       </div>
 
       {/* Desktop Controls - Full */}
-      <div className="hidden md:flex flex-1 flex-col items-center gap-2 max-w-xl">
+      <div className="hidden md:flex flex-1 flex-col items-center gap-1 max-w-xl">
+        {isLossless && <LosslessBadge />}
         <div className="flex items-center gap-4">
           <button
             onClick={toggleShuffle}
@@ -258,12 +259,6 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
             {formatTime(currentTrack.duration)}
           </span>
         </div>
-        {isLossless && (
-          <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground font-medium tracking-wide">
-            <Disc3 className="h-3 w-3" />
-            Lossless
-          </div>
-        )}
       </div>
 
       {/* Volume & Lyrics - Desktop only */}
