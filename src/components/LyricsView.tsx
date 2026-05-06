@@ -1774,6 +1774,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
             </div>
 
+            {isLossless && (
+              <div className="flex items-center justify-center mt-3">
+                <LosslessBadge />
+              </div>
+            )}
+
             <div className="flex items-center justify-center gap-6 mt-3">
               <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
                 {repeat === 'one' ? (
@@ -1803,20 +1809,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </button>
             </div>
 
-            {isLossless && (
-              <div
-                className="flex items-center justify-center gap-1.5 mt-3"
-                style={{
-                  fontSize: '12px',
-                  color: 'rgba(255,255,255,0.75)',
-                  fontWeight: 600,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <Disc3 className="h-4 w-4" />
-                Lossless
-              </div>
-            )}
           </motion.div>
         </div>
 
