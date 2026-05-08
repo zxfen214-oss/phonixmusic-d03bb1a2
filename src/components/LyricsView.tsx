@@ -602,7 +602,7 @@ function useAppleMusicStyles(
   lyricsSpeed: number,
 ) {
   const prevPositionsRef = useRef<Map<string, number>>(new Map());
-  const LINE_PADDING = isMobile ? 16 : 16;
+  const LINE_PADDING = isMobile ? 10 : 10;
   const ACTIVE_OFFSET = 0.15;
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
   // Bumped whenever a tracked line's height changes (e.g. SecondaryTextLine opens/closes).
@@ -807,7 +807,7 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
         display: 'grid',
         gridTemplateRows: spaceOpen ? '1fr' : '0fr',
         marginTop: spaceOpen ? '12px' : '0px',
-        marginBottom: spaceOpen ? (isMobile ? '32px' : '40px') : '0px',
+        marginBottom: spaceOpen ? (isMobile ? '28px' : '32px') : '0px',
         transition:
           'grid-template-rows 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 220ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
@@ -820,7 +820,7 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
             fontWeight: 500,
             color: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
             unicodeBidi: 'plaintext',
-            lineHeight: 1.4,
+            lineHeight: 1.0,
             margin: 0,
             opacity: textVisible ? 1 : 0,
             transition: 'opacity 160ms ease-out, color 200ms ease-out',
