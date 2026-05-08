@@ -19,7 +19,7 @@ export function LosslessBadge({
   fontSize = 11,
   format = "lossless",
 }: BadgeFullProps) {
-  const label = format === "dolby" ? "Dolby Audio" : "Lossless";
+  const label = format === "dolby" ? "Dolby Atmos" : "Lossless";
   return (
     <div
       className={cn(
