@@ -116,7 +116,7 @@ const AMLLLyricsPlayer = ({
     const p = playerRef.current;
     if (!p) return;
     p.setAlignAnchor("top");
-    p.setAlignPosition(isMobile ? 0.18 : 0.32);
+    p.setAlignPosition(isMobile ? 0.10 : 0.20);
   }, [isMobile]);
 
   return (
