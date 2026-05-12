@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { preloadPlayerIcons } from "@/lib/preloadPlayerAssets";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
@@ -12,9 +12,12 @@ import { LyricsView } from "@/components/LyricsView";
 import MobilePlayer from "@/components/MobilePlayer";
 import { PlayerProvider, usePlayer } from "@/contexts/PlayerContext";
 import { LibraryProvider } from "@/contexts/LibraryContext";
+import { ViewProvider, useView } from "@/contexts/ViewContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import Settings from "@/pages/Settings";
+import { AlbumView } from "@/components/AlbumView";
+import { PlaylistDetailView } from "@/components/PlaylistDetailView";
 
 function AppContent() {
   const [activeView, setActiveView] = useState("home");
@@ -22,6 +25,7 @@ function AppContent() {
   const [showMobilePlayer, setShowMobilePlayer] = useState(false);
   const { currentTrack } = usePlayer();
   const { user, isLoading } = useAuth();
+  const { selectedAlbum, selectedPlaylistId, closeDetail } = useView();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,7 +34,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/auth");
+      navigate({ to: "/auth" });
     }
   }, [user, isLoading, navigate]);
 
@@ -54,6 +58,8 @@ function AppContent() {
   }
 
   const renderView = () => {
+    if (selectedAlbum) return <AlbumView key={`album-${selectedAlbum}`} />;
+    if (selectedPlaylistId) return <PlaylistDetailView key={`playlist-${selectedPlaylistId}`} />;
     switch (activeView) {
       case "home":
         return <HomeView key="home" />;
@@ -68,6 +74,11 @@ function AppContent() {
       default:
         return <HomeView key="home" />;
     }
+  };
+
+  const handleViewChange = (v: string) => {
+    closeDetail();
+    setActiveView(v);
   };
 
   const handleOpenLyrics = () => {
@@ -90,11 +101,11 @@ function AppContent() {
       transition={{ duration: 0.4 }}
       className="flex h-screen w-full overflow-hidden bg-background pt-[env(safe-area-inset-top)]"
     >
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      <Sidebar activeView={activeView} onViewChange={handleViewChange} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div 
-            key={activeView}
+            key={selectedAlbum ? `album-${selectedAlbum}` : selectedPlaylistId ? `playlist-${selectedPlaylistId}` : activeView}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -106,7 +117,7 @@ function AppContent() {
         </AnimatePresence>
         <PlayerBar onOpenLyrics={handleOpenLyrics} onOpenMobilePlayer={handleOpenMobilePlayer} />
       </div>
-      <MobileNav activeView={activeView} onViewChange={setActiveView} />
+      <MobileNav activeView={activeView} onViewChange={handleViewChange} />
       <MobilePlayer
         isOpen={showMobilePlayer}
         onClose={() => setShowMobilePlayer(false)}
@@ -125,7 +136,9 @@ export default function Index() {
   return (
     <PlayerProvider>
       <LibraryProvider>
-        <AppContent />
+        <ViewProvider>
+          <AppContent />
+        </ViewProvider>
       </LibraryProvider>
     </PlayerProvider>
   );
