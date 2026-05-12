@@ -3,6 +3,7 @@ import { Playlist } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { Play, MoreHorizontal, Trash2, ListMusic } from "lucide-react";
+import { useView } from "@/contexts/ViewContext";
 import { motion } from "framer-motion";
 import {
   DropdownMenu,
@@ -29,11 +30,16 @@ interface PlaylistCardProps {
 export function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { playTrack } = usePlayer();
   const { removePlaylist } = useLibrary();
+  const { openPlaylist } = useView();
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const firstTrackArtwork = playlist.tracks[0]?.artwork;
   const trackCount = playlist.tracks.length;
+
+  const handleOpen = () => {
+    openPlaylist(playlist.id);
+  };
 
   const handlePlay = () => {
     if (playlist.tracks.length > 0) {
@@ -66,7 +72,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
         whileTap={{ scale: 0.98 }}
       >
         {/* Artwork */}
-        <div className="relative mb-3" onClick={handlePlay}>
+        <div className="relative mb-3" onClick={handleOpen}>
           <div className="aspect-square w-full rounded-xl overflow-hidden bg-secondary">
             {firstTrackArtwork ? (
               <img
@@ -99,7 +105,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
 
         {/* Info */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0" onClick={handlePlay}>
+          <div className="flex-1 min-w-0" onClick={handleOpen}>
             <h3 className="font-medium truncate text-sm">{playlist.name}</h3>
             <p className="text-xs text-muted-foreground truncate">
               {trackCount} {trackCount === 1 ? "track" : "tracks"}
