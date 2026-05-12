@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/PageTransition";
@@ -44,19 +44,19 @@ export default function Settings({ embedded = false }: SettingsProps) {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/auth");
+    navigate({ to: "/auth" });
   };
 
   return (
-    <PageTransition className={cn("bg-background", !embedded && "min-h-screen")}>
+    <PageTransition className={cn("bg-background", embedded ? "h-full overflow-y-auto overscroll-contain" : "min-h-screen overflow-y-auto")}>
       <div className={cn(
         "mx-auto max-w-2xl",
-        embedded ? "px-4 md:px-6 py-6 h-full overflow-y-auto pb-32" : "container px-4 py-8 pb-32 overflow-y-auto max-h-[100dvh]"
+        embedded ? "px-4 md:px-6 py-6 pb-40" : "container px-4 py-8 pb-32"
       )}>
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
             {!embedded && (
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
@@ -95,7 +95,7 @@ export default function Settings({ embedded = false }: SettingsProps) {
                 {isAdmin && (
                   <Button 
                     variant="outline" 
-                    onClick={() => navigate("/admin")}
+                    onClick={() => navigate({ to: "/admin" })}
                     className="w-full gap-2"
                   >
                     <Shield className="h-4 w-4" />
