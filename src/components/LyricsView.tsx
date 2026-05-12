@@ -31,6 +31,7 @@ import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import { LosslessBadge } from "@/components/LosslessBadge";
+import { useKaraokeLeadIn } from "@/hooks/useKaraokeLeadIn";
 
 import React from "react";
 
@@ -602,7 +603,7 @@ function useAppleMusicStyles(
   lyricsSpeed: number,
 ) {
   const prevPositionsRef = useRef<Map<string, number>>(new Map());
-  const LINE_PADDING = isMobile ? 10 : 10;
+  const LINE_PADDING = isMobile ? 16 : 16;
   const ACTIVE_OFFSET = 0.15;
   const dur = isMobile ? 0.28 + lyricsSpeed * 0.32 : 0.2 + lyricsSpeed * 0.5;
   // Bumped whenever a tracked line's height changes (e.g. SecondaryTextLine opens/closes).
@@ -807,7 +808,7 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
         display: 'grid',
         gridTemplateRows: spaceOpen ? '1fr' : '0fr',
         marginTop: spaceOpen ? '12px' : '0px',
-        marginBottom: spaceOpen ? (isMobile ? '28px' : '32px') : '0px',
+        marginBottom: spaceOpen ? (isMobile ? '32px' : '40px') : '0px',
         transition:
           'grid-template-rows 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-top 220ms cubic-bezier(0.25, 0.8, 0.25, 1), margin-bottom 220ms cubic-bezier(0.25, 0.8, 0.25, 1)',
       }}
@@ -820,7 +821,7 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
             fontWeight: 500,
             color: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
             unicodeBidi: 'plaintext',
-            lineHeight: 1.0,
+            lineHeight: 1.4,
             margin: 0,
             opacity: textVisible ? 1 : 0,
             transition: 'opacity 160ms ease-out, color 200ms ease-out',
@@ -1389,14 +1390,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
   // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
   // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const karaokeLeadInMs = useKaraokeLeadIn();
   const amllLines = useMemo(() => {
     if (!syncedLrcText) return [];
     const base = parseLrcAmll(syncedLrcText);
-    if (karaokeWords.length > 0) {
-      return applyManualKaraoke(base, karaokeWords);
-    }
-    return base;
-  }, [syncedLrcText, karaokeWords]);
+    const withKaraoke = karaokeWords.length > 0 ? applyManualKaraoke(base, karaokeWords) : base;
+    if (!karaokeLeadInMs) return withKaraoke;
+    // Shift each line's startTime earlier so the line appears before its first
+    // word starts singing. Words keep their original times so the karaoke
+    // fill animation still begins at the real word start.
+    return withKaraoke.map((line, i) => {
+      const prevEnd = i > 0 ? withKaraoke[i - 1].endTime : 0;
+      const desired = line.startTime - karaokeLeadInMs;
+      const shifted = Math.max(prevEnd, Math.max(0, desired));
+      return shifted < line.startTime ? { ...line, startTime: shifted } : line;
+    });
+  }, [syncedLrcText, karaokeWords, karaokeLeadInMs]);
 
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
