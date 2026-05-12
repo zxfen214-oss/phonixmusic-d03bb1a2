@@ -5,7 +5,6 @@ import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSq
 import { useView } from "@/contexts/ViewContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { buildELrc, downloadELrcFile, safeFilename } from "@/lib/exportELrc";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { MetadataEditor } from "./MetadataEditor";
@@ -13,7 +12,6 @@ import { AdminSongEditor } from "./AdminSongEditor";
 import { RequestAdminDialog } from "./RequestAdminDialog";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { DownloadButton } from "./DownloadButton";
-import { ELrcOffsetDialog } from "./ELrcOffsetDialog";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { motion } from "framer-motion";
 import {
@@ -46,7 +44,6 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const [showAdminEditor, setShowAdminEditor] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
-  const [elrcDialog, setElrcDialog] = useState<{ content: string; filename: string } | null>(null);
   
   const isCurrentTrack = currentTrack?.id === track.id;
   const isCurrentlyPlaying = isCurrentTrack && isPlaying;
@@ -107,7 +104,7 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
         return;
       }
       const name = `${safeFilename(track.artist)} - ${safeFilename(track.title)}.lrc`;
-      setElrcDialog({ content, filename: name });
+     downloadELrcFile(content, name);
     } catch (e) {
       console.error(e);
       toast({ title: "Download failed", description: "Could not export eLRC file.", variant: "destructive" });
@@ -291,15 +288,6 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
           track={track}
           isOpen={showPlaylistDialog}
           onClose={() => setShowPlaylistDialog(false)}
-        />
-      )}
-
-      {elrcDialog && (
-        <ELrcOffsetDialog
-          isOpen={!!elrcDialog}
-          onClose={() => setElrcDialog(null)}
-          baseContent={elrcDialog.content}
-          filename={elrcDialog.filename}
         />
       )}
     </>
