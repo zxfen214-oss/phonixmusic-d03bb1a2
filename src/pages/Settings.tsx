@@ -23,6 +23,8 @@ import {
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
+import { getKaraokeLeadInMs, setKaraokeLeadInMs } from "@/hooks/useKaraokeLeadIn";
 
 interface SettingsProps {
   embedded?: boolean;
@@ -41,6 +43,11 @@ export default function Settings({ embedded = false }: SettingsProps) {
   useEffect(() => {
     localStorage.setItem('lyrics-blur-enabled', String(lyricsBlurEnabled));
   }, [lyricsBlurEnabled]);
+
+  const [karaokeLeadIn, setKaraokeLeadIn] = useState(() => getKaraokeLeadInMs());
+  useEffect(() => {
+    setKaraokeLeadInMs(karaokeLeadIn);
+  }, [karaokeLeadIn]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -174,6 +181,34 @@ export default function Settings({ embedded = false }: SettingsProps) {
                     onCheckedChange={setLyricsBlurEnabled}
                   />
                 </div>
+
+                {isAdmin && (
+                  <div className="pt-4 border-t border-border space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label htmlFor="karaoke-lead-in" className="flex items-center gap-2">
+                          Karaoke Lead-In
+                          <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Admin</span>
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          How early each lyric line appears before its karaoke begins.
+                          Works with eLRC and manual karaoke.
+                        </p>
+                      </div>
+                      <span className="text-sm font-mono tabular-nums text-foreground whitespace-nowrap">
+                        {(karaokeLeadIn / 1000).toFixed(2)}s
+                      </span>
+                    </div>
+                    <Slider
+                      id="karaoke-lead-in"
+                      min={0}
+                      max={2000}
+                      step={50}
+                      value={[karaokeLeadIn]}
+                      onValueChange={(v) => setKaraokeLeadIn(v[0] ?? 0)}
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           </StaggerItem>
