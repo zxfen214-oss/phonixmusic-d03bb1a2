@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { preloadPlayerIcons } from "@/lib/preloadPlayerAssets";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
@@ -34,7 +34,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate({ to: "/auth" });
+      navigate("/auth");
     }
   }, [user, isLoading, navigate]);
 
