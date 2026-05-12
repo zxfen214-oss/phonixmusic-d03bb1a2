@@ -1,7 +1,11 @@
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff } from "lucide-react";
+import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff, FileDown, Disc3 } from "lucide-react";
+import { useView } from "@/contexts/ViewContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { buildELrc, downloadELrcFile, safeFilename } from "@/lib/exportELrc";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { MetadataEditor } from "./MetadataEditor";
@@ -9,6 +13,7 @@ import { AdminSongEditor } from "./AdminSongEditor";
 import { RequestAdminDialog } from "./RequestAdminDialog";
 import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { DownloadButton } from "./DownloadButton";
+import { ELrcOffsetDialog } from "./ELrcOffsetDialog";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { motion } from "framer-motion";
 import {
@@ -36,10 +41,12 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, pauseTrack, resumeTrack } = usePlayer();
   const { removeTrack, updateTrackMetadata } = useLibrary();
   const { isAdmin } = useAuth();
+  const { openAlbum } = useView();
   const [showEditor, setShowEditor] = useState(false);
   const [showAdminEditor, setShowAdminEditor] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const [elrcDialog, setElrcDialog] = useState<{ content: string; filename: string } | null>(null);
   
   const isCurrentTrack = currentTrack?.id === track.id;
   const isCurrentlyPlaying = isCurrentTrack && isPlaying;
@@ -67,6 +74,44 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
 
   const handleDelete = async () => {
     await removeTrack(track.id);
+  };
+
+  const { toast } = useToast();
+  const handleDownloadELrc = async () => {
+    try {
+      let synced: string | null = null;
+      let words: any[] = [];
+      if (track.youtubeId) {
+        const { data } = await supabase
+          .from("songs")
+          .select("synced_lyrics, karaoke_data")
+          .eq("youtube_id", track.youtubeId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        synced = (data as any)?.synced_lyrics ?? null;
+        words = (data as any)?.karaoke_data?.words ?? [];
+      }
+      const content = buildELrc({
+        synced_lyrics: synced,
+        karaoke_words: words,
+        title: track.title,
+        artist: track.artist,
+      });
+      if (!content.trim()) {
+        toast({
+          title: "No lyrics available",
+          description: "This song doesn't have synced or karaoke lyrics yet.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const name = `${safeFilename(track.artist)} - ${safeFilename(track.title)}.lrc`;
+      setElrcDialog({ content, filename: name });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Download failed", description: "Could not export eLRC file.", variant: "destructive" });
+    }
   };
 
   return (
@@ -173,6 +218,13 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
               <ListPlus className="h-4 w-4 mr-2" />
               Add to Playlist
             </DropdownMenuItem>
+
+            {track.album && track.album.trim().length > 0 && (
+              <DropdownMenuItem onClick={() => openAlbum(track.album)}>
+                <Disc3 className="h-4 w-4 mr-2" />
+                View Album
+              </DropdownMenuItem>
+            )}
             
             <DropdownMenuItem onClick={() => setShowEditor(true)}>
               <Pencil className="h-4 w-4 mr-2" />
@@ -191,6 +243,11 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
               </DropdownMenuItem>
             )}
             
+            <DropdownMenuItem onClick={handleDownloadELrc}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Download eLRC Lyrics
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleDelete}
@@ -234,6 +291,15 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
           track={track}
           isOpen={showPlaylistDialog}
           onClose={() => setShowPlaylistDialog(false)}
+        />
+      )}
+
+      {elrcDialog && (
+        <ELrcOffsetDialog
+          isOpen={!!elrcDialog}
+          onClose={() => setElrcDialog(null)}
+          baseContent={elrcDialog.content}
+          filename={elrcDialog.filename}
         />
       )}
     </>
