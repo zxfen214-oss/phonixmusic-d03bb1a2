@@ -38,14 +38,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      setIsLoading(false);
+    };
+
+    // Hard safety net: never let the app hang on auth bootstrap.
+    // If we're offline OR Supabase auth refresh stalls, release loading after 2.5s.
+    const offlineFast = typeof navigator !== "undefined" && navigator.onLine === false;
+    const safetyTimer = setTimeout(finish, offlineFast ? 300 : 2500);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setIsLoading(false);
-        
-        // Defer admin check
+        finish();
+
         if (session?.user) {
           setTimeout(() => {
             checkAdminRole(session.user.id);
@@ -56,18 +67,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      if (session?.user) {
-        checkAdminRole(session.user.id);
-      }
-    });
+    // THEN check for existing session — but never await forever when offline.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        finish();
+        if (session?.user && navigator.onLine) {
+          checkAdminRole(session.user.id);
+        }
+      })
+      .catch(() => finish());
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string, club?: string) => {
