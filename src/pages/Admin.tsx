@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/PageTransition";
@@ -123,6 +123,135 @@ function DuplicatesView({ songs, onDelete }: { songs: Song[]; onDelete: (song: S
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Albums Management View ───
+function AlbumsView({ songs, onRenamed }: { songs: Song[]; onRenamed: () => void }) {
+  const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const albums = useMemo(() => {
+    const map = new Map<string, { name: string; count: number; cover: string | null }>();
+    songs.forEach((s) => {
+      const name = (s.album || "").trim() || "(No Album)";
+      const cur = map.get(name);
+      if (!cur) map.set(name, { name, count: 1, cover: s.cover_url });
+      else {
+        cur.count++;
+        if (!cur.cover && s.cover_url) cur.cover = s.cover_url;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [songs]);
+
+  const filtered = albums.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleRename = async (oldName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) {
+      setEditing(null);
+      return;
+    }
+    setSaving(true);
+    try {
+      const isNoAlbum = oldName === "(No Album)";
+      const query = supabase.from("songs").update({ album: trimmed });
+      const { error } = isNoAlbum ? await query.is("album", null) : await query.eq("album", oldName);
+      if (error) throw error;
+      toast({ title: "Album renamed", description: `"${oldName}" → "${trimmed}"` });
+      setEditing(null);
+      onRenamed();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Failed to rename", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          placeholder="Search albums..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <p className="text-sm text-muted-foreground">
+          {albums.length} album{albums.length === 1 ? "" : "s"} • {songs.length} song{songs.length === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <ListMusic className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No albums found.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          {filtered.map((album) => (
+            <div key={album.name} className="flex items-center gap-3 p-3">
+              <div className="w-12 h-12 rounded-md bg-secondary overflow-hidden flex-shrink-0">
+                {album.cover ? (
+                  <img src={album.cover} alt={album.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ListMusic className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                {editing === album.name ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleRename(album.name);
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      autoFocus
+                      className="h-8"
+                    />
+                    <Button size="sm" onClick={() => handleRename(album.name)} disabled={saving}>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-medium truncate">{album.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {album.count} song{album.count === 1 ? "" : "s"}
+                    </p>
+                  </>
+                )}
+              </div>
+              {editing !== album.name && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setEditing(album.name);
+                    setNewName(album.name === "(No Album)" ? "" : album.name);
+                  }}
+                  disabled={album.name === "(No Album)"}
+                  title={album.name === "(No Album)" ? "Cannot rename empty album group" : "Rename album"}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -365,7 +494,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
-      navigate("/");
+      navigate({ to: "/" });
     }
   }, [user, isAdmin, authLoading, navigate]);
 
@@ -772,7 +901,7 @@ export default function Admin() {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -804,6 +933,10 @@ export default function Admin() {
                     <TabsTrigger value="duplicates" className="gap-2">
                       <Copy className="h-4 w-4" />
                       Duplicates
+                    </TabsTrigger>
+                    <TabsTrigger value="albums" className="gap-2">
+                      <ListMusic className="h-4 w-4" />
+                      Albums
                     </TabsTrigger>
                     <TabsTrigger value="accounts" className="gap-2" onClick={() => { if (accountUsers.length === 0) fetchAccountUsers(); }}>
                       <Users className="h-4 w-4" />
@@ -1136,6 +1269,11 @@ export default function Admin() {
                 {/* Duplicates Tab */}
                 <TabsContent value="duplicates" className="mt-0">
                   <DuplicatesView songs={songs} onDelete={handleDelete} />
+                </TabsContent>
+
+                {/* Albums Tab */}
+                <TabsContent value="albums" className="mt-0">
+                  <AlbumsView songs={songs} onRenamed={fetchSongs} />
                 </TabsContent>
 
                 {/* Accounts Tab */}
