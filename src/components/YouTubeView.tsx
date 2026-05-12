@@ -248,125 +248,180 @@ export function YouTubeView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-2"
+              className="space-y-8"
             >
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground">
                 {results.length} results for "{searchQuery}"
               </p>
-              {results.map((track, idx) => {
-                const isCurrentTrack = currentTrack?.id === track.id;
-                const isCurrentlyPlaying = isCurrentTrack && isPlaying;
-                const isInLibrary = tracks.some(t => t.youtubeId === track.youtubeId);
 
+              {(() => {
+                const featured = results.filter(t => t.isEdited);
+                const others = results.filter(t => !t.isEdited);
                 return (
-                  <motion.div
-                    key={track.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ 
-                      duration: 0.4, 
-                      delay: idx * 0.03,
-                      ease: [0.32, 0.72, 0, 1]
-                    }}
-                    className={cn(
-                      "group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl transition-colors duration-200 hover:bg-secondary/50",
-                      isCurrentTrack && "bg-secondary/70"
-                    )}
-                  >
-                  {/* Artwork */}
-                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
-                    <img
-                      src={track.artwork || "/placeholder.svg"}
-                      alt={track.album}
-                      className="h-full w-auto min-w-full object-cover object-center"
-                    />
-                    <button
-                      onClick={() => handlePlay(track)}
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      {isCurrentlyPlaying ? (
-                        <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-                          <div className="flex gap-0.5">
-                            <span className="w-0.5 h-3 bg-accent-foreground rounded-full animate-pulse-subtle" />
-                            <span className="w-0.5 h-3 bg-accent-foreground rounded-full animate-pulse-subtle" />
-                          </div>
+                  <>
+                    {featured.length > 0 && (
+                      <section className="space-y-4">
+                        <h2 className="text-xl md:text-2xl font-bold tracking-tight">Top Results</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                          {featured.map((track, idx) => {
+                            const isCurrentTrack = currentTrack?.id === track.id;
+                            const isCurrentlyPlaying = isCurrentTrack && isPlaying;
+                            const isInLibrary = tracks.some(t => t.youtubeId === track.youtubeId);
+                            return (
+                              <motion.div
+                                key={track.id}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4, delay: idx * 0.04, ease: [0.32, 0.72, 0, 1] }}
+                                className={cn(
+                                  "group relative flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-secondary/60 to-secondary/20 border border-border/50 hover:border-accent/40 transition-all duration-300 hover:shadow-lg hover:shadow-accent/10",
+                                  isCurrentTrack && "border-accent/60"
+                                )}
+                              >
+                                <div className="relative h-24 w-24 md:h-28 md:w-28 flex-shrink-0 overflow-hidden rounded-xl shadow-md">
+                                  <img src={track.artwork || "/placeholder.svg"} alt={track.album} className="h-full w-full object-cover" />
+                                  <button
+                                    onClick={() => handlePlay(track)}
+                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <div className="h-12 w-12 rounded-full bg-accent flex items-center justify-center shadow-xl">
+                                      {isCurrentlyPlaying ? (
+                                        <div className="flex gap-0.5">
+                                          <span className="w-0.5 h-4 bg-accent-foreground rounded-full animate-pulse-subtle" />
+                                          <span className="w-0.5 h-4 bg-accent-foreground rounded-full animate-pulse-subtle" />
+                                        </div>
+                                      ) : (
+                                        <Play className="h-5 w-5 text-accent-foreground ml-0.5" />
+                                      )}
+                                    </div>
+                                  </button>
+                                  <div className="absolute top-1.5 left-1.5 bg-accent rounded-full p-1 shadow" title="Verified">
+                                    <Check className="h-3 w-3 text-accent-foreground" />
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-base md:text-lg font-semibold truncate", isCurrentTrack && "text-accent")}>{track.title}</p>
+                                  <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
+                                  <p className="text-xs text-muted-foreground/70 mt-1">{track.duration > 0 ? formatTime(track.duration) : '--:--'}</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleAddToLibrary(track)}
+                                    disabled={isInLibrary}
+                                    className={cn("icon-button h-10 w-10", isInLibrary && "opacity-50 cursor-not-allowed")}
+                                    title={isInLibrary ? "Already in library" : "Add to library"}
+                                  >
+                                    <Plus className="h-5 w-5" />
+                                  </button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button className="icon-button h-10 w-10"><MoreHorizontal className="h-5 w-5" /></button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-52">
+                                      <DropdownMenuItem onClick={() => setPlaylistTrack(track)}>
+                                        <ListPlus className="h-4 w-4 mr-2" />Add to Playlist
+                                      </DropdownMenuItem>
+                                      {isAdmin ? (
+                                        <DropdownMenuItem onClick={() => handleAdminEdit(track)} className="text-accent">
+                                          <Shield className="h-4 w-4 mr-2" />Admin Edit
+                                        </DropdownMenuItem>
+                                      ) : (
+                                        <DropdownMenuItem onClick={() => setRequestTrack(track)}>
+                                          <MessageSquare className="h-4 w-4 mr-2" />Request Admin Change
+                                        </DropdownMenuItem>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
                         </div>
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-                          <Play className="h-4 w-4 text-accent-foreground ml-0.5" />
+                      </section>
+                    )}
+
+                    {others.length > 0 && (
+                      <section className="space-y-3">
+                        <h2 className="text-lg md:text-xl font-semibold text-muted-foreground">
+                          {featured.length > 0 ? "Other related" : "Results"}
+                        </h2>
+                        <div className="space-y-2">
+                          {others.map((track, idx) => {
+                            const isCurrentTrack = currentTrack?.id === track.id;
+                            const isCurrentlyPlaying = isCurrentTrack && isPlaying;
+                            const isInLibrary = tracks.some(t => t.youtubeId === track.youtubeId);
+                            return (
+                              <motion.div
+                                key={track.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.4, delay: idx * 0.02, ease: [0.32, 0.72, 0, 1] }}
+                                className={cn(
+                                  "group flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-xl transition-colors duration-200 hover:bg-secondary/50",
+                                  isCurrentTrack && "bg-secondary/70"
+                                )}
+                              >
+                                <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
+                                  <img src={track.artwork || "/placeholder.svg"} alt={track.album} className="h-full w-full object-cover" />
+                                  <button
+                                    onClick={() => handlePlay(track)}
+                                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                                      {isCurrentlyPlaying ? (
+                                        <div className="flex gap-0.5">
+                                          <span className="w-0.5 h-3 bg-accent-foreground rounded-full animate-pulse-subtle" />
+                                          <span className="w-0.5 h-3 bg-accent-foreground rounded-full animate-pulse-subtle" />
+                                        </div>
+                                      ) : (
+                                        <Play className="h-4 w-4 text-accent-foreground ml-0.5" />
+                                      )}
+                                    </div>
+                                  </button>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("font-medium truncate", isCurrentTrack && "text-accent")}>{track.title}</p>
+                                  <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
+                                </div>
+                                <span className="text-sm text-muted-foreground">{track.duration > 0 ? formatTime(track.duration) : '--:--'}</span>
+                                <button
+                                  onClick={() => handleAddToLibrary(track)}
+                                  disabled={isInLibrary}
+                                  className={cn("icon-button h-10 w-10 transition-opacity", isInLibrary ? "opacity-50 cursor-not-allowed" : "opacity-0 group-hover:opacity-100")}
+                                  title={isInLibrary ? "Already in library" : "Add to library"}
+                                >
+                                  <Plus className="h-5 w-5" />
+                                </button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="icon-button h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <MoreHorizontal className="h-5 w-5" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-52">
+                                    <DropdownMenuItem onClick={() => setPlaylistTrack(track)}>
+                                      <ListPlus className="h-4 w-4 mr-2" />Add to Playlist
+                                    </DropdownMenuItem>
+                                    {isAdmin ? (
+                                      <DropdownMenuItem onClick={() => handleAdminEdit(track)} className="text-accent">
+                                        <Shield className="h-4 w-4 mr-2" />Admin Edit
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onClick={() => setRequestTrack(track)}>
+                                        <MessageSquare className="h-4 w-4 mr-2" />Request Admin Change
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </motion.div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </button>
-                    {/* Admin edited badge */}
-                    {track.isEdited && (
-                      <div className="absolute top-1 left-1 bg-accent rounded-full p-0.5" title="Admin edited">
-                        <Check className="h-2.5 w-2.5 text-accent-foreground" />
-                      </div>
+                      </section>
                     )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className={cn(
-                      "font-medium truncate",
-                      isCurrentTrack && "text-accent"
-                    )}>
-                      {track.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {track.artist}
-                    </p>
-                  </div>
-
-                  {/* Duration */}
-                  <span className="text-sm text-muted-foreground">
-                    {track.duration > 0 ? formatTime(track.duration) : '--:--'}
-                  </span>
-
-                  {/* Add to Library */}
-                  <button 
-                    onClick={() => handleAddToLibrary(track)}
-                    disabled={isInLibrary}
-                    className={cn(
-                      "icon-button h-10 w-10 transition-opacity",
-                      isInLibrary 
-                        ? "opacity-50 cursor-not-allowed" 
-                        : "opacity-0 group-hover:opacity-100"
-                    )}
-                    title={isInLibrary ? "Already in library" : "Add to library"}
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-
-                  {/* More Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="icon-button h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DropdownMenuItem onClick={() => setPlaylistTrack(track)}>
-                        <ListPlus className="h-4 w-4 mr-2" />
-                        Add to Playlist
-                      </DropdownMenuItem>
-                      
-                      {isAdmin ? (
-                        <DropdownMenuItem onClick={() => handleAdminEdit(track)} className="text-accent">
-                          <Shield className="h-4 w-4 mr-2" />
-                          Admin Edit
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => setRequestTrack(track)}>
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Request Admin Change
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  </motion.div>
+                  </>
                 );
-              })}
+              })()}
             </motion.div>
           )}
         </AnimatePresence>
