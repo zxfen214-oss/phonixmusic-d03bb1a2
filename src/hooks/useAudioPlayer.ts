@@ -29,6 +29,8 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
   const youtubeContainerRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  // Tracks which actual backend is in use ('audio' = HTMLAudioElement, 'youtube' = YT iframe)
+  const playbackBackendRef = useRef<'audio' | 'youtube' | null>(null);
 
   // Initialize YouTube API
   useEffect(() => {
@@ -55,7 +57,7 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
     const loadTrack = async () => {
       // Cleanup previous
       if (youtubePlayerRef.current) {
-        youtubePlayerRef.current.destroy();
+        try { youtubePlayerRef.current.destroy(); } catch {}
         youtubePlayerRef.current = null;
       }
       if (audioRef.current) {
@@ -63,69 +65,58 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
         audioRef.current = null;
       }
       cleanupObjectUrl();
+      playbackBackendRef.current = null;
       setState({ isReady: false, duration: 0, currentTime: 0 });
+
+      const setupHtmlAudio = (src: string, isBlobUrl: boolean) => {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        if (!isBlobUrl) audio.crossOrigin = 'anonymous';
+        audio.src = src;
+
+        audio.addEventListener('loadedmetadata', () => {
+          setState(prev => ({
+            ...prev,
+            isReady: true,
+            duration: audio.duration,
+          }));
+        });
+        audio.addEventListener('ended', onEnded);
+
+        audioRef.current = audio;
+        playbackBackendRef.current = 'audio';
+
+        if (isPlaying) {
+          audio.play().catch(console.error);
+        }
+      };
 
       if (track.source === 'youtube' && track.youtubeId) {
         // First check if we have cached audio for this YouTube track
         const cachedBlob = await getCachedAudio(track.youtubeId);
-        
+
         if (cachedBlob) {
-          // Use cached audio instead of YouTube
           console.log('Playing from offline cache:', track.title);
-          const audio = new Audio();
           objectUrlRef.current = URL.createObjectURL(cachedBlob);
-          audio.src = objectUrlRef.current;
-          
-          audio.addEventListener('loadedmetadata', () => {
-            setState(prev => ({
-              ...prev,
-              isReady: true,
-              duration: audio.duration,
-            }));
-          });
-          
-          audio.addEventListener('ended', onEnded);
-          
-          audioRef.current = audio;
-          
-          if (isPlaying) {
-            audio.play().catch(console.error);
-          }
+          setupHtmlAudio(objectUrlRef.current, true);
           return;
         }
-        
-        // Check if there's a direct audio URL in the database
-        const { data: songData } = await supabase
-          .from('songs')
-          .select('audio_url')
-          .eq('youtube_id', track.youtubeId)
-          .maybeSingle();
-        
-        if (songData?.audio_url) {
-          // Use direct audio URL (for streaming when online)
-          console.log('Playing from direct audio URL:', track.title);
-          const audio = new Audio();
-          audio.src = songData.audio_url;
-          audio.crossOrigin = 'anonymous';
-          
-          audio.addEventListener('loadedmetadata', () => {
-            setState(prev => ({
-              ...prev,
-              isReady: true,
-              duration: audio.duration,
-            }));
-          });
-          
-          audio.addEventListener('ended', onEnded);
-          
-          audioRef.current = audio;
-          
-          if (isPlaying) {
-            audio.play().catch(console.error);
+
+        // Check if there's a direct audio URL in the database (only when online)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+          const { data: songData } = await supabase
+            .from('songs')
+            .select('audio_url')
+            .eq('youtube_id', track.youtubeId)
+            .maybeSingle();
+
+          if (songData?.audio_url) {
+            console.log('Playing from direct audio URL:', track.title);
+            setupHtmlAudio(songData.audio_url, false);
+            return;
           }
-          return;
         }
-        
+
         // Fall back to YouTube player
         const waitForYT = () => {
           return new Promise<void>((resolve) => {
@@ -139,7 +130,6 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
 
         await waitForYT();
 
-        // Create container if needed
         if (!youtubeContainerRef.current) {
           youtubeContainerRef.current = document.createElement('div');
           youtubeContainerRef.current.id = 'youtube-player';
@@ -149,6 +139,7 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
           document.body.appendChild(youtubeContainerRef.current);
         }
 
+        playbackBackendRef.current = 'youtube';
         youtubePlayerRef.current = new window.YT.Player(youtubeContainerRef.current, {
           height: '1',
           width: '1',
@@ -180,29 +171,10 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
           },
         });
       } else if (track.source === 'local') {
-        // Load local audio
         const audioBlob = await getAudioFile(track.id);
-        
         if (audioBlob) {
-          const audio = new Audio();
           objectUrlRef.current = URL.createObjectURL(audioBlob);
-          audio.src = objectUrlRef.current;
-          
-          audio.addEventListener('loadedmetadata', () => {
-            setState(prev => ({
-              ...prev,
-              isReady: true,
-              duration: audio.duration,
-            }));
-          });
-          
-          audio.addEventListener('ended', onEnded);
-          
-          audioRef.current = audio;
-          
-          if (isPlaying) {
-            audio.play().catch(console.error);
-          }
+          setupHtmlAudio(objectUrlRef.current, true);
         } else {
           console.error('Audio file not found for track:', track.id);
         }
@@ -222,21 +194,16 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
   // Handle play/pause
   useEffect(() => {
     if (!state.isReady) return;
+    const backend = playbackBackendRef.current;
 
-    if (track?.source === 'youtube' && youtubePlayerRef.current) {
-      if (isPlaying) {
-        youtubePlayerRef.current.playVideo();
-      } else {
-        youtubePlayerRef.current.pauseVideo();
-      }
-    } else if (track?.source === 'local' && audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(console.error);
-      } else {
-        audioRef.current.pause();
-      }
+    if (backend === 'youtube' && youtubePlayerRef.current) {
+      if (isPlaying) youtubePlayerRef.current.playVideo();
+      else youtubePlayerRef.current.pauseVideo();
+    } else if (backend === 'audio' && audioRef.current) {
+      if (isPlaying) audioRef.current.play().catch(console.error);
+      else audioRef.current.pause();
     }
-  }, [isPlaying, state.isReady, track?.source]);
+  }, [isPlaying, state.isReady]);
 
   // Progress tracking
   useEffect(() => {
@@ -247,13 +214,14 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
     if (isPlaying && state.isReady) {
       progressIntervalRef.current = window.setInterval(() => {
         let currentTime = 0;
-        
-        if (track?.source === 'youtube' && youtubePlayerRef.current?.getCurrentTime) {
+        const backend = playbackBackendRef.current;
+
+        if (backend === 'youtube' && youtubePlayerRef.current?.getCurrentTime) {
           currentTime = youtubePlayerRef.current.getCurrentTime();
-        } else if (track?.source === 'local' && audioRef.current) {
+        } else if (backend === 'audio' && audioRef.current) {
           currentTime = audioRef.current.currentTime;
         }
-        
+
         setState(prev => ({ ...prev, currentTime }));
       }, 250);
     }
@@ -263,26 +231,27 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [isPlaying, state.isReady, track?.source]);
+  }, [isPlaying, state.isReady]);
 
   const seekTo = useCallback((time: number) => {
-    if (track?.source === 'youtube' && youtubePlayerRef.current) {
+    const backend = playbackBackendRef.current;
+    if (backend === 'youtube' && youtubePlayerRef.current) {
       youtubePlayerRef.current.seekTo(time, true);
-    } else if (track?.source === 'local' && audioRef.current) {
+    } else if (backend === 'audio' && audioRef.current) {
       audioRef.current.currentTime = time;
     }
     setState(prev => ({ ...prev, currentTime: time }));
-  }, [track?.source]);
+  }, []);
 
   const setVolume = useCallback((volume: number) => {
     const normalizedVolume = volume / 100;
-    
-    if (track?.source === 'youtube' && youtubePlayerRef.current) {
+    const backend = playbackBackendRef.current;
+    if (backend === 'youtube' && youtubePlayerRef.current) {
       youtubePlayerRef.current.setVolume(volume);
-    } else if (track?.source === 'local' && audioRef.current) {
+    } else if (backend === 'audio' && audioRef.current) {
       audioRef.current.volume = normalizedVolume;
     }
-  }, [track?.source]);
+  }, []);
 
   return {
     ...state,
