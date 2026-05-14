@@ -53,6 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // When offline, ignore TOKEN_REFRESH/SIGNED_OUT events that are caused
+        // by failed network refresh — keep the last known session so the user
+        // is not booted to /auth and stuck on "Load failed".
+        const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+        if (isOffline && !session && (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED")) {
+          finish();
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         finish();
