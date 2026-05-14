@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +35,11 @@ export default function Auth() {
   
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const isOnline = useOnlineStatus();
 
   // Redirect if already logged in
   if (user) {
-    navigate("/");
+    navigate({ to: "/" });
     return null;
   }
 
@@ -77,6 +79,11 @@ export default function Auth() {
     setError(null);
     setSuccess(null);
 
+    if (!isOnline) {
+      setError("You're offline. Connect to the internet to sign in.");
+      return;
+    }
+
     // Validate inputs
     try {
       emailSchema.parse(email);
@@ -105,7 +112,7 @@ export default function Auth() {
             setError(error.message);
           }
         } else {
-          navigate("/");
+          navigate({ to: "/" });
         }
       } else {
         const { error } = await signUp(email, password, displayName, club);
@@ -187,6 +194,11 @@ export default function Auth() {
 
         {/* Form Card */}
         <div className="bg-card rounded-2xl p-8 border border-border shadow-lg">
+          {!isOnline && (
+            <div className="mb-5 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-sm">
+              You're offline. Sign in requires an internet connection.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <>
