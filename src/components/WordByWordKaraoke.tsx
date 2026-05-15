@@ -555,7 +555,7 @@ const captureWordStart = useCallback(() => {
         <div className="text-xs text-muted-foreground md:text-sm">
           Line {displayLineIndex + 1}/{lines.length}
         </div>
-    <div className="flex items-center gap-2">
+   <div className="flex items-center gap-2">
   <Button
     onClick={jumpBeforeCurrentLine}
     size="sm"
@@ -566,6 +566,17 @@ const captureWordStart = useCallback(() => {
     <RotateCw className="mr-1 h-3.5 w-3.5" />
     Replay Line
   </Button>
+
+  <Button
+    onClick={finish}
+    size="sm"
+    variant="secondary"
+    className="h-7 text-xs md:h-8 md:text-sm"
+  >
+    <Check className="mr-1 h-3.5 w-3.5" />
+    Done
+  </Button>
+</div>
 
   <Button
     onClick={finish}
