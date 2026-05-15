@@ -13,6 +13,7 @@ import {
   Keyboard,
   Check,
   Gauge,
+  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,7 @@ export interface WBWWord {
 }
 
 interface WordByWordKaraokeProps {
+  originalLrcLines: LyricLine[];
   initialLines: LyricLine[];
   duration: number;
   currentTime: number;
@@ -44,9 +46,23 @@ interface CaptureEvent {
   wordIndex: number;
   time: number;
 }
+interface WordByWordKaraokeProps {
+  initialLines: LyricLine[];
+  originalLrcLines: LyricLine[];
+  duration: number;
+  currentTime: number;
+  isPlaying: boolean;
+  syncSpeed: number;
+  onPlay: () => void;
+  onPause: () => void;
+  onSeek: (progressPercent: number) => void;
+  onSpeedChange: (rate: number) => void;
+  onComplete: (words: WBWWord[]) => void;
+}
 
 export function WordByWordKaraoke({
   initialLines,
+  originalLrcLines,
   duration,
   currentTime,
   isPlaying,
@@ -342,6 +358,25 @@ const captureWordStart = useCallback(() => {
       setActiveWord(-1);
     }
   }, [phase, activeLine, lines.length]);
+  const jumpBeforeCurrentLine = useCallback(() => {
+  const lineIndex = activeLine === -1 ? 0 : activeLine;
+
+  const lrcLine = originalLrcLines[lineIndex];
+
+  if (!lrcLine) return;
+
+  // 1.5s before line
+  const targetTime = Math.max(0, lrcLine.startTime - 1.5);
+
+  const percent = (targetTime / duration) * 100;
+
+  onSeek(percent);
+}, [
+  activeLine,
+  originalLrcLines,
+  duration,
+  onSeek,
+]);
 
   // Finish & build words array — enforce contiguous timings for smooth fills
   const finish = () => {
@@ -520,9 +555,26 @@ const captureWordStart = useCallback(() => {
         <div className="text-xs text-muted-foreground md:text-sm">
           Line {displayLineIndex + 1}/{lines.length}
         </div>
-        <Button onClick={finish} size="sm" variant="secondary" className="h-7 text-xs md:h-8 md:text-sm">
-          <Check className="mr-1 h-3.5 w-3.5" /> Done
-        </Button>
+    <div className="flex items-center gap-2">
+  <Button
+    onClick={jumpBeforeCurrentLine}
+    size="sm"
+    variant="outline"
+    className="h-7 text-xs md:h-8 md:text-sm"
+    title="Jump 1.5s before current line"
+  >
+    <RotateCw className="mr-1 h-3.5 w-3.5" />
+    Replay Line
+  </Button>
+
+  <Button
+    onClick={finish}
+    size="sm"
+    variant="secondary"
+    className="h-7 text-xs md:h-8 md:text-sm"
+  >
+    <Check className="mr-1 h-3.5 w-3.5" /> Done
+  </Button>
       </div>
 
       {/* Progress */}
