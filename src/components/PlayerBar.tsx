@@ -9,8 +9,8 @@ import {
   Mic2,
   Gauge,
   WifiOff,
+  Disc3
 } from "lucide-react";
-import { LosslessBadge } from "./LosslessBadge";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -43,8 +43,6 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
     playbackRate,
     speedPreset,
     isLossless,
-    audioFormat,
-    hasLyrics,
     pauseTrack,
     resumeTrack,
     nextTrack,
@@ -61,7 +59,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
 
   if (!currentTrack) {
     return (
-      <div className="h-20 md:h-24 border-t border-border bg-player-bar/95 backdrop-blur-sm flex items-center justify-center mb-[calc(4rem+env(safe-area-inset-bottom))] md:mb-0 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+      <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-16 md:h-20 rounded-full border border-white/15 bg-player-bar/40 backdrop-blur-2xl backdrop-saturate-150 flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
         <p className="text-muted-foreground text-sm">No track playing</p>
       </div>
     );
@@ -70,7 +68,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
   const currentTime = (progress / 100) * currentTrack.duration;
 
   return (
-    <div className="h-20 md:h-24 border-t border-border bg-player-bar/95 backdrop-blur-sm px-3 md:px-4 flex items-center gap-2 md:gap-4 mb-[calc(4rem+env(safe-area-inset-bottom))] md:mb-0 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+    <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-20 md:h-24 rounded-3xl md:rounded-full border border-white/15 bg-player-bar/40 backdrop-blur-2xl backdrop-saturate-150 px-3 md:px-6 flex items-center gap-2 md:gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
       {/* Track Info */}
       <div className="flex items-center gap-2 md:gap-3 flex-1 md:w-64 md:flex-initial min-w-0">
         <div 
@@ -204,12 +202,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
       </div>
 
       {/* Desktop Controls - Full */}
-      <div className="hidden md:flex flex-1 flex-col items-center gap-2 max-w-xl relative">
-        {(audioFormat || isLossless) && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none">
-            <LosslessBadge format={audioFormat ?? 'lossless'} />
-          </div>
-        )}
+      <div className="hidden md:flex flex-1 flex-col items-center gap-2 max-w-xl">
         <div className="flex items-center gap-4">
           <button
             onClick={toggleShuffle}
@@ -264,19 +257,21 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
             {formatTime(currentTrack.duration)}
           </span>
         </div>
+        {isLossless && (
+          <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground font-medium tracking-wide">
+            <Disc3 className="h-3 w-3" />
+            Lossless
+          </div>
+        )}
       </div>
 
       {/* Volume & Lyrics - Desktop only */}
-      <div className="hidden md:flex items-center gap-2 w-64 justify-end">
-        {/* Lyrics Button — disabled & greyed when no lyrics */}
+      <div className="hidden md:flex items-center gap-2 w-48">
+        {/* Lyrics Button */}
         <button
-          onClick={hasLyrics ? onOpenLyrics : undefined}
-          disabled={!hasLyrics}
-          className={cn(
-            "icon-button h-8 w-8 transition-colors",
-            hasLyrics ? "hover:text-accent" : "opacity-40 cursor-not-allowed",
-          )}
-          title={hasLyrics ? "View Lyrics" : "No lyrics available"}
+          onClick={onOpenLyrics}
+          className="icon-button h-8 w-8 hover:text-accent transition-colors"
+          title="View Lyrics"
         >
           <Mic2 className="h-4 w-4" />
         </button>
