@@ -110,73 +110,152 @@ export function WordByWordKaraoke({
 
   // Advance: end the currently-recording word at `now` and start the next word at `now`.
   // The red box always sits on the word that is being recorded.
-  const captureWordStart = useCallback(() => {
-    if (phase !== "recording") return;
-    if (lines.length === 0) return;
-    const t = currentTime;
+const captureWordStart = useCallback(() => {
+  if (phase !== "recording") return;
+  if (lines.length === 0) return;
 
-    // Compute next pointer
-    let nextLine: number;
-    let nextWord: number;
-    if (activeLine === -1) {
-      nextLine = 0;
-      nextWord = 0;
-    } else {
-      const curLineWords = lines[activeLine]?.words ?? [];
-      if (activeWord + 1 < curLineWords.length) {
-        nextLine = activeLine;
-        nextWord = activeWord + 1;
-      } else if (activeLine + 1 < lines.length) {
-        nextLine = activeLine + 1;
-        nextWord = 0;
-      } else {
-        // Past last word — end the last word and stop advancing
-        setTimings((prev) => {
-          const next = prev.map((row) => row.slice());
-          if (next[activeLine] && next[activeLine][activeWord]) {
-            next[activeLine][activeWord] = {
-              ...next[activeLine][activeWord],
-              end: Math.max(next[activeLine][activeWord].start + 0.05, t),
-            };
-          }
-          return next;
-        });
-        setHistory((h) => [
-          ...h,
-          { type: "end", lineIndex: activeLine, wordIndex: activeWord, time: t },
-        ]);
-        return;
+  const t = currentTime;
+
+  let nextLine: number;
+  let nextWord: number;
+
+  // First word ever OR first word after changing line
+  if (activeLine === -1 || activeWord === -1) {
+    nextLine = activeLine === -1 ? 0 : activeLine;
+    nextWord = 0;
+  } else {
+    const curLineWords = lines[activeLine]?.words ?? [];
+
+    // Next word in same line
+    if (activeWord + 1 < curLineWords.length) {
+      nextLine = activeLine;
+      nextWord = activeWord + 1;
+    }
+
+    // Move to next line WITHOUT selecting a word
+    else if (activeLine + 1 < lines.length) {
+      setTimings((prev) => {
+        const next = prev.map((row) => row.slice());
+
+        if (next[activeLine] && next[activeLine][activeWord]) {
+          next[activeLine][activeWord] = {
+            ...next[activeLine][activeWord],
+            end: Math.max(
+              next[activeLine][activeWord].start + 0.05,
+              t
+            ),
+          };
+        }
+
+        return next;
+      });
+
+      setHistory((h) => [
+        ...h,
+        {
+          type: "end",
+          lineIndex: activeLine,
+          wordIndex: activeWord,
+          time: t,
+        },
+      ]);
+
+      // IMPORTANT:
+      // go to next line but NO word selected
+      setActiveLine(activeLine + 1);
+      setActiveWord(-1);
+
+      return;
+    }
+
+    // Last word in song
+    else {
+      setTimings((prev) => {
+        const next = prev.map((row) => row.slice());
+
+        if (next[activeLine] && next[activeLine][activeWord]) {
+          next[activeLine][activeWord] = {
+            ...next[activeLine][activeWord],
+            end: Math.max(
+              next[activeLine][activeWord].start + 0.05,
+              t
+            ),
+          };
+        }
+
+        return next;
+      });
+
+      setHistory((h) => [
+        ...h,
+        {
+          type: "end",
+          lineIndex: activeLine,
+          wordIndex: activeWord,
+          time: t,
+        },
+      ]);
+
+      return;
+    }
+  }
+
+  setTimings((prev) => {
+    const next = prev.map((row) => row.slice());
+
+    if (!next[nextLine]) {
+      next[nextLine] = lines[nextLine].words.map(() => ({
+        start: -1,
+        end: -1,
+      }));
+    }
+
+    // End previous word
+    if (
+      activeLine >= 0 &&
+      activeWord >= 0 &&
+      next[activeLine] &&
+      next[activeLine][activeWord]
+    ) {
+      if (next[activeLine][activeWord].end < 0) {
+        next[activeLine][activeWord] = {
+          ...next[activeLine][activeWord],
+          end: Math.max(
+            next[activeLine][activeWord].start + 0.05,
+            t
+          ),
+        };
       }
     }
 
-    setTimings((prev) => {
-      const next = prev.map((row) => row.slice());
-      // Ensure structure for the next line
-      if (!next[nextLine]) {
-        next[nextLine] = lines[nextLine].words.map(() => ({ start: -1, end: -1 }));
-      }
-      // End the previously-active word (if any) at this time
-      if (activeLine >= 0 && next[activeLine] && next[activeLine][activeWord]) {
-        if (next[activeLine][activeWord].end < 0) {
-          next[activeLine][activeWord] = {
-            ...next[activeLine][activeWord],
-            end: Math.max(next[activeLine][activeWord].start + 0.05, t),
-          };
-        }
-      }
-      // Start the new active word at this time
-      next[nextLine][nextWord] = { ...next[nextLine][nextWord], start: t };
-      return next;
-    });
+    // Start next word
+    next[nextLine][nextWord] = {
+      ...next[nextLine][nextWord],
+      start: t,
+    };
 
-    setHistory((h) => [
-      ...h,
-      { type: "start", lineIndex: nextLine, wordIndex: nextWord, time: t },
-    ]);
+    return next;
+  });
 
-    setActiveLine(nextLine);
-    setActiveWord(nextWord);
-  }, [phase, activeLine, activeWord, lines, currentTime]);
+  setHistory((h) => [
+    ...h,
+    {
+      type: "start",
+      lineIndex: nextLine,
+      wordIndex: nextWord,
+      time: t,
+    },
+  ]);
+
+  setActiveLine(nextLine);
+  setActiveWord(nextWord);
+}, [
+  phase,
+  activeLine,
+  activeWord,
+  lines,
+  currentTime,
+]);
 
   // Space: end current word at currentTime (without advancing).
   const captureWordEnd = useCallback(() => {
