@@ -22,7 +22,10 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-lg safe-area-bottom md:hidden">
+    <nav
+      className="fixed left-3 right-3 z-40 rounded-full border border-white/15 bg-background/40 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_8px_32px_rgba(0,0,0,0.35)] md:hidden"
+      style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = activeView === item.id;
@@ -31,10 +34,10 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
               key={item.id}
               onClick={() => item.id === "_install" ? install() : onViewChange(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[64px]",
-                isActive 
-                  ? "text-accent" 
-                  : "text-muted-foreground hover:text-foreground"
+                "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-full transition-all duration-200 min-w-[56px]",
+                isActive
+                  ? "text-accent bg-white/10 backdrop-blur-xl"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               )}
             >
               <div className="relative">
