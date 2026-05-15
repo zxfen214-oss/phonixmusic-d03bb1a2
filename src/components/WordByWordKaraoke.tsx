@@ -26,20 +26,6 @@ export interface WBWWord {
   lineIndex?: number;
 }
 
-interface WordByWordKaraokeProps {
-  originalLrcLines: LyricLine[];
-  initialLines: LyricLine[];
-  duration: number;
-  currentTime: number;
-  isPlaying: boolean;
-  syncSpeed: number;
-  onPlay: () => void;
-  onPause: () => void;
-  onSeek: (progressPercent: number) => void;
-  onSpeedChange: (rate: number) => void;
-  onComplete: (words: WBWWord[]) => void;
-}
-
 interface CaptureEvent {
   type: "start" | "end";
   lineIndex: number;
@@ -566,17 +552,6 @@ const captureWordStart = useCallback(() => {
     <RotateCw className="mr-1 h-3.5 w-3.5" />
     Replay Line
   </Button>
-
-  <Button
-    onClick={finish}
-    size="sm"
-    variant="secondary"
-    className="h-7 text-xs md:h-8 md:text-sm"
-  >
-    <Check className="mr-1 h-3.5 w-3.5" />
-    Done
-  </Button>
-</div>
 
   <Button
     onClick={finish}
