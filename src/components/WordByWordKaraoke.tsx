@@ -82,16 +82,16 @@ export function WordByWordKaraoke({
     []
   );
   const [history, setHistory] = useState<CaptureEvent[]>([]);
-  const [activeLine, setActiveLine] = useState(0);
-  const [activeWord, setActiveWord] = useState(0);
+  const [activeLine, setActiveLine] = useState(-1);
+  const [activeWord, setActiveWord] = useState(-1);
 
   const initTimings = useCallback(() => {
     setTimings(
       lines.map((l) => l.words.map(() => ({ start: -1, end: -1 })))
     );
     setHistory([]);
-    setActiveLine(0);
-    setActiveWord(0);
+    setActiveLine(-1);
+    setActiveWord(-1);
   }, [lines]);
 
   const startRecording = () => {
@@ -108,71 +108,82 @@ export function WordByWordKaraoke({
     setPhase("setup");
   };
 
-  // Capture: word starts now. End previous word here too if not ended.
+  // Advance: end the currently-recording word at `now` and start the next word at `now`.
+  // The red box always sits on the word that is being recorded.
   const captureWordStart = useCallback(() => {
     if (phase !== "recording") return;
-    const li = activeLine;
-    const wi = activeWord;
-    if (li >= lines.length) return;
-    const lineWords = lines[li].words;
-    if (wi >= lineWords.length) return;
-
+    if (lines.length === 0) return;
     const t = currentTime;
-    setTimings((prev) => {
-      const next = prev.map((row) => row.slice());
-      // Ensure structure
-      if (!next[li]) next[li] = lineWords.map(() => ({ start: -1, end: -1 }));
-      // Set this word's start
-      next[li][wi] = { ...next[li][wi], start: t };
-      // Auto-end the previous word in this line if it has no end yet
-      if (wi > 0 && next[li][wi - 1].end < 0) {
-        next[li][wi - 1] = { ...next[li][wi - 1], end: t };
-      }
-      // If first word of a line and previous line's last word has no end, close it
-      if (wi === 0 && li > 0) {
-        const prevLine = next[li - 1];
-        if (prevLine && prevLine.length > 0) {
-          const lastIdx = prevLine.length - 1;
-          if (prevLine[lastIdx].end < 0) {
-            prevLine[lastIdx] = { ...prevLine[lastIdx], end: t };
-          }
-        }
-      }
-      return next;
-    });
-    setHistory((h) => [
-      ...h,
-      { type: "start", lineIndex: li, wordIndex: wi, time: t },
-    ]);
 
-    // Advance pointer
-    if (wi + 1 < lineWords.length) {
-      setActiveWord(wi + 1);
-    } else if (li + 1 < lines.length) {
-      setActiveLine(li + 1);
-      setActiveWord(0);
+    // Compute next pointer
+    let nextLine: number;
+    let nextWord: number;
+    if (activeLine === -1) {
+      nextLine = 0;
+      nextWord = 0;
     } else {
-      // Last word started — wait for space (end) to truly finish
-    }
-  }, [phase, activeLine, activeWord, lines, currentTime]);
-
-  // Space: end current word at currentTime (without advancing).
-  // Useful for trailing pause before the next word.
-  const captureWordEnd = useCallback(() => {
-    if (phase !== "recording") return;
-    // The word that just got "started" sits at activeWord-1 within activeLine
-    // (or the last word of previous line if we just advanced).
-    let li = activeLine;
-    let wi = activeWord - 1;
-    if (wi < 0) {
-      // Look back to previous line's last word
-      if (li - 1 >= 0) {
-        li = li - 1;
-        wi = lines[li].words.length - 1;
+      const curLineWords = lines[activeLine]?.words ?? [];
+      if (activeWord + 1 < curLineWords.length) {
+        nextLine = activeLine;
+        nextWord = activeWord + 1;
+      } else if (activeLine + 1 < lines.length) {
+        nextLine = activeLine + 1;
+        nextWord = 0;
       } else {
+        // Past last word — end the last word and stop advancing
+        setTimings((prev) => {
+          const next = prev.map((row) => row.slice());
+          if (next[activeLine] && next[activeLine][activeWord]) {
+            next[activeLine][activeWord] = {
+              ...next[activeLine][activeWord],
+              end: Math.max(next[activeLine][activeWord].start + 0.05, t),
+            };
+          }
+          return next;
+        });
+        setHistory((h) => [
+          ...h,
+          { type: "end", lineIndex: activeLine, wordIndex: activeWord, time: t },
+        ]);
         return;
       }
     }
+
+    setTimings((prev) => {
+      const next = prev.map((row) => row.slice());
+      // Ensure structure for the next line
+      if (!next[nextLine]) {
+        next[nextLine] = lines[nextLine].words.map(() => ({ start: -1, end: -1 }));
+      }
+      // End the previously-active word (if any) at this time
+      if (activeLine >= 0 && next[activeLine] && next[activeLine][activeWord]) {
+        if (next[activeLine][activeWord].end < 0) {
+          next[activeLine][activeWord] = {
+            ...next[activeLine][activeWord],
+            end: Math.max(next[activeLine][activeWord].start + 0.05, t),
+          };
+        }
+      }
+      // Start the new active word at this time
+      next[nextLine][nextWord] = { ...next[nextLine][nextWord], start: t };
+      return next;
+    });
+
+    setHistory((h) => [
+      ...h,
+      { type: "start", lineIndex: nextLine, wordIndex: nextWord, time: t },
+    ]);
+
+    setActiveLine(nextLine);
+    setActiveWord(nextWord);
+  }, [phase, activeLine, activeWord, lines, currentTime]);
+
+  // Space: end current word at currentTime (without advancing).
+  const captureWordEnd = useCallback(() => {
+    if (phase !== "recording") return;
+    if (activeLine < 0 || activeWord < 0) return;
+    const li = activeLine;
+    const wi = activeWord;
     const t = currentTime;
     setTimings((prev) => {
       const next = prev.map((row) => row.slice());
@@ -185,7 +196,7 @@ export function WordByWordKaraoke({
       ...h,
       { type: "end", lineIndex: li, wordIndex: wi, time: t },
     ]);
-  }, [phase, activeLine, activeWord, lines, currentTime]);
+  }, [phase, activeLine, activeWord, currentTime]);
 
   // Undo last capture
   const undo = useCallback(() => {
@@ -198,23 +209,24 @@ export function WordByWordKaraoke({
         const next = prev.map((row) => row.slice());
         if (next[last.lineIndex] && next[last.lineIndex][last.wordIndex]) {
           if (last.type === "start") {
+            // Clear start of the word that was just started
             next[last.lineIndex][last.wordIndex] = {
               ...next[last.lineIndex][last.wordIndex],
               start: -1,
             };
-            // If we previously auto-ended the prior word, undo that too
-            const prevW = last.wordIndex - 1;
-            if (prevW >= 0) {
-              // Only revert end if no later "end" event explicitly set it
+            // Find the previously-active word (last "start" before this) and clear its
+            // auto-assigned end (unless an explicit "end" event was added for it later).
+            const prevStart = [...newHistory].reverse().find((e) => e.type === "start");
+            if (prevStart) {
               const explicit = newHistory.some(
                 (e) =>
                   e.type === "end" &&
-                  e.lineIndex === last.lineIndex &&
-                  e.wordIndex === prevW
+                  e.lineIndex === prevStart.lineIndex &&
+                  e.wordIndex === prevStart.wordIndex
               );
-              if (!explicit && next[last.lineIndex][prevW]) {
-                next[last.lineIndex][prevW] = {
-                  ...next[last.lineIndex][prevW],
+              if (!explicit && next[prevStart.lineIndex]?.[prevStart.wordIndex]) {
+                next[prevStart.lineIndex][prevStart.wordIndex] = {
+                  ...next[prevStart.lineIndex][prevStart.wordIndex],
                   end: -1,
                 };
               }
@@ -228,21 +240,27 @@ export function WordByWordKaraoke({
         }
         return next;
       });
-      // Move active pointer back to the undone word
+      // Restore active pointer to the previously-active word (or -1 if none).
       if (last.type === "start") {
-        setActiveLine(last.lineIndex);
-        setActiveWord(last.wordIndex);
+        const prevStart = [...newHistory].reverse().find((e) => e.type === "start");
+        if (prevStart) {
+          setActiveLine(prevStart.lineIndex);
+          setActiveWord(prevStart.wordIndex);
+        } else {
+          setActiveLine(-1);
+          setActiveWord(-1);
+        }
       }
       return newHistory;
     });
   }, [phase]);
 
-  // Skip current line (move to next)
+  // Skip current line (move to next, no word recording yet on the new line)
   const skipLine = useCallback(() => {
     if (phase !== "recording") return;
     if (activeLine + 1 < lines.length) {
       setActiveLine(activeLine + 1);
-      setActiveWord(0);
+      setActiveWord(-1);
     }
   }, [phase, activeLine, lines.length]);
 
@@ -350,8 +368,8 @@ export function WordByWordKaraoke({
             <Keyboard className="h-4 w-4 text-accent" /> Keyboard shortcuts
           </div>
           <ul className="space-y-1.5 text-sm text-muted-foreground">
-            <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">→</kbd> Capture word start (advances)</li>
-            <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">Space</kbd> Mark current word as finished</li>
+            <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">→</kbd> Move red box to next word (records end of current, start of next)</li>
+            <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">Space</kbd> End current word (without advancing)</li>
             <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">←</kbd> Undo last capture</li>
             <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">Enter</kbd> Skip to next line</li>
             <li><kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs">P</kbd> Play / Pause</li>
@@ -385,8 +403,9 @@ export function WordByWordKaraoke({
     );
   }
 
-  // RECORDING
-  const currentLine = lines[activeLine];
+  // RECORDING — show first line until user starts capturing
+  const displayLineIndex = activeLine === -1 ? 0 : activeLine;
+  const currentLine = lines[displayLineIndex];
   const lineProgress = totalWords > 0 ? (totalCaptured / totalWords) * 100 : 0;
 
   return (
@@ -420,7 +439,7 @@ export function WordByWordKaraoke({
           />
         </div>
         <div className="text-xs text-muted-foreground md:text-sm">
-          Line {activeLine + 1}/{lines.length}
+          Line {displayLineIndex + 1}/{lines.length}
         </div>
         <Button onClick={finish} size="sm" variant="secondary" className="h-7 text-xs md:h-8 md:text-sm">
           <Check className="mr-1 h-3.5 w-3.5" /> Done
@@ -444,7 +463,7 @@ export function WordByWordKaraoke({
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={`wbw-line-${activeLine}`}
+            key={`wbw-line-${displayLineIndex}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -457,16 +476,19 @@ export function WordByWordKaraoke({
                 style={{ unicodeBidi: "plaintext" }}
               >
                 {currentLine.words.map((w, wi) => {
-                  const captured = timings[activeLine]?.[wi]?.start >= 0;
-                  const isActiveW = wi === activeWord;
+                  const wordTiming = timings[displayLineIndex]?.[wi];
+                  const isRecording = activeLine === displayLineIndex && wi === activeWord;
+                  const isFinished = !!wordTiming && wordTiming.start >= 0 && wordTiming.end >= 0;
+                  const isStarted = !!wordTiming && wordTiming.start >= 0 && !isFinished;
                   return (
                     <span
                       key={`${w}-${wi}`}
                       className={cn(
                         "mr-2 inline-block transition-colors",
-                        captured && "text-accent",
-                        !captured && isActiveW && "rounded bg-accent/15 px-1 text-foreground ring-2 ring-accent/40",
-                        !captured && !isActiveW && "text-muted-foreground/70"
+                        isRecording && "rounded bg-red-500/20 px-1 text-foreground ring-2 ring-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.25)]",
+                        !isRecording && isFinished && "text-accent",
+                        !isRecording && isStarted && "text-accent/70",
+                        !isRecording && !isStarted && !isFinished && "text-muted-foreground/70"
                       )}
                     >
                       {w}
@@ -479,7 +501,7 @@ export function WordByWordKaraoke({
         </AnimatePresence>
 
         {/* Up next line */}
-        {lines[activeLine + 1] && (
+        {lines[displayLineIndex + 1] && (
           <div className="mt-6 rounded-xl border border-border/40 bg-secondary/30 p-3 md:p-4">
             <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Up next
@@ -489,7 +511,7 @@ export function WordByWordKaraoke({
               className="text-base font-medium text-muted-foreground md:text-lg"
               style={{ unicodeBidi: "plaintext" }}
             >
-              {lines[activeLine + 1].text}
+              {lines[displayLineIndex + 1].text}
             </p>
           </div>
         )}
