@@ -20,17 +20,18 @@ export function LosslessBadge({
   format = "lossless",
 }: BadgeFullProps) {
   const label = format === "dolby" ? "Dolby Atmos" : "Lossless";
+
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-1 backdrop-blur-sm",
+        "inline-flex items-center gap-1.5 px-2 py-1 backdrop-blur-sm sf-heavy",
         className
       )}
       style={{
         background: "rgba(255,255,255,0.12)",
         color: "rgba(255,255,255,0.95)",
         fontSize: `${fontSize}px`,
-        fontWeight: 600,
+        fontWeight: 900,
         letterSpacing: "0.06em",
         borderRadius: "4px",
       }}
