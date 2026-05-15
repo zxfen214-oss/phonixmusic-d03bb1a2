@@ -28,6 +28,7 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
   const youtubePlayerRef = useRef<any>(null);
   const youtubeContainerRef = useRef<HTMLDivElement | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
+  const progressRafRef = useRef<number | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   // Tracks which actual backend is in use ('audio' = HTMLAudioElement, 'youtube' = YT iframe)
   const playbackBackendRef = useRef<'audio' | 'youtube' | null>(null);
@@ -205,32 +206,39 @@ export function useAudioPlayer(track: Track | null, isPlaying: boolean, onEnded:
     }
   }, [isPlaying, state.isReady]);
 
-  // Progress tracking
+  // Progress tracking — RAF for smooth lyric / karaoke updates
   useEffect(() => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-
-    if (isPlaying && state.isReady) {
-      progressIntervalRef.current = window.setInterval(() => {
-        let currentTime = 0;
-        const backend = playbackBackendRef.current;
-
-        if (backend === 'youtube' && youtubePlayerRef.current?.getCurrentTime) {
-          currentTime = youtubePlayerRef.current.getCurrentTime();
-        } else if (backend === 'audio' && audioRef.current) {
-          currentTime = audioRef.current.currentTime;
-        }
-
-        setState(prev => ({ ...prev, currentTime }));
-      }, 250);
-    }
-
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
+    const stop = () => {
+      if (progressRafRef.current) {
+        cancelAnimationFrame(progressRafRef.current);
+        progressRafRef.current = null;
       }
     };
+    stop();
+
+    if (!isPlaying || !state.isReady) return;
+
+    let lastEmitted = -1;
+    const tick = () => {
+      let currentTime = 0;
+      const backend = playbackBackendRef.current;
+
+      if (backend === 'youtube' && youtubePlayerRef.current?.getCurrentTime) {
+        currentTime = youtubePlayerRef.current.getCurrentTime();
+      } else if (backend === 'audio' && audioRef.current) {
+        currentTime = audioRef.current.currentTime;
+      }
+
+      // Avoid setState spam when value hasn't meaningfully changed
+      if (Math.abs(currentTime - lastEmitted) > 0.03) {
+        lastEmitted = currentTime;
+        setState(prev => ({ ...prev, currentTime }));
+      }
+      progressRafRef.current = requestAnimationFrame(tick);
+    };
+    progressRafRef.current = requestAnimationFrame(tick);
+
+    return stop;
   }, [isPlaying, state.isReady]);
 
   const seekTo = useCallback((time: number) => {
