@@ -54,7 +54,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Sync all existing local tracks to user_song_library when user logs in
   const syncAllTracksToLibrary = useCallback(async (tracksToSync: Track[]) => {
-    if (!user) return;
+    if (!user || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
     
     const youtubeTracksToSync = tracksToSync.filter(track => track.youtubeId);
     if (youtubeTracksToSync.length === 0) return;
@@ -93,7 +93,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Sync track to user_song_library for logged-in users
   const syncTrackToLibrary = useCallback(async (track: Track) => {
-    if (!user || !track.youtubeId) return;
+    if (!user || !track.youtubeId || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
     
     try {
       await supabase
@@ -110,7 +110,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const removeTrackFromLibrary = useCallback(async (track: Track) => {
-    if (!user || !track.youtubeId) return;
+    if (!user || !track.youtubeId || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
     
     try {
       await supabase
