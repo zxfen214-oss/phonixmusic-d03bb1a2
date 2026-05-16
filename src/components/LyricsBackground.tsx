@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { BackgroundRender, MeshGradientRenderer } from "@applemusic-like-lyrics/core";
 
 interface Props {
   /** Image URL (or any HTMLImageElement source) for the album artwork */
@@ -25,7 +24,7 @@ const LyricsBackground = ({
   className,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const bgRef = useRef<BackgroundRender<MeshGradientRenderer> | null>(null);
+  const bgRef = useRef<any>(null);
 
   const effFps = fps;
   const effScale = renderScale;
@@ -33,23 +32,32 @@ const LyricsBackground = ({
 
   // Mount renderer once
   useEffect(() => {
-    if (!containerRef.current) return;
-    const bg = BackgroundRender.new(MeshGradientRenderer);
-    const el = bg.getElement();
-    el.style.width = "100%";
-    el.style.height = "100%";
-    el.style.display = "block";
-    el.style.willChange = "transform";
-    (el.style as any).contain = "layout paint style";
-    containerRef.current.appendChild(el);
-    bgRef.current = bg;
+    if (typeof window === "undefined" || !containerRef.current) return;
 
-    bg.setFlowSpeed(flowSpeed);
-    bg.setRenderScale(effScale);
-    bg.setFPS(effFps);
+    let disposed = false;
+
+    (async () => {
+      const { BackgroundRender, MeshGradientRenderer } = await import("@applemusic-like-lyrics/core");
+      if (disposed || !containerRef.current) return;
+
+      const bg = BackgroundRender.new(MeshGradientRenderer);
+      const el = bg.getElement();
+      el.style.width = "100%";
+      el.style.height = "100%";
+      el.style.display = "block";
+      el.style.willChange = "transform";
+      (el.style as any).contain = "layout paint style";
+      containerRef.current.appendChild(el);
+      bgRef.current = bg;
+
+      bg.setFlowSpeed(flowSpeed);
+      bg.setRenderScale(effScale);
+      bg.setFPS(effFps);
+    })();
 
     return () => {
-      bg.dispose();
+      disposed = true;
+      bgRef.current?.dispose?.();
       bgRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,7 +77,7 @@ const LyricsBackground = ({
   // React to album change
   useEffect(() => {
     if (!bgRef.current || !albumSrc) return;
-    bgRef.current.setAlbum(albumSrc).catch((err) => {
+    bgRef.current.setAlbum(albumSrc).catch((err: unknown) => {
       console.error("setAlbum failed", err);
     });
   }, [albumSrc]);
