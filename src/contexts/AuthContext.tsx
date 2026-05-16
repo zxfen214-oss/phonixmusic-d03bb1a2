@@ -2,6 +2,49 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+const OFFLINE_USER_STORAGE_KEY = "phonix.offline-auth-user";
+
+type OfflineUserSnapshot = Pick<
+  User,
+  "id" | "email" | "aud" | "created_at" | "user_metadata" | "app_metadata"
+>;
+
+function readOfflineUserSnapshot(): User | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(OFFLINE_USER_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as OfflineUserSnapshot;
+    if (!parsed?.id) return null;
+
+    return parsed as User;
+  } catch {
+    return null;
+  }
+}
+
+function writeOfflineUserSnapshot(user: User | null) {
+  if (typeof window === "undefined") return;
+
+  if (!user) {
+    window.localStorage.removeItem(OFFLINE_USER_STORAGE_KEY);
+    return;
+  }
+
+  const snapshot: OfflineUserSnapshot = {
+    id: user.id,
+    email: user.email,
+    aud: user.aud,
+    created_at: user.created_at,
+    user_metadata: user.user_metadata,
+    app_metadata: user.app_metadata,
+  };
+
+  window.localStorage.setItem(OFFLINE_USER_STORAGE_KEY, JSON.stringify(snapshot));
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -39,10 +82,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let settled = false;
+    const getOfflineSnapshot = () => readOfflineUserSnapshot();
+
     const finish = () => {
       if (settled) return;
       settled = true;
       setIsLoading(false);
+    };
+
+    const applyAuthenticatedState = (nextSession: Session) => {
+      setSession(nextSession);
+      setUser(nextSession.user);
+      writeOfflineUserSnapshot(nextSession.user);
+      finish();
+
+      setTimeout(() => {
+        checkAdminRole(nextSession.user.id);
+      }, 0);
+    };
+
+    const applyOfflineSnapshot = () => {
+      const offlineSnapshot = getOfflineSnapshot();
+      if (!offlineSnapshot) return false;
+      setSession(null);
+      setUser(offlineSnapshot);
+      setIsAdmin(false);
+      finish();
+      return true;
+    };
+
+    const clearAuthenticatedState = () => {
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
+      writeOfflineUserSnapshot(null);
+      finish();
     };
 
     // Hard safety net: never let the app hang on auth bootstrap.
@@ -50,43 +124,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const offlineFast = typeof navigator !== "undefined" && navigator.onLine === false;
     const safetyTimer = setTimeout(finish, offlineFast ? 300 : 2500);
 
+    if (offlineFast && getOfflineSnapshot()) {
+      applyOfflineSnapshot();
+    }
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // When offline, ignore TOKEN_REFRESH/SIGNED_OUT events that are caused
-        // by failed network refresh — keep the last known session so the user
-        // is not booted to /auth and stuck on "Load failed".
         const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
-        if (isOffline && !session && (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED")) {
-          finish();
+
+        if (session?.user) {
+          applyAuthenticatedState(session);
           return;
         }
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        finish();
-
-        if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
-        } else {
-          setIsAdmin(false);
+        // When offline, keep the last known user snapshot instead of treating
+        // auth refresh failures as a real sign-out.
+        if (isOffline && applyOfflineSnapshot()) {
+          return;
         }
+
+        // Ignore optimistic refresh/sign-out clears while connectivity is shaky.
+        if (isOffline && (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED")) {
+          applyOfflineSnapshot();
+          return;
+        }
+
+        clearAuthenticatedState();
       }
     );
 
     // THEN check for existing session — but never await forever when offline.
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        finish();
-        if (session?.user && navigator.onLine) {
-          checkAdminRole(session.user.id);
+        if (session?.user) {
+          applyAuthenticatedState(session);
+          return;
         }
+
+        if (applyOfflineSnapshot()) return;
+
+        clearAuthenticatedState();
       })
-      .catch(() => finish());
+      .catch(() => {
+        if (applyOfflineSnapshot()) return;
+        finish();
+      });
 
     return () => {
       clearTimeout(safetyTimer);
@@ -133,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    writeOfflineUserSnapshot(null);
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
