@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -38,10 +38,13 @@ export default function Auth() {
   const isOnline = useOnlineStatus();
 
   // Redirect if already logged in
-  if (user) {
-    navigate({ to: "/" });
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate({ to: "/" });
+    }
+  }, [user, navigate]);
+
+  if (user) return null;
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
