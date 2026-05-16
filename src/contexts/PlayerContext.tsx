@@ -592,17 +592,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     
     switch (preset) {
       case 'slowed-reverb':
-        // 85% speed with pitch changing (no preserve pitch)
         setPlaybackRate(0.85, false);
         break;
       case 'sped-up':
-        // 120% speed with pitch changing (no preserve pitch)
-        setPlaybackRate(1.2, false);
+        setPlaybackRate(1.1, false);
         break;
       case 'normal':
       default:
-        // Normal speed with preserved pitch
-        setPlaybackRate(1.0, true);
+        setPlaybackRate(1.0, false);
         break;
     }
   }, [setPlaybackRate]);
