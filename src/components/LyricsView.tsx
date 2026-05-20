@@ -1497,7 +1497,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <h2 className="text-white truncate" style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
+              <h2 className="text-white truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '22px', fontWeight: 700, letterSpacing: '-0.01em', marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
                 {currentTrack.title}
               </h2>
  <p style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '16px', fontWeight: 500, letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.7)', marginTop: '4px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
