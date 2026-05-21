@@ -31,7 +31,7 @@ import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import { LosslessBadge } from "@/components/LosslessBadge";
-import { useKaraokeLeadIn } from "@/hooks/useKaraokeLeadIn";
+import ApplePlayerControls from "@/components/ApplePlayerControls";
 
 import React from "react";
 
@@ -1390,22 +1390,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
   // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
   // true eLRC word-level tags — so the AMLL renderer animates them too.
-  const karaokeLeadInMs = useKaraokeLeadIn();
   const amllLines = useMemo(() => {
     if (!syncedLrcText) return [];
     const base = parseLrcAmll(syncedLrcText);
-    const withKaraoke = karaokeWords.length > 0 ? applyManualKaraoke(base, karaokeWords) : base;
-    if (!karaokeLeadInMs) return withKaraoke;
-    // Shift each line's startTime earlier so the line appears before its first
-    // word starts singing. Words keep their original times so the karaoke
-    // fill animation still begins at the real word start.
-    return withKaraoke.map((line, i) => {
-      const prevEnd = i > 0 ? withKaraoke[i - 1].endTime : 0;
-      const desired = line.startTime - karaokeLeadInMs;
-      const shifted = Math.max(prevEnd, Math.max(0, desired));
-      return shifted < line.startTime ? { ...line, startTime: shifted } : line;
-    });
-  }, [syncedLrcText, karaokeWords, karaokeLeadInMs]);
+    if (karaokeWords.length > 0) {
+      return applyManualKaraoke(base, karaokeWords);
+    }
+    return base;
+  }, [syncedLrcText, karaokeWords]);
 
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
@@ -1497,70 +1489,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <h2 className="text-white truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '22px', fontWeight: 700, letterSpacing: '-0.01em', marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
-                {currentTrack.title}
-              </h2>
- <p style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '16px', fontWeight: 500, letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.7)', marginTop: '4px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
-                {currentTrack.artist}
-              </p>
-
-              <div style={{ marginTop: '24px', width: showLyricsPanel ? '360px' : '400px' }}>
-                <Slider
-                  value={[progress]}
-                  max={100}
-                  step={0.1}
-                  onValueChange={([value]) => handleSliderSeek(value)}
-                  hideThumb
-                  growOnDrag
-                  className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
-                />
-                <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(currentTrack.duration)}</span>
-                </div>
-              </div>
-
-              {(audioFormat || isLossless) && (
-                <div
-                  className="flex items-center justify-center"
-                  style={{ marginTop: '14px', width: showLyricsPanel ? '360px' : '400px' }}
-                >
-                  <LosslessBadge format={audioFormat ?? 'lossless'} />
-                </div>
-              )}
-
-              <div className="flex items-center justify-center gap-6" style={{ marginTop: '18px', width: showLyricsPanel ? '360px' : '400px' }}>
-                <button onClick={previousTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
-                </button>
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-3 rounded-full hover:bg-white/10 transition-transform">
-                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-8 w-8 brightness-0 invert" />
-                </motion.button>
-                <button onClick={nextTrack} className="p-3 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
-                  <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
-                </button>
-              </div>
-
-              {/* Volume control */}
-              <div className="flex items-center gap-3 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
-                <button
-                  onClick={() => setVolume(volume === 0 ? 80 : 0)}
-                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                >
-                  {volume === 0 ? (
-                    <VolumeX className="h-4 w-4 text-white/50" />
-                  ) : (
-                    <Volume2 className="h-4 w-4 text-white/50" />
-                  )}
-                </button>
-                <Slider
-                  value={[volume]}
-                  max={100}
-                  step={1}
-                  onValueChange={([value]) => setVolume(value)}
-                  hideThumb
-                  growOnDrag
-                  className="flex-1 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
+              <div style={{ marginTop: '22px', width: showLyricsPanel ? '360px' : '400px' }}>
+                <ApplePlayerControls
+                  compact
+                  onMore={() => currentTrack && setShowPlaylistDialog(true)}
                 />
               </div>
 
@@ -1669,7 +1601,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
 
             <div className="flex-1 min-w-0">
-                <h2 className="text-white truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '22px', fontWeight: 700, letterSpacing: '-0.01em', marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
+              <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
                 {currentTrack.title}
               </h2>
               <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
@@ -1768,54 +1700,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }}
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
-              <Slider
-                value={[progress]}
-                max={100}
-                step={0.1}
-                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
-                hideThumb
-                growOnDrag
-                className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
+              <ApplePlayerControls
+                onInteract={resetMobileControlsTimer}
+                onMore={() => currentTrack && setShowPlaylistDialog(true)}
               />
-              <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(currentTrack.duration)}</span>
-              </div>
-            </div>
-
-            {(audioFormat || isLossless) && (
-              <div className="flex items-center justify-center mt-3">
-                <LosslessBadge format={audioFormat ?? 'lossless'} />
-              </div>
-            )}
-
-            <div className="flex items-center justify-center gap-6 mt-3">
-              <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                {repeat === 'one' ? (
-                  <Repeat1 className="h-5 w-5 text-white" />
-                ) : repeat === 'all' ? (
-                  <Repeat className="h-5 w-5 text-white" />
-                ) : (
-                  <Repeat className="h-5 w-5 text-white/40" />
-                )}
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
-              </button>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
-                className="p-4 rounded-full transition-transform"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
-              >
-                <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-7 w-7 brightness-0 invert" />
-              </motion.button>
-              <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-3 rounded-full hover:bg-white/10 transition-colors">
-                <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                <ListPlus className="h-5 w-5 text-white/60" />
-              </button>
             </div>
 
           </motion.div>
