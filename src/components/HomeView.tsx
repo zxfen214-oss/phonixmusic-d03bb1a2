@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { toast } from "sonner";
+import { BillboardSection } from "@/components/BillboardSection";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
@@ -243,7 +243,6 @@ export function HomeView() {
   const { user } = useAuth();
   const { tracks: libraryTracks, addTrack } = useLibrary();
   const cachedIds = useOfflineStatus();
-  const isOnline = useOnlineStatus();
   const [songs, setSongs] = useState<SongRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTrial, setShowTrial] = useState(false);
@@ -256,72 +255,33 @@ export function HomeView() {
   }, [user]);
 
   useEffect(() => {
-    let cancelled = false;
     async function fetchSongs() {
       setIsLoading(true);
 
-      // OFFLINE: build the home feed from cached audio so the app is never stuck.
-      if (!isOnline) {
-        try {
-          const cached = await getAllCachedInfo();
-          const offlineRows: SongRow[] = cached.map(c => ({
-            id: c.youtubeId,
-            title: c.title,
-            artist: c.artist,
-            album: null,
-            cover_url: null,
-            youtube_id: c.youtubeId,
-            duration: null,
-          }));
-          if (!cancelled) setSongs(offlineRows);
-        } catch {
-          if (!cancelled) setSongs([]);
-        } finally {
-          if (!cancelled) setIsLoading(false);
-        }
+      if (!navigator.onLine) {
+        setSongs([]);
+        setIsLoading(false);
         return;
       }
 
       try {
-        // Race the network query against a 6s timeout so we never spin forever.
-        const queryPromise = supabase
+        const { data, error } = await supabase
           .from("songs")
           .select("id, title, artist, album, cover_url, youtube_id, duration")
           .eq("needs_metadata", false)
           .order("updated_at", { ascending: false });
 
-        const result: any = await Promise.race([
-          queryPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 6000)),
-        ]);
-
-        if (result?.error) throw result.error;
-        if (!cancelled) setSongs(result?.data || []);
+        if (error) throw error;
+        setSongs((data as any) || []);
       } catch (error) {
         console.error("Failed to load home songs:", error);
-        // Fallback to cached songs if the network query fails or times out.
-        try {
-          const cached = await getAllCachedInfo();
-          const offlineRows: SongRow[] = cached.map(c => ({
-            id: c.youtubeId,
-            title: c.title,
-            artist: c.artist,
-            album: null,
-            cover_url: null,
-            youtube_id: c.youtubeId,
-            duration: null,
-          }));
-          if (!cancelled) setSongs(offlineRows);
-        } catch {
-          if (!cancelled) setSongs([]);
-        }
+        setSongs([]);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     }
     fetchSongs();
-    return () => { cancelled = true; };
-  }, [isOnline]);
+  }, []);
 
   const tracks = useMemo(() => {
     const seen = new Set<string>();
@@ -405,6 +365,9 @@ export function HomeView() {
         {topTrack && (
           <TopSongBanner track={topTrack} onPlay={handlePlay} allTracks={tracks} />
         )}
+
+        {/* Billboard — admin-curated top 3 */}
+        <BillboardSection />
 
         {/* Featured Grid - Song Tiles */}
         {tracks.length > 0 && (
