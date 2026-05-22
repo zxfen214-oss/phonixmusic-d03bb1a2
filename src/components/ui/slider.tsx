@@ -8,6 +8,7 @@ const Slider = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> & { hideThumb?: boolean; growOnDrag?: boolean }
 >(({ className, hideThumb = false, growOnDrag = false, ...props }, ref) => {
   const [isDragging, setIsDragging] = React.useState(false);
+  const [isHover, setIsHover] = React.useState(false);
 
   return (
     <SliderPrimitive.Root
@@ -16,12 +17,14 @@ const Slider = React.forwardRef<
       onPointerDown={() => { if (growOnDrag) setIsDragging(true); }}
       onPointerUp={() => { if (growOnDrag) setIsDragging(false); }}
       onPointerLeave={() => { if (growOnDrag) setIsDragging(false); }}
+      onMouseEnter={() => { if (growOnDrag) setIsHover(true); }}
+      onMouseLeave={() => { if (growOnDrag) setIsHover(false); }}
       {...props}
     >
       <SliderPrimitive.Track
         className="relative w-full grow overflow-hidden rounded-full bg-secondary"
         style={{
-          height: isDragging ? '10px' : '8px',
+          height: isDragging ? '12px' : isHover ? '10px' : '6px',
           transition: 'height 200ms ease',
         }}
       >
