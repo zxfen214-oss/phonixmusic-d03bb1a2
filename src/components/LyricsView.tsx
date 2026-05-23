@@ -27,11 +27,28 @@ import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
-import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
+import AMLLLyricsPlayer, { type AlignOverride } from "@/components/AMLLLyricsPlayer";
+
+function sanitizeAlignOverrides(raw: any): AlignOverride[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((o: any) => ({
+      startMs: Number(o?.startMs),
+      endMs: Number(o?.endMs),
+      position: Number(o?.position),
+    }))
+    .filter(
+      (o) =>
+        Number.isFinite(o.startMs) &&
+        Number.isFinite(o.endMs) &&
+        Number.isFinite(o.position) &&
+        o.endMs > o.startMs
+    );
+}
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import { LosslessBadge } from "@/components/LosslessBadge";
-import ApplePlayerControls from "@/components/ApplePlayerControls";
+import { useKaraokeLeadIn } from "@/hooks/useKaraokeLeadIn";
 
 import React from "react";
 
@@ -1004,11 +1021,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
+  const [highContrast, setHighContrast] = useState(() =>
+    typeof window !== "undefined" && localStorage.getItem("lyrics-high-contrast") === "true"
+  );
+  useEffect(() => {
+    const sync = () =>
+      setHighContrast(localStorage.getItem("lyrics-high-contrast") === "true");
+    window.addEventListener("lyrics-high-contrast-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("lyrics-high-contrast-changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
   // Low-end mode removed — always run lyrics/karaoke at full framerate.
   const [staticLyricsText, setStaticLyricsText] = useState("");
+
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  const [alignOverrides, setAlignOverrides] = useState<{ startMs: number; endMs: number; position: number }[]>([]);
   // Raw synced LRC text (for the AMLL renderer)
   const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
 
@@ -1092,6 +1124,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
       setCurrentLineIndex(-1);
       setKaraokeEnabled(false);
       setKaraokeWords([]);
+      setAlignOverrides([]);
       // Reset char-limit override; will be set true if admin saved an explicit value.
       charLimitOverriddenRef.current = false;
 
@@ -1112,7 +1145,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           if (typeof cachedKaraoke.lyricsSpeed === 'number') setLyricsSpeed(cachedKaraoke.lyricsSpeed);
           if (typeof cachedKaraoke.bounceIntensity === 'number') setBounceIntensity(cachedKaraoke.bounceIntensity);
           if (cachedKaraoke.karaokeData) {
-            const data = cachedKaraoke.karaokeData as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
+            const data = cachedKaraoke.karaokeData as KaraokeData & { early_appearance?: number; mobile_char_limit?: number; align_overrides?: any };
             if (data.words?.length && cachedKaraoke.karaokeEnabled) {
               setKaraokeEnabled(true);
               setKaraokeWords(data.words);
@@ -1122,7 +1155,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               setMobileCharLimit(data.mobile_char_limit);
               charLimitOverriddenRef.current = true;
             }
+            if (Array.isArray(data.align_overrides)) setAlignOverrides(sanitizeAlignOverrides(data.align_overrides));
           }
+
         }
 
         if (cachedSyncedText) {
@@ -1172,13 +1207,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
             else if (!cachedPlainText) setStaticLyricsText("");
             if (song.karaoke_enabled && song.karaoke_data) {
-              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
+              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number; align_overrides?: any };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
               if (typeof data.mobile_char_limit === 'number') {
                 setMobileCharLimit(data.mobile_char_limit);
                 charLimitOverriddenRef.current = true;
               }
+              if (Array.isArray(data.align_overrides)) setAlignOverrides(sanitizeAlignOverrides(data.align_overrides));
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
@@ -1186,7 +1222,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 setMobileCharLimit(data.mobile_char_limit);
                 charLimitOverriddenRef.current = true;
               }
+              if (Array.isArray(data.align_overrides)) setAlignOverrides(sanitizeAlignOverrides(data.align_overrides));
             }
+
           } else if (!appliedFromCache) {
             setStaticLyricsText("");
           }
@@ -1390,14 +1428,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
   // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
   // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const karaokeLeadInMs = useKaraokeLeadIn();
   const amllLines = useMemo(() => {
     if (!syncedLrcText) return [];
     const base = parseLrcAmll(syncedLrcText);
-    if (karaokeWords.length > 0) {
-      return applyManualKaraoke(base, karaokeWords);
-    }
-    return base;
-  }, [syncedLrcText, karaokeWords]);
+    const withKaraoke = karaokeWords.length > 0 ? applyManualKaraoke(base, karaokeWords) : base;
+    if (!karaokeLeadInMs) return withKaraoke;
+    // Shift each line's startTime earlier so the line appears before its first
+    // word starts singing. Words keep their original times so the karaoke
+    // fill animation still begins at the real word start.
+    return withKaraoke.map((line, i) => {
+      const prevEnd = i > 0 ? withKaraoke[i - 1].endTime : 0;
+      const desired = line.startTime - karaokeLeadInMs;
+      const shifted = Math.max(prevEnd, Math.max(0, desired));
+      return shifted < line.startTime ? { ...line, startTime: shifted } : line;
+    });
+  }, [syncedLrcText, karaokeWords, karaokeLeadInMs]);
 
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
@@ -1445,10 +1491,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         initial={{ opacity: 0, scale: 1.02 }}
         animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        className={cn(
+          "fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+          highContrast && "lyrics-high-contrast"
+        )}
       >
         <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
-          <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          {!highContrast && (
+            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+          )}
         </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
@@ -1461,6 +1512,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           >
             <X className="h-6 w-6 text-white" />
           </motion.button>
+
 
           <motion.div
             className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
@@ -1489,12 +1541,85 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 />
               </div>
 
-              <div style={{ marginTop: '22px', width: showLyricsPanel ? '360px' : '400px' }}>
-                <ApplePlayerControls
-                  compact
-                  onMore={() => currentTrack && setShowPlaylistDialog(true)}
+              <h2 className="text-white truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '22px', fontWeight: 700, letterSpacing: '-0.01em', marginTop: '24px', maxWidth: showLyricsPanel ? '360px' : '400px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
+                {currentTrack.title}
+              </h2>
+              <p style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '16px', fontWeight: 500, letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.7)', marginTop: '4px', textAlign: showLyricsPanel ? 'left' : 'center' }}>
+                {currentTrack.artist}
+              </p>
+
+
+              <div style={{ marginTop: '24px', width: showLyricsPanel ? '360px' : '400px' }}>
+                <Slider
+                  value={[progress]}
+                  max={100}
+                  step={0.1}
+                  onValueChange={([value]) => handleSliderSeek(value)}
+                  hideThumb
+                  growOnDrag
+                  className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
                 />
+                <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(currentTrack.duration)}</span>
+                </div>
               </div>
+
+              {(audioFormat || isLossless) && (
+                <div
+                  className="flex items-center justify-center"
+                  style={{ marginTop: '20px', marginBottom: '6px', width: showLyricsPanel ? '360px' : '400px' }}
+                >
+                  <LosslessBadge format={audioFormat ?? 'lossless'} iconSize={20} fontSize={13} />
+                </div>
+              )}
+
+              {/* Center row: volume on the left, playback controls perfectly centered, spacer on the right
+                  so the play/pause stays in the geometric center of the panel on both PC & mobile. */}
+              <div
+                className="flex items-center mt-3"
+                style={{ width: showLyricsPanel ? '360px' : '400px' }}
+              >
+                {/* Left: volume */}
+                <div className="flex items-center gap-2" style={{ flex: 1, minWidth: 0 }}>
+                  <button
+                    onClick={() => setVolume(volume === 0 ? 80 : 0)}
+                    className="p-1 rounded-full hover:bg-white/10 transition-colors flex-shrink-0"
+                  >
+                    {volume === 0 ? (
+                      <VolumeX className="h-4 w-4 text-white/60" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 text-white/60" />
+                    )}
+                  </button>
+                  <Slider
+                    value={[volume]}
+                    max={100}
+                    step={1}
+                    onValueChange={([value]) => setVolume(value)}
+                    hideThumb
+                    growOnDrag
+                    className="flex-1 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
+                  />
+                </div>
+
+                {/* Center: playback controls */}
+                <div className="flex items-center justify-center gap-5 flex-shrink-0 px-4">
+                  <button onClick={previousTrack} className="p-2 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                    <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
+                  </button>
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={isPlaying ? pauseTrack : resumeTrack} className="p-2 rounded-full hover:bg-white/10 transition-transform">
+                    <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-9 w-9 brightness-0 invert" />
+                  </motion.button>
+                  <button onClick={nextTrack} className="p-2 rounded-full hover:bg-white/10 transition-all duration-200 hover:scale-110">
+                    <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
+                  </button>
+                </div>
+
+                {/* Right spacer to keep the playback group in the geometric center */}
+                <div style={{ flex: 1, minWidth: 0 }} />
+              </div>
+
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
                 <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
@@ -1507,6 +1632,17 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 >
                   <ListPlus className="h-5 w-5 text-white/60" />
                 </button>
+                <button
+                  onClick={() => setStaticLyricsMode(!staticLyricsMode)}
+                  className={cn(
+                    "p-2 rounded-full transition-colors",
+                    staticLyricsMode ? "bg-white/20" : "hover:bg-white/10"
+                  )}
+                  title="Static lyrics"
+                >
+                  <AlignLeft className={cn("h-5 w-5", staticLyricsMode ? "text-white" : "text-white/60")} />
+                </button>
+
                 <button
                   onClick={toggleRepeat}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -1553,16 +1689,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 style={{ maxWidth: '620px' }}
               >
                 <div className="flex h-full flex-col gap-6 py-10">
-                  <div className="flex items-center gap-2 px-1">
-                    <button
-                      onClick={() => setStaticLyricsMode(!staticLyricsMode)}
-                      className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
-                      title="Static lyrics"
-                    >
-                      <AlignLeft className="h-4 w-4" />
-                    </button>
-                  </div>
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
+
                     {staticLyricsMode ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                     ) : (
@@ -1575,6 +1703,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           enableBlur={false}
                           onLineClick={amllSeek}
                           className="h-full w-full"
+                          alignOverrides={alignOverrides}
                         />
                       ) : (
                         <LyricsContent {...lyricsContentProps} isMobile={false} />
@@ -1601,26 +1730,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             </div>
 
             <div className="flex-1 min-w-0">
-              <h2 className="text-white truncate" style={{ fontSize: '20px', fontWeight: 700 }}>
+              <h2 className="text-white truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '20px', fontWeight: 700, letterSpacing: '-0.01em' }}>
                 {currentTrack.title}
               </h2>
-              <p className="truncate" style={{ fontSize: '16px', fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
+              <p className="truncate" style={{ fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif", fontSize: '16px', fontWeight: 500, letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
                 {currentTrack.artist}
               </p>
             </div>
-
-            <button
-              className={cn(
-                "flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                staticLyricsMode ? "bg-white/25" : "hover:bg-white/20"
-              )}
-              style={{ width: '36px', height: '36px', background: staticLyricsMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
-              onClick={(e) => { e.stopPropagation(); setStaticLyricsMode(!staticLyricsMode); }}
-              title="Static lyrics"
-            >
-              <AlignLeft className="text-white" style={{ width: '16px', height: '16px' }} />
-            </button>
-
 
             <button
               onClick={(e) => { e.stopPropagation(); handleClose(); }}
@@ -1630,6 +1746,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <X className="text-white" style={{ width: '18px', height: '18px' }} />
             </button>
           </div>
+
 
           <div className="flex-1 min-h-0 flex flex-col">
             <div
@@ -1651,6 +1768,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     onLineClick={amllSeek}
                     isMobile
                     className="h-full w-full"
+                    alignOverrides={alignOverrides}
                   />
                 ) : (
                   <LyricsContent {...lyricsContentProps} isMobile />
@@ -1700,11 +1818,69 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }}
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
-              <ApplePlayerControls
-                onInteract={resetMobileControlsTimer}
-                onMore={() => currentTrack && setShowPlaylistDialog(true)}
+              <Slider
+                value={[progress]}
+                max={100}
+                step={0.1}
+                onValueChange={([value]) => { handleSliderSeek(value); resetMobileControlsTimer(); }}
+                hideThumb
+                growOnDrag
+                className="mb-2 [&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/20 [&_span[data-orientation=horizontal]>span]:bg-white/80"
               />
+              <div className="flex justify-between" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(currentTrack.duration)}</span>
+              </div>
             </div>
+
+            {(audioFormat || isLossless) && (
+              <div className="flex items-center justify-center mt-4 mb-1">
+                <LosslessBadge format={audioFormat ?? 'lossless'} iconSize={20} fontSize={13} />
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 items-center mt-3">
+              <div className="flex items-center justify-start gap-2 pl-1">
+                <button onClick={(e) => { e.stopPropagation(); toggleRepeat(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  {repeat === 'one' ? (
+                    <Repeat1 className="h-5 w-5 text-white" />
+                  ) : repeat === 'all' ? (
+                    <Repeat className="h-5 w-5 text-white" />
+                  ) : (
+                    <Repeat className="h-5 w-5 text-white/40" />
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-5">
+                <button onClick={(e) => { e.stopPropagation(); previousTrack(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <img src={iconPrev} alt="Previous" className="h-6 w-6 brightness-0 invert" />
+                </button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => { e.stopPropagation(); isPlaying ? pauseTrack() : resumeTrack(); resetMobileControlsTimer(); }}
+                  className="p-4 rounded-full transition-transform"
+                  style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)' }}
+                >
+                  <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-7 w-7 brightness-0 invert" />
+                </motion.button>
+                <button onClick={(e) => { e.stopPropagation(); nextTrack(); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <img src={iconNext} alt="Next" className="h-6 w-6 brightness-0 invert" />
+                </button>
+              </div>
+              <div className="flex items-center justify-end gap-1 pr-1">
+                <button onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); resetMobileControlsTimer(); }} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Add to playlist">
+                  <ListPlus className="h-5 w-5 text-white/60" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setStaticLyricsMode(!staticLyricsMode); resetMobileControlsTimer(); }}
+                  className={cn("p-2 rounded-full transition-colors", staticLyricsMode ? "bg-white/20" : "hover:bg-white/10")}
+                  title="Static lyrics"
+                >
+                  <AlignLeft className={cn("h-5 w-5", staticLyricsMode ? "text-white" : "text-white/60")} />
+                </button>
+              </div>
+            </div>
+
 
           </motion.div>
         </div>
