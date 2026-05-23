@@ -14,11 +14,6 @@ interface Props {
   onLineClick?: (timeMs: number, lineIndex: number) => void;
   isMobile?: boolean;
   className?: string;
-
-  // 🆕 “Spring control layer” (simulated)
-  mass?: number;        // heaviness
-  damping?: number;     // resistance
-  stiffness?: number;   // snap strength
 }
 
 const AMLLLyricsPlayer = ({
@@ -26,15 +21,10 @@ const AMLLLyricsPlayer = ({
   currentTime,
   isSeek,
   fontSize = 45,
-  enableBlur = true,
+  enableBlur = false,
   onLineClick,
   isMobile = false,
   className,
-
-  // 🆕 defaults matching AMLL playground vibe
-  mass = 1,
-  damping = 15,
-  stiffness = 100,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -42,37 +32,15 @@ const AMLLLyricsPlayer = ({
   const lastTickRef = useRef<number>(performance.now());
   const visibleRef = useRef<boolean>(true);
   const onLineClickRef = useRef(onLineClick);
-
   onLineClickRef.current = onLineClick;
-
-  // 🧠 derived “feel multipliers” (this is the real magic)
-  const forceRef = useRef({
-    deltaScale: 1,
-    seekThreshold: 300,
-  });
-
-  useEffect(() => {
-    // convert spring params → motion behavior
-    // (this is how we simulate playground sliders)
-
-    const deltaScale = Math.min(2.2, 1 + (mass - 1) * 0.6 + stiffness / 250);
-    const seekThreshold = Math.max(80, 320 - damping * 10);
-
-    forceRef.current = {
-      deltaScale,
-      seekThreshold,
-    };
-  }, [mass, damping, stiffness]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const player = new DomLyricPlayer();
     const el = player.getElement();
-
     el.style.width = "100%";
     el.style.height = "100%";
-
     containerRef.current.appendChild(el);
     playerRef.current = player;
 
@@ -85,36 +53,33 @@ const AMLLLyricsPlayer = ({
 
     player.addEventListener("line-click", handleClick);
 
+    // Always run at the display's native refresh rate (60Hz, 120Hz, 144Hz, …).
+    // No throttling — feed AMLL the real frame delta every rAF tick.
     const tick = (now: number) => {
-      if (!playerRef.current) return;
-
-      const rawDelta = now - lastTickRef.current;
+      const delta = now - lastTickRef.current;
       lastTickRef.current = now;
-
-      const { deltaScale } = forceRef.current;
-      const delta = rawDelta * deltaScale;
-
       if (visibleRef.current) {
         player.update(delta);
       }
-
       rafRef.current = requestAnimationFrame(tick);
     };
 
     lastTickRef.current = performance.now();
     rafRef.current = requestAnimationFrame(tick);
 
-    const io = new IntersectionObserver((entries) => {
-      visibleRef.current = entries[0]?.isIntersecting ?? true;
-    });
-
+    // Pause work when the lyrics container scrolls offscreen or tab hides.
+    const io = new IntersectionObserver(
+      (entries) => {
+        visibleRef.current = entries[0]?.isIntersecting ?? true;
+      },
+      { threshold: 0 }
+    );
     io.observe(containerRef.current);
 
     const onVis = () => {
       visibleRef.current = !document.hidden;
       lastTickRef.current = performance.now();
     };
-
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
@@ -129,21 +94,18 @@ const AMLLLyricsPlayer = ({
 
   useEffect(() => {
     playerRef.current?.setLyricLines(lines, currentTime);
-  }, [lines, currentTime]);
+  }, [lines]);
 
+  // Auto-detect external seeks: if currentTime jumps unexpectedly (e.g. user
+  // scrubbed from the bottom player bar), force AMLL to resync immediately
+  // instead of smoothly tweening — prevents drift after a jump.
+  const lastTimeRef = useRef(currentTime);
   useEffect(() => {
-    const prev = lastTickRef.current;
+    const prev = lastTimeRef.current;
     const delta = Math.abs(currentTime - prev);
-
-    const { seekThreshold } = forceRef.current;
-    const detectedSeek = delta > seekThreshold;
-
-    lastTickRef.current = currentTime;
-
-    playerRef.current?.setCurrentTime(
-      currentTime,
-      isSeek || detectedSeek
-    );
+    const detectedSeek = delta > 300;
+    lastTimeRef.current = currentTime;
+    playerRef.current?.setCurrentTime(currentTime, isSeek || detectedSeek);
   }, [currentTime, isSeek]);
 
   useEffect(() => {
@@ -153,7 +115,6 @@ const AMLLLyricsPlayer = ({
   useEffect(() => {
     const p = playerRef.current;
     if (!p) return;
-
     p.setAlignAnchor("top");
     p.setAlignPosition(isMobile ? 0.10 : 0.20);
   }, [isMobile]);
@@ -162,6 +123,9 @@ const AMLLLyricsPlayer = ({
     <div
       ref={containerRef}
       style={{
+        // AMLL reads font-size from this CSS variable; setting font-size
+        // alone is ignored because .amll-lyric-player has its own font-size
+        // declaration that uses var(--amll-lp-font-size, fallback).
         ["--amll-lp-font-size" as any]: `${fontSize}px`,
         fontSize: `${fontSize}px`,
         cursor: onLineClick ? "pointer" : undefined,
