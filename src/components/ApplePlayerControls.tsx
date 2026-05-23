@@ -8,6 +8,8 @@ import iconPause from "@/assets/icon-pause.png";
 import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 
+const LYRIC_FONT = "'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
 function formatTime(s: number) {
   if (!isFinite(s) || s < 0) s = 0;
   const m = Math.floor(s / 60);
@@ -61,6 +63,8 @@ export default function ApplePlayerControls({
 
   const [draggingProgress, setDraggingProgress] = useState(false);
   const [draggingVolume, setDraggingVolume] = useState(false);
+  const [hoverProgress, setHoverProgress] = useState(false);
+  const [hoverVolume, setHoverVolume] = useState(false);
 
   const touch = useCallback(() => onInteract?.(), [onInteract]);
 
@@ -81,13 +85,13 @@ export default function ApplePlayerControls({
           <div className="min-w-0 flex-1" style={{ textAlign: align }}>
             <p
               className="truncate text-white"
-              style={{ fontSize: compact ? 20 : 22, fontWeight: 700, letterSpacing: "-0.01em" }}
+              style={{ fontFamily: LYRIC_FONT, fontSize: compact ? 20 : 22, fontWeight: 700, letterSpacing: "-0.01em" }}
             >
               {currentTrack.title}
             </p>
             <p
               className="truncate"
-              style={{ fontSize: compact ? 15 : 17, color: "rgba(255,255,255,0.6)", marginTop: 1 }}
+              style={{ fontFamily: LYRIC_FONT, fontSize: compact ? 15 : 17, fontWeight: 600, color: "rgba(255,255,255,0.6)", marginTop: 1 }}
             >
               {currentTrack.artist}
             </p>
@@ -130,8 +134,10 @@ export default function ApplePlayerControls({
       {/* Progress bar */}
       <div style={{ marginBottom: 6 }}>
         <div
-          className={`relative w-full rounded-full bg-white/20 transition-all duration-150 ${
-            draggingProgress ? "h-[6px]" : "h-[4px]"
+          onMouseEnter={() => setHoverProgress(true)}
+          onMouseLeave={() => setHoverProgress(false)}
+          className={`relative w-full rounded-full bg-white/20 transition-all duration-200 ${
+            draggingProgress ? "h-[10px]" : hoverProgress ? "h-[8px]" : "h-[4px]"
           }`}
         >
           <div
@@ -152,14 +158,6 @@ export default function ApplePlayerControls({
             onTouchEnd={() => setDraggingProgress(false)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
-          {badge && (
-            <div
-              className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-              style={{ top: -10 }}
-            >
-              <LosslessBadge format={badge as "lossless" | "dolby"} />
-            </div>
-          )}
         </div>
         <div
           className="flex justify-between"
@@ -173,7 +171,7 @@ export default function ApplePlayerControls({
       {/* Transport */}
       <div
         className="flex items-center justify-center"
-        style={{ gap: compact ? 36 : 44, marginTop: compact ? 8 : 14, marginBottom: compact ? 10 : 16 }}
+        style={{ gap: compact ? 36 : 44, marginTop: compact ? 8 : 14, marginBottom: compact ? 8 : 12 }}
       >
         <button
           onClick={(e) => { e.stopPropagation(); touch(); previousTrack(); }}
@@ -203,12 +201,21 @@ export default function ApplePlayerControls({
         </button>
       </div>
 
+      {/* Lossless / Dolby badge — below transport */}
+      {badge && (
+        <div className="flex items-center justify-center" style={{ marginBottom: compact ? 10 : 14 }}>
+          <LosslessBadge format={badge as "lossless" | "dolby"} />
+        </div>
+      )}
+
       {/* Volume */}
       <div className="flex items-center" style={{ gap: 10 }}>
         <Volume2 className="flex-shrink-0" style={{ width: 13, height: 13, color: "rgba(255,255,255,0.45)" }} />
         <div
-          className={`relative flex-1 rounded-full bg-white/20 transition-all duration-150 ${
-            draggingVolume ? "h-[6px]" : "h-[4px]"
+          onMouseEnter={() => setHoverVolume(true)}
+          onMouseLeave={() => setHoverVolume(false)}
+          className={`relative flex-1 rounded-full bg-white/20 transition-all duration-200 ${
+            draggingVolume ? "h-[10px]" : hoverVolume ? "h-[8px]" : "h-[4px]"
           }`}
         >
           <div
