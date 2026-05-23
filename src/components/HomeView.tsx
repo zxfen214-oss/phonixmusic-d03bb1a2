@@ -10,7 +10,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { toast } from "sonner";
-import { BillboardSection } from "@/components/BillboardSection";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
@@ -365,9 +364,6 @@ export function HomeView() {
         {topTrack && (
           <TopSongBanner track={topTrack} onPlay={handlePlay} allTracks={tracks} />
         )}
-
-        {/* Billboard — admin-curated top 3 */}
-        <BillboardSection />
 
         {/* Featured Grid - Song Tiles */}
         {tracks.length > 0 && (
