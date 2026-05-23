@@ -40,6 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { LRCEditor } from "./LRCEditor";
 import { KaraokeEditor } from "./KaraokeEditor";
+import { Download } from "lucide-react";
 
 interface AdminSongEditorProps {
   track: Track;
@@ -65,6 +66,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [isFetchingKaraoke, setIsFetchingKaraoke] = useState(false);
   const [mxmFetchFailed, setMxmFetchFailed] = useState(false);
   const [mxmCustomArtist, setMxmCustomArtist] = useState('');
@@ -109,6 +111,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   
   // Special commands state
   const [specialCommands, setSpecialCommands] = useState<{ time: string; command: string }[]>([]);
+  // Alignment overrides — admin can change AMLL vertical displacement (alignPosition)
+  // for specific time ranges within a song. Default desktop 0.32, mobile 0.18.
+  const [alignOverrides, setAlignOverrides] = useState<{ start: string; end: string; position: number }[]>([]);
   
   const [showLRCEditor, setShowLRCEditor] = useState(false);
   const [showKaraokeEditor, setShowKaraokeEditor] = useState(false);
@@ -172,6 +177,17 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         }));
         setPlainLyrics((merged as any).plain_lyrics || "");
 
+        // Load alignment overrides from karaoke_data
+        if (Array.isArray(karaokeData?.align_overrides)) {
+          setAlignOverrides(
+            karaokeData.align_overrides
+              .filter((o: any) => Number.isFinite(o?.startMs) && Number.isFinite(o?.endMs) && Number.isFinite(o?.position))
+              .map((o: any) => ({ start: formatMs(o.startMs), end: formatMs(o.endMs), position: o.position }))
+          );
+        } else {
+          setAlignOverrides([]);
+        }
+
         if (merged.synced_lyrics) {
           parseSpecialCommands(merged.synced_lyrics);
         }
@@ -229,6 +245,32 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const updateSpecialCommand = (index: number, field: 'time' | 'command', value: string) => {
     setSpecialCommands(prev => prev.map((cmd, i) => i === index ? { ...cmd, [field]: value } : cmd));
+  };
+
+  // ── Alignment override helpers ──
+  const parseTimeToMs = (s: string): number | null => {
+    const m = s.trim().match(/^(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?$/);
+    if (!m) return null;
+    const min = parseInt(m[1], 10);
+    const sec = parseInt(m[2], 10);
+    const frac = m[3] ? parseInt(m[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+    return min * 60_000 + sec * 1000 + frac;
+  };
+  const formatMs = (ms: number): string => {
+    const total = Math.max(0, Math.round(ms));
+    const min = Math.floor(total / 60_000);
+    const sec = Math.floor((total % 60_000) / 1000);
+    const cs = Math.floor((total % 1000) / 10);
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+  };
+  const addAlignOverride = () => {
+    setAlignOverrides(prev => [...prev, { start: '00:00.00', end: '00:10.00', position: 0.5 }]);
+  };
+  const removeAlignOverride = (index: number) => {
+    setAlignOverrides(prev => prev.filter((_, i) => i !== index));
+  };
+  const updateAlignOverride = (index: number, patch: Partial<{ start: string; end: string; position: number }>) => {
+    setAlignOverrides(prev => prev.map((o, i) => i === index ? { ...o, ...patch } : o));
   };
 
   const applySpecialCommands = async () => {
@@ -367,13 +409,32 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         }
       }
 
-      // Merge early_appearance and mobile_char_limit into karaoke_data
+      // Merge early_appearance, mobile_char_limit, align_overrides into karaoke_data
       const existingKaraokeData = latestSong?.karaoke_data || existingSong?.karaoke_data || {};
+      const cleanedOverrides = alignOverrides
+        .map((o) => ({
+          startMs: parseTimeToMs(o.start),
+          endMs: parseTimeToMs(o.end),
+          position: Number(o.position),
+        }))
+        .filter(
+          (o) =>
+            o.startMs !== null &&
+            o.endMs !== null &&
+            Number.isFinite(o.position) &&
+            (o.endMs as number) > (o.startMs as number)
+        )
+        .map((o) => ({
+          startMs: o.startMs as number,
+          endMs: o.endMs as number,
+          position: Math.max(0, Math.min(1, o.position)),
+        }));
       const mergedKaraokeData = {
         ...existingKaraokeData,
         early_appearance: formData.earlyAppearance,
         mobile_char_limit: formData.mobileCharLimit,
         audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
+        align_overrides: cleanedOverrides,
       };
 
       const baseSongData: Record<string, any> = {
@@ -433,6 +494,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
     }
   };
+
 
   const handleRemoveLyrics = async () => {
     if (!existingSong) return;
@@ -558,6 +620,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               <Terminal className="h-3 w-3" />
               Commands
             </TabsTrigger>
+            <TabsTrigger value="align" className="flex-1 text-xs">Align</TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -705,6 +768,18 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <span className="text-sm text-muted-foreground">{audioFile ? audioFile.name : "Upload MP3"}</span>
                     <input type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
                   </label>
+                )}
+                {track.youtubeId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isAutoFetching}
+                    className="w-full gap-2 mt-1.5"
+                  >
+                    {isAutoFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    {isAutoFetching ? "Fetching from YouTube…" : existingSong?.audio_url ? "Re-fetch MP3 from YouTube" : "Auto-fetch MP3 from YouTube"}
+                  </Button>
                 )}
               </div>
 
@@ -951,6 +1026,92 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     className="h-40 text-xs font-mono resize-none"
                   />
                 </div>
+              )}
+            </motion.div>
+          </TabsContent>
+
+          {/* Alignment Overrides Tab */}
+          <TabsContent value="align">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4 pt-2"
+            >
+              <div className="space-y-1.5">
+                <Label className="text-xs">Vertical Displacement Overrides</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  The default active-line vertical position is{' '}
+                  <code className="bg-secondary px-1 rounded">0.32</code> on desktop and{' '}
+                  <code className="bg-secondary px-1 rounded">0.18</code> on mobile (0 = top, 1 = bottom).
+                  Add ranges below to override it only for specific parts of this song. Anything
+                  outside these ranges uses the default. Save changes from this tab using the button below.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {alignOverrides.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground italic">No overrides — default position is used for the whole song.</p>
+                )}
+                {alignOverrides.map((o, i) => (
+                  <div key={i} className="space-y-1.5 rounded-lg border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Start</Label>
+                        <Input
+                          value={o.start}
+                          onChange={(e) => updateAlignOverride(i, { start: e.target.value })}
+                          placeholder="00:00.00"
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">End</Label>
+                        <Input
+                          value={o.end}
+                          onChange={(e) => updateAlignOverride(i, { end: e.target.value })}
+                          placeholder="00:10.00"
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAlignOverride(i)}
+                        className="h-8 w-8 text-destructive self-end"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] text-muted-foreground">Position (0 = top, 1 = bottom)</Label>
+                        <span className="text-[10px] font-mono">{o.position.toFixed(2)}</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={[o.position]}
+                        onValueChange={(v) => updateAlignOverride(i, { position: v[0] })}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button variant="outline" size="sm" onClick={addAlignOverride} className="w-full gap-1">
+                <Plus className="h-3.5 w-3.5" />
+                Add Override
+              </Button>
+
+              <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? 'Saving...' : 'Save Overrides'}
+              </Button>
+
+              {!existingSong && (
+                <p className="text-[10px] text-destructive">Save the song in the General tab first.</p>
               )}
             </motion.div>
           </TabsContent>
