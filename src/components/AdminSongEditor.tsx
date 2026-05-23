@@ -65,7 +65,6 @@ function parseMxmUrl(url: string): { artist: string; title: string } | null {
 export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEditorProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const fetchYoutubeMp3Fn = useServerFn(fetchYoutubeMp3);
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [isFetchingKaraoke, setIsFetchingKaraoke] = useState(false);
@@ -496,40 +495,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     }
   };
 
-  const handleAutoFetchMp3 = async () => {
-    if (!track.youtubeId) {
-      toast({ title: "No YouTube ID", description: "This track has no YouTube ID to fetch from.", variant: "destructive" });
-      return;
-    }
-    setIsAutoFetching(true);
-    try {
-      const result = await fetchYoutubeMp3Fn({ data: { youtubeId: track.youtubeId } });
-      const lookup = { youtubeId: track.youtubeId, title: formData.title, artist: formData.artist, album: formData.album };
-      await saveSongRecord(
-        lookup,
-        { audio_url: result.audioUrl },
-        {
-          title: formData.title,
-          artist: formData.artist,
-          album: formData.album || null,
-          duration: track.duration,
-          youtube_id: track.youtubeId,
-        }
-      );
-      toast({ title: "MP3 fetched", description: `Audio attached (${(result.bytes / 1024 / 1024).toFixed(2)} MB).` });
-      await checkExistingSong();
-    } catch (error: any) {
-      console.error("Auto-fetch failed:", error);
-      toast({
-        title: "Auto-fetch failed",
-        description: error?.message || "The YouTube downloader API didn't return audio.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAutoFetching(false);
-    }
-  };
-
 
   const handleRemoveLyrics = async () => {
     if (!existingSong) return;
@@ -809,7 +774,6 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleAutoFetchMp3}
                     disabled={isAutoFetching}
                     className="w-full gap-2 mt-1.5"
                   >
