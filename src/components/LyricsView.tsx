@@ -1012,6 +1012,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [posYSpringKeyframes, setPosYSpringKeyframes] = useState<
     { start?: number; end?: number; time?: number; mass: number; damping: number; stiffness: number }[]
   >([]);
+  const [swellScale, setSwellScale] = useState<number>(1);
+  const [swellSpeed, setSwellSpeed] = useState<number>(1);
   // Raw synced LRC text (for the AMLL renderer)
   const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
 
@@ -1128,6 +1130,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if (Array.isArray(data.pos_y_spring_keyframes)) {
               setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
             }
+            if (typeof (data as any).swell_scale === 'number') setSwellScale((data as any).swell_scale);
+            if (typeof (data as any).swell_speed === 'number') setSwellSpeed((data as any).swell_speed);
           }
         }
 
@@ -1188,6 +1192,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               if (Array.isArray(data.pos_y_spring_keyframes)) {
                 setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
               }
+              if (typeof (data as any).swell_scale === 'number') setSwellScale((data as any).swell_scale);
+              if (typeof (data as any).swell_speed === 'number') setSwellSpeed((data as any).swell_speed);
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
@@ -1198,6 +1204,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               if (Array.isArray(data.pos_y_spring_keyframes)) {
                 setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
               }
+              if (typeof data.swell_scale === 'number') setSwellScale(data.swell_scale);
+              if (typeof data.swell_speed === 'number') setSwellSpeed(data.swell_speed);
             }
           } else if (!appliedFromCache) {
             setStaticLyricsText("");
@@ -1587,6 +1595,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           enableBlur={false}
                           onLineClick={amllSeek}
                           posYSpringKeyframes={posYSpringKeyframes}
+                          swellScale={swellScale}
+                          swellSpeed={swellSpeed}
                           className="h-full w-full"
                         />
                       ) : (
@@ -1664,6 +1674,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     onLineClick={amllSeek}
                     isMobile
                     posYSpringKeyframes={posYSpringKeyframes}
+                          swellScale={swellScale}
+                          swellSpeed={swellSpeed}
                     className="h-full w-full"
                   />
                 ) : (
