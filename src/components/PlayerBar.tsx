@@ -59,7 +59,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
 
   if (!currentTrack) {
     return (
-      <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-16 md:h-20 rounded-full border border-white/15 bg-player-bar/40 backdrop-blur-2xl backdrop-saturate-150 flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+      <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-16 md:h-20 rounded-full border border-white/15 bg-transparent backdrop-blur-2xl backdrop-saturate-150 flex items-center justify-center">
         <p className="text-muted-foreground text-sm">No track playing</p>
       </div>
     );
@@ -68,7 +68,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
   const currentTime = (progress / 100) * currentTrack.duration;
 
   return (
-    <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-20 md:h-24 rounded-3xl md:rounded-full border border-white/15 bg-player-bar/40 backdrop-blur-2xl backdrop-saturate-150 px-3 md:px-6 flex items-center gap-2 md:gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+    <div className="mx-3 md:mx-4 mb-[calc(5rem+env(safe-area-inset-bottom))] md:mb-3 h-20 md:h-24 rounded-3xl md:rounded-full border border-white/15 bg-transparent backdrop-blur-2xl backdrop-saturate-150 px-3 md:px-6 flex items-center gap-2 md:gap-4">
       {/* Track Info */}
       <div className="flex items-center gap-2 md:gap-3 flex-1 md:w-64 md:flex-initial min-w-0">
         <div 
@@ -218,10 +218,11 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
           </button>
           <button
             onClick={isPlaying ? pauseTrack : resumeTrack}
-            className="icon-button accent h-10 w-10"
+            className="icon-button h-10 w-10 text-white hover:text-white"
           >
-            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
+            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert" />
           </button>
+
           <button onClick={nextTrack} className="icon-button h-9 w-9">
             <img src={iconNext} alt="Next" className="h-5 w-5 invert dark:invert" />
           </button>
