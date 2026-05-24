@@ -6,7 +6,12 @@ import {
 } from "@applemusic-like-lyrics/core";
 
 export interface PosYSpringKeyframe {
-  time: number; // ms
+  // Range in ms. `start` is required for new entries; `time` kept for
+  // backwards compatibility (legacy single-point keyframes). `end` is
+  // optional — when omitted, the range stays active until the next keyframe.
+  start?: number;
+  end?: number;
+  time?: number;
   mass: number;
   damping: number;
   stiffness: number;
@@ -132,24 +137,41 @@ const AMLLLyricsPlayer = ({
 
   // Apply vertical-displacement spring (posY) keyframes. Each keyframe takes
   // effect once currentTime >= keyframe.time. Sorted ascending by time.
-  const sortedKeyframesRef = useRef<PosYSpringKeyframe[]>([]);
+  // Active spring ranges. Each entry has [start, end) in ms; outside any
+  // range we snap back to DEFAULT_POSY_SPRING. Legacy `time`-only entries
+  // are treated as start with end = next entry's start (or +∞).
+  type Range = { start: number; end: number; mass: number; damping: number; stiffness: number };
+  const sortedRangesRef = useRef<Range[]>([]);
   const lastAppliedKeyRef = useRef<string>("");
   useEffect(() => {
-    sortedKeyframesRef.current = (posYSpringKeyframes ?? [])
-      .slice()
-      .sort((a, b) => a.time - b.time);
+    const raw = (posYSpringKeyframes ?? [])
+      .map((k) => ({
+        start: typeof k.start === "number" ? k.start : (k.time ?? 0),
+        end: typeof k.end === "number" ? k.end : Number.POSITIVE_INFINITY,
+        mass: k.mass,
+        damping: k.damping,
+        stiffness: k.stiffness,
+      }))
+      .filter((k) => Number.isFinite(k.start))
+      .sort((a, b) => a.start - b.start);
+    // For legacy entries with no explicit end, cap at the next entry's start
+    for (let i = 0; i < raw.length; i++) {
+      if (!Number.isFinite(raw[i].end) && i + 1 < raw.length) {
+        raw[i].end = raw[i + 1].start;
+      }
+    }
+    sortedRangesRef.current = raw;
     lastAppliedKeyRef.current = ""; // force re-apply
   }, [posYSpringKeyframes]);
 
   useEffect(() => {
     const p = playerRef.current;
     if (!p) return;
-    const kfs = sortedKeyframesRef.current;
+    const ranges = sortedRangesRef.current;
     let active: { mass: number; damping: number; stiffness: number } = DEFAULT_POSY_SPRING;
-    if (kfs.length) {
-      for (const kf of kfs) {
-        if (kf.time <= currentTime) active = kf;
-        else break;
+    for (const r of ranges) {
+      if (currentTime >= r.start && currentTime < r.end) {
+        active = r; // last match wins (later ranges override)
       }
     }
     const key = `${active.mass}|${active.damping}|${active.stiffness}`;
