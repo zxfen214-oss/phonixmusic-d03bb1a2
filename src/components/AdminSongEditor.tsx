@@ -123,9 +123,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   // Special commands state
   const [specialCommands, setSpecialCommands] = useState<{ time: string; command: string }[]>([]);
 
-  // Vertical-displacement spring (posY) keyframes
+  // Vertical-displacement spring (posY) keyframes — time ranges
   const [springKeyframes, setSpringKeyframes] = useState<
-    { time: string; mass: number; damping: number; stiffness: number }[]
+    { start: string; end: string; mass: number; damping: number; stiffness: number }[]
   >([]);
   
   const [showLRCEditor, setShowLRCEditor] = useState(false);
@@ -200,9 +200,10 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           : [];
         setSpringKeyframes(
           kfs
-            .filter((k: any) => k && typeof k.time === "number")
+            .filter((k: any) => k && (typeof k.start === "number" || typeof k.time === "number"))
             .map((k: any) => ({
-              time: msToTime(k.time),
+              start: msToTime(typeof k.start === "number" ? k.start : k.time),
+              end: typeof k.end === "number" && Number.isFinite(k.end) ? msToTime(k.end) : "",
               mass: typeof k.mass === "number" ? k.mass : 1,
               damping: typeof k.damping === "number" ? k.damping : 15,
               stiffness: typeof k.stiffness === "number" ? k.stiffness : 100,
@@ -409,14 +410,19 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         mobile_char_limit: formData.mobileCharLimit,
         audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
         pos_y_spring_keyframes: springKeyframes
-          .map((k) => ({
-            time: parseTimeToMs(k.time),
-            mass: Number(k.mass),
-            damping: Number(k.damping),
-            stiffness: Number(k.stiffness),
-          }))
-          .filter((k) => Number.isFinite(k.time) && k.time >= 0)
-          .sort((a, b) => a.time - b.time),
+          .map((k) => {
+            const startMs = parseTimeToMs(k.start);
+            const endMs = k.end ? parseTimeToMs(k.end) : NaN;
+            return {
+              start: startMs,
+              end: Number.isFinite(endMs) ? endMs : null,
+              mass: Number(k.mass),
+              damping: Number(k.damping),
+              stiffness: Number(k.stiffness),
+            };
+          })
+          .filter((k) => Number.isFinite(k.start) && k.start >= 0)
+          .sort((a, b) => a.start - b.start),
       };
 
       const baseSongData: Record<string, any> = {
@@ -1015,8 +1021,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                 </p>
               </div>
 
-              <div className="grid grid-cols-[80px_1fr_1fr_1fr_32px] gap-2 text-[10px] text-muted-foreground font-medium px-1">
-                <span>Time</span>
+              <div className="grid grid-cols-[80px_80px_1fr_1fr_1fr_32px] gap-2 text-[10px] text-muted-foreground font-medium px-1">
+                <span>Start</span>
+                <span>End</span>
                 <span>Mass</span>
                 <span>Resistance</span>
                 <span>Elasticity</span>
@@ -1025,17 +1032,28 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
               <div className="space-y-2">
                 {springKeyframes.map((kf, i) => (
-                  <div key={i} className="grid grid-cols-[80px_1fr_1fr_1fr_32px] gap-2 items-center">
+                  <div key={i} className="grid grid-cols-[80px_80px_1fr_1fr_1fr_32px] gap-2 items-center">
                     <Input
-                      value={kf.time}
+                      value={kf.start}
                       onChange={(e) =>
                         setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, time: e.target.value } : k))
+                          prev.map((k, idx) => (idx === i ? { ...k, start: e.target.value } : k))
                         )
                       }
                       placeholder="00:00.00"
                       className="h-8 text-xs font-mono px-1.5"
                     />
+                    <Input
+                      value={kf.end}
+                      onChange={(e) =>
+                        setSpringKeyframes((prev) =>
+                          prev.map((k, idx) => (idx === i ? { ...k, end: e.target.value } : k))
+                        )
+                      }
+                      placeholder="00:00.00"
+                      className="h-8 text-xs font-mono px-1.5"
+                    />
+
                     <Input
                       type="number"
                       step="0.1"
@@ -1087,7 +1105,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                 onClick={() =>
                   setSpringKeyframes((prev) => [
                     ...prev,
-                    { time: "00:00.00", mass: 1, damping: 15, stiffness: 100 },
+                    { start: "00:00.00", end: "", mass: 1, damping: 15, stiffness: 100 },
                   ])
                 }
                 className="w-full gap-1"
