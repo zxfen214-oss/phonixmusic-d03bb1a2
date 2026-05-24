@@ -61,6 +61,19 @@ function parseMxmUrl(url: string): { artist: string; title: string } | null {
   }
 }
 
+/** "mm:ss.cc" → ms (e.g. "01:23.45" → 83450). Returns NaN on bad input. */
+function parseTimeToMs(s: string): number {
+  const m = s.trim().match(/^(\d{1,2}):(\d{2}(?:\.\d+)?)$/);
+  if (!m) return NaN;
+  return Math.round((parseFloat(m[1]) * 60 + parseFloat(m[2])) * 1000);
+}
+function msToTime(ms: number): string {
+  const total = Math.max(0, ms) / 1000;
+  const mm = Math.floor(total / 60).toString().padStart(2, "0");
+  const ss = (total - Math.floor(total / 60) * 60).toFixed(2).padStart(5, "0");
+  return `${mm}:${ss}`;
+}
+
 export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEditorProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
@@ -109,6 +122,11 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   
   // Special commands state
   const [specialCommands, setSpecialCommands] = useState<{ time: string; command: string }[]>([]);
+
+  // Vertical-displacement spring (posY) keyframes
+  const [springKeyframes, setSpringKeyframes] = useState<
+    { time: string; mass: number; damping: number; stiffness: number }[]
+  >([]);
   
   const [showLRCEditor, setShowLRCEditor] = useState(false);
   const [showKaraokeEditor, setShowKaraokeEditor] = useState(false);
@@ -175,8 +193,24 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         if (merged.synced_lyrics) {
           parseSpecialCommands(merged.synced_lyrics);
         }
+
+        // Load vertical-displacement spring keyframes from karaoke_data
+        const kfs = Array.isArray(karaokeData?.pos_y_spring_keyframes)
+          ? karaokeData.pos_y_spring_keyframes
+          : [];
+        setSpringKeyframes(
+          kfs
+            .filter((k: any) => k && typeof k.time === "number")
+            .map((k: any) => ({
+              time: msToTime(k.time),
+              mass: typeof k.mass === "number" ? k.mass : 1,
+              damping: typeof k.damping === "number" ? k.damping : 15,
+              stiffness: typeof k.stiffness === "number" ? k.stiffness : 100,
+            }))
+        );
       } else {
         setExistingSong(null);
+        setSpringKeyframes([]);
       }
 
       if (track.youtubeId) {
@@ -374,6 +408,15 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         early_appearance: formData.earlyAppearance,
         mobile_char_limit: formData.mobileCharLimit,
         audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
+        pos_y_spring_keyframes: springKeyframes
+          .map((k) => ({
+            time: parseTimeToMs(k.time),
+            mass: Number(k.mass),
+            damping: Number(k.damping),
+            stiffness: Number(k.stiffness),
+          }))
+          .filter((k) => Number.isFinite(k.time) && k.time >= 0)
+          .sort((a, b) => a.time - b.time),
       };
 
       const baseSongData: Record<string, any> = {
@@ -558,6 +601,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               <Terminal className="h-3 w-3" />
               Commands
             </TabsTrigger>
+            <TabsTrigger value="spring" className="flex-1 text-xs">Spring</TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -952,6 +996,110 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   />
                 </div>
               )}
+            </motion.div>
+          </TabsContent>
+
+          {/* Spring Tab — vertical-displacement spring (posY) keyframes */}
+          <TabsContent value="spring">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4 pt-2"
+            >
+              <div className="space-y-1.5">
+                <Label className="text-xs">Vertical-Displacement Spring</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Schedule spring physics for the lyric line vertical motion. Each keyframe takes effect at its timestamp.
+                  Defaults: Mass 1, Resistance 15, Elasticity 100.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-[80px_1fr_1fr_1fr_32px] gap-2 text-[10px] text-muted-foreground font-medium px-1">
+                <span>Time</span>
+                <span>Mass</span>
+                <span>Resistance</span>
+                <span>Elasticity</span>
+                <span />
+              </div>
+
+              <div className="space-y-2">
+                {springKeyframes.map((kf, i) => (
+                  <div key={i} className="grid grid-cols-[80px_1fr_1fr_1fr_32px] gap-2 items-center">
+                    <Input
+                      value={kf.time}
+                      onChange={(e) =>
+                        setSpringKeyframes((prev) =>
+                          prev.map((k, idx) => (idx === i ? { ...k, time: e.target.value } : k))
+                        )
+                      }
+                      placeholder="00:00.00"
+                      className="h-8 text-xs font-mono px-1.5"
+                    />
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={kf.mass}
+                      onChange={(e) =>
+                        setSpringKeyframes((prev) =>
+                          prev.map((k, idx) => (idx === i ? { ...k, mass: parseFloat(e.target.value) || 0 } : k))
+                        )
+                      }
+                      className="h-8 text-xs px-1.5"
+                    />
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={kf.damping}
+                      onChange={(e) =>
+                        setSpringKeyframes((prev) =>
+                          prev.map((k, idx) => (idx === i ? { ...k, damping: parseFloat(e.target.value) || 0 } : k))
+                        )
+                      }
+                      className="h-8 text-xs px-1.5"
+                    />
+                    <Input
+                      type="number"
+                      step="1"
+                      value={kf.stiffness}
+                      onChange={(e) =>
+                        setSpringKeyframes((prev) =>
+                          prev.map((k, idx) => (idx === i ? { ...k, stiffness: parseFloat(e.target.value) || 0 } : k))
+                        )
+                      }
+                      className="h-8 text-xs px-1.5"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSpringKeyframes((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="h-8 w-8 text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setSpringKeyframes((prev) => [
+                    ...prev,
+                    { time: "00:00.00", mass: 1, damping: 15, stiffness: 100 },
+                  ])
+                }
+                className="w-full gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Keyframe
+              </Button>
+
+              <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
             </motion.div>
           </TabsContent>
         </Tabs>
