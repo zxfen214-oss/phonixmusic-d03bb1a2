@@ -127,6 +127,11 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   const [springKeyframes, setSpringKeyframes] = useState<
     { start: string; end: string; mass: number; damping: number; stiffness: number }[]
   >([]);
+
+  // Word swell (emphasize) controls. 1 = AMLL default. Greater = bigger pop,
+  // Faster = quicker animation. Persisted on karaoke_data.
+  const [swellScale, setSwellScale] = useState<number>(1);
+  const [swellSpeed, setSwellSpeed] = useState<number>(1);
   
   const [showLRCEditor, setShowLRCEditor] = useState(false);
   const [showKaraokeEditor, setShowKaraokeEditor] = useState(false);
@@ -209,9 +214,13 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               stiffness: typeof k.stiffness === "number" ? k.stiffness : 100,
             }))
         );
+        setSwellScale(typeof karaokeData?.swell_scale === "number" ? karaokeData.swell_scale : 1);
+        setSwellSpeed(typeof karaokeData?.swell_speed === "number" ? karaokeData.swell_speed : 1);
       } else {
         setExistingSong(null);
         setSpringKeyframes([]);
+        setSwellScale(1);
+        setSwellSpeed(1);
       }
 
       if (track.youtubeId) {
@@ -423,6 +432,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           })
           .filter((k) => Number.isFinite(k.start) && k.start >= 0)
           .sort((a, b) => a.start - b.start),
+        swell_scale: Number.isFinite(swellScale) ? swellScale : 1,
+        swell_speed: Number.isFinite(swellSpeed) ? swellSpeed : 1,
       };
 
       const baseSongData: Record<string, any> = {
@@ -1019,6 +1030,40 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   Schedule spring physics for the lyric line vertical motion. Each keyframe takes effect at its timestamp.
                   Defaults: Mass 1, Resistance 15, Elasticity 100.
                 </p>
+              </div>
+
+              {/* Word swell (emphasize) controls */}
+              <div className="space-y-2 rounded-md border border-border/50 p-3">
+                <Label className="text-xs">Word Swell (long-held syllables)</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Controls the "grow & lift" effect on sustained words. 1 = AMLL default.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Scale (×)</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="0.5"
+                      max="4"
+                      value={swellScale}
+                      onChange={(e) => setSwellScale(parseFloat(e.target.value) || 1)}
+                      className="h-8 text-xs px-1.5"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Speed (×)</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="0.25"
+                      max="5"
+                      value={swellSpeed}
+                      onChange={(e) => setSwellSpeed(parseFloat(e.target.value) || 1)}
+                      className="h-8 text-xs px-1.5"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-[80px_80px_1fr_1fr_1fr_32px] gap-2 text-[10px] text-muted-foreground font-medium px-1">
