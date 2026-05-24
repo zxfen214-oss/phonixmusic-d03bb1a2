@@ -1009,6 +1009,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [showLyricsPanel, setShowLyricsPanel] = useState(true);
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
+  const [posYSpringKeyframes, setPosYSpringKeyframes] = useState<
+    { time: number; mass: number; damping: number; stiffness: number }[]
+  >([]);
   // Raw synced LRC text (for the AMLL renderer)
   const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
 
@@ -1112,7 +1115,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           if (typeof cachedKaraoke.lyricsSpeed === 'number') setLyricsSpeed(cachedKaraoke.lyricsSpeed);
           if (typeof cachedKaraoke.bounceIntensity === 'number') setBounceIntensity(cachedKaraoke.bounceIntensity);
           if (cachedKaraoke.karaokeData) {
-            const data = cachedKaraoke.karaokeData as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
+            const data = cachedKaraoke.karaokeData as KaraokeData & { early_appearance?: number; mobile_char_limit?: number; pos_y_spring_keyframes?: any[] };
             if (data.words?.length && cachedKaraoke.karaokeEnabled) {
               setKaraokeEnabled(true);
               setKaraokeWords(data.words);
@@ -1121,6 +1124,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if (typeof data.mobile_char_limit === 'number') {
               setMobileCharLimit(data.mobile_char_limit);
               charLimitOverriddenRef.current = true;
+            }
+            if (Array.isArray(data.pos_y_spring_keyframes)) {
+              setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
             }
           }
         }
@@ -1172,12 +1178,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             if ((song as any).plain_lyrics) setStaticLyricsText((song as any).plain_lyrics);
             else if (!cachedPlainText) setStaticLyricsText("");
             if (song.karaoke_enabled && song.karaoke_data) {
-              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number };
+              const data = song.karaoke_data as unknown as KaraokeData & { early_appearance?: number; mobile_char_limit?: number; pos_y_spring_keyframes?: any[] };
               if (data.words?.length) { setKaraokeEnabled(true); setKaraokeWords(data.words); }
               if (typeof data.early_appearance === 'number') setEarlyAppearance(data.early_appearance);
               if (typeof data.mobile_char_limit === 'number') {
                 setMobileCharLimit(data.mobile_char_limit);
                 charLimitOverriddenRef.current = true;
+              }
+              if (Array.isArray(data.pos_y_spring_keyframes)) {
+                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
               }
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
@@ -1185,6 +1194,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               if (typeof data.mobile_char_limit === 'number') {
                 setMobileCharLimit(data.mobile_char_limit);
                 charLimitOverriddenRef.current = true;
+              }
+              if (Array.isArray(data.pos_y_spring_keyframes)) {
+                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
               }
             }
           } else if (!appliedFromCache) {
@@ -1574,6 +1586,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           fontSize={45}
                           enableBlur={false}
                           onLineClick={amllSeek}
+                          posYSpringKeyframes={posYSpringKeyframes}
                           className="h-full w-full"
                         />
                       ) : (
@@ -1650,6 +1663,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     
                     onLineClick={amllSeek}
                     isMobile
+                    posYSpringKeyframes={posYSpringKeyframes}
                     className="h-full w-full"
                   />
                 ) : (
