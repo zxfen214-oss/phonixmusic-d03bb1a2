@@ -1010,7 +1010,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [earlyAppearance, setEarlyAppearance] = useState(0.2);
   const [mobileCharLimit, setMobileCharLimit] = useState(14);
   const [posYSpringKeyframes, setPosYSpringKeyframes] = useState<
-    { time: number; mass: number; damping: number; stiffness: number }[]
+    { start?: number; end?: number; time?: number; mass: number; damping: number; stiffness: number }[]
   >([]);
   // Raw synced LRC text (for the AMLL renderer)
   const [syncedLrcText, setSyncedLrcText] = useState<string | null>(null);
@@ -1126,7 +1126,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               charLimitOverriddenRef.current = true;
             }
             if (Array.isArray(data.pos_y_spring_keyframes)) {
-              setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
+              setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
             }
           }
         }
@@ -1186,7 +1186,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 charLimitOverriddenRef.current = true;
               }
               if (Array.isArray(data.pos_y_spring_keyframes)) {
-                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
+                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
               }
             } else if (song.karaoke_data) {
               const data = song.karaoke_data as any;
@@ -1196,7 +1196,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 charLimitOverriddenRef.current = true;
               }
               if (Array.isArray(data.pos_y_spring_keyframes)) {
-                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && typeof k.time === 'number'));
+                setPosYSpringKeyframes(data.pos_y_spring_keyframes.filter((k: any) => k && (typeof k.start === 'number' || typeof k.time === 'number')));
               }
             }
           } else if (!appliedFromCache) {
