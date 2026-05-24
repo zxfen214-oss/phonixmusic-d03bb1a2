@@ -19,7 +19,7 @@ import { z } from "zod";
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
-const CLUB_OPTIONS = ["CC", "ADB", "IQ", "CV", "QI", "HUZ", "MLC", "BCC"] as const;
+const CLUB_OPTIONS = ["CC", "ADB", "IQ", "CV", "QI", "HUZ", "MLC", "BCC", "NMC"] as const;
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -40,7 +40,7 @@ export default function Auth() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate({ to: "/" });
+      navigate("/");
     }
   }, [user, navigate]);
 
@@ -115,7 +115,7 @@ export default function Auth() {
             setError(error.message);
           }
         } else {
-          navigate({ to: "/" });
+          navigate("/");
         }
       } else {
         const { error } = await signUp(email, password, displayName, club);
