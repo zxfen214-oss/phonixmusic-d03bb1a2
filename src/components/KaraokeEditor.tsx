@@ -1116,6 +1116,8 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                     >
                       <WordByWordKaraoke
                         initialLines={lyricsLines}
+                        originalLrcLines={lyricsLines.map(l => ({ ...l, startTime: l.time }))}
+
                         duration={track.duration}
                         currentTime={currentTime}
                         isPlaying={isPlaying}
