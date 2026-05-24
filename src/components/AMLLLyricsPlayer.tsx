@@ -5,6 +5,15 @@ import {
   type LyricLineMouseEvent,
 } from "@applemusic-like-lyrics/core";
 
+export interface PosYSpringKeyframe {
+  time: number; // ms
+  mass: number;
+  damping: number;
+  stiffness: number;
+}
+
+const DEFAULT_POSY_SPRING = { mass: 1, damping: 15, stiffness: 100 };
+
 interface Props {
   lines: LyricLine[];
   currentTime: number;
@@ -14,6 +23,7 @@ interface Props {
   onLineClick?: (timeMs: number, lineIndex: number) => void;
   isMobile?: boolean;
   className?: string;
+  posYSpringKeyframes?: PosYSpringKeyframe[];
 }
 
 const AMLLLyricsPlayer = ({
@@ -25,6 +35,7 @@ const AMLLLyricsPlayer = ({
   onLineClick,
   isMobile = false,
   className,
+  posYSpringKeyframes,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -118,6 +129,36 @@ const AMLLLyricsPlayer = ({
     p.setAlignAnchor("top");
     p.setAlignPosition(isMobile ? 0.10 : 0.20);
   }, [isMobile]);
+
+  // Apply vertical-displacement spring (posY) keyframes. Each keyframe takes
+  // effect once currentTime >= keyframe.time. Sorted ascending by time.
+  const sortedKeyframesRef = useRef<PosYSpringKeyframe[]>([]);
+  const lastAppliedKeyRef = useRef<string>("");
+  useEffect(() => {
+    sortedKeyframesRef.current = (posYSpringKeyframes ?? [])
+      .slice()
+      .sort((a, b) => a.time - b.time);
+    lastAppliedKeyRef.current = ""; // force re-apply
+  }, [posYSpringKeyframes]);
+
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    const kfs = sortedKeyframesRef.current;
+    let active: { mass: number; damping: number; stiffness: number } = DEFAULT_POSY_SPRING;
+    if (kfs.length) {
+      for (const kf of kfs) {
+        if (kf.time <= currentTime) active = kf;
+        else break;
+      }
+    }
+    const key = `${active.mass}|${active.damping}|${active.stiffness}`;
+    if (key !== lastAppliedKeyRef.current) {
+      lastAppliedKeyRef.current = key;
+      p.setLinePosYSpringParams(active);
+    }
+  }, [currentTime, posYSpringKeyframes]);
+
 
   return (
     <div
