@@ -29,6 +29,10 @@ interface Props {
   isMobile?: boolean;
   className?: string;
   posYSpringKeyframes?: PosYSpringKeyframe[];
+  /** Multiplier for the word-swell scale on long-held syllables. 1 = AMLL default. */
+  swellScale?: number;
+  /** Playback-rate multiplier for the word-swell animation. 1 = AMLL default. */
+  swellSpeed?: number;
 }
 
 const AMLLLyricsPlayer = ({
@@ -41,6 +45,8 @@ const AMLLLyricsPlayer = ({
   isMobile = false,
   className,
   posYSpringKeyframes,
+  swellScale = 1,
+  swellSpeed = 1,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<DomLyricPlayer | null>(null);
@@ -180,6 +186,66 @@ const AMLLLyricsPlayer = ({
       p.setLinePosYSpringParams(active);
     }
   }, [currentTime, posYSpringKeyframes]);
+
+  // Word-swell amplifier. AMLL's emphasize ("swell") animation is implemented
+  // via Web Animations attached to the per-character spans of long-held words.
+  // We sweep all live animations under the host and:
+  //   - multiply the scale component of each keyframe's `transform` by
+  //     `swellScale` (composed via an extra ` scale(N)` suffix — applied once,
+  //     guarded by a marker comment so re-applies don't double up).
+  //   - set `animation.playbackRate = swellSpeed` so the swell finishes faster
+  //     or slower without altering AMLL's timing math.
+  // AMLL re-creates these animations on every setLyricLines / DOM resize, so
+  // we re-apply after lines change, after time seeks past a new line, and via
+  // a MutationObserver on the host subtree.
+  const swellScaleRef = useRef(swellScale);
+  const swellSpeedRef = useRef(swellSpeed);
+  swellScaleRef.current = swellScale;
+  swellSpeedRef.current = swellSpeed;
+
+  const applySwell = () => {
+    const root = containerRef.current;
+    if (!root || typeof (root as any).getAnimations !== "function") return;
+    const scale = swellScaleRef.current;
+    const speed = Math.max(0.05, swellSpeedRef.current);
+    const anims = (root as any).getAnimations({ subtree: true }) as Animation[];
+    for (const a of anims) {
+      if (!a.id || !a.id.startsWith("emphasize-word-")) continue;
+      if (a.playbackRate !== speed) a.playbackRate = speed;
+      const effect = a.effect as KeyframeEffect | null;
+      if (!effect || scale === 1) continue;
+      const marker = `/*lvbl-swell:${scale}*/`;
+      const kfs = effect.getKeyframes();
+      let mutated = false;
+      for (const kf of kfs) {
+        const t = (kf as any).transform as string | undefined;
+        if (typeof t !== "string" || t.includes(marker)) continue;
+        // Strip any previous marker before re-applying with new scale
+        const cleaned = t.replace(/\s*scale\([^)]*\)\s*\/\*lvbl-swell:[^*]*\*\//g, "");
+        (kf as any).transform = `${cleaned} scale(${scale}) ${marker}`;
+        mutated = true;
+      }
+      if (mutated) effect.setKeyframes(kfs as any);
+    }
+  };
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    applySwell();
+    const obs = new MutationObserver(() => {
+      // Debounce a microtask; AMLL bulk-mutates during re-renders.
+      queueMicrotask(applySwell);
+    });
+    obs.observe(root, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    applySwell();
+  }, [swellScale, swellSpeed, lines, currentTime]);
+
+
 
 
   return (
