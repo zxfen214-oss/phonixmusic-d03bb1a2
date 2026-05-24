@@ -23,7 +23,7 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
 
   return (
     <nav
-      className="fixed left-3 right-3 z-40 rounded-full border border-white/15 bg-background/40 backdrop-blur-2xl backdrop-saturate-150 shadow-[0_8px_32px_rgba(0,0,0,0.35)] md:hidden"
+      className="fixed left-3 right-3 z-40 rounded-full border border-white/15 bg-transparent backdrop-blur-2xl backdrop-saturate-150 md:hidden"
       style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-center justify-around h-16 px-2">
