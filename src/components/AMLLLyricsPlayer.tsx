@@ -187,21 +187,16 @@ const AMLLLyricsPlayer = ({
     }
   }, [currentTime, posYSpringKeyframes]);
 
-  // Word-swell amplifier. AMLL's emphasize ("swell") animation is implemented
-  // via Web Animations attached to the per-character spans of long-held words.
-  // We sweep all live animations under the host and:
-  //   - multiply the scale component of each keyframe's `transform` by
-  //     `swellScale` (composed via an extra ` scale(N)` suffix — applied once,
-  //     guarded by a marker comment so re-applies don't double up).
-  //   - set `animation.playbackRate = swellSpeed` so the swell finishes faster
-  //     or slower without altering AMLL's timing math.
-  // AMLL re-creates these animations on every setLyricLines / DOM resize, so
-  // we re-apply after lines change, after time seeks past a new line, and via
-  // a MutationObserver on the host subtree.
+  // Word-swell amplifier. `swellSpeed` adjusts playbackRate of AMLL's own
+  // emphasize animation. `swellScale` is layered via a SECONDARY additive
+  // animation (composite: "add") so we never mutate AMLL's keyframes — the
+  // previous keyframe-mutation approach caused words to vanish.
   const swellScaleRef = useRef(swellScale);
   const swellSpeedRef = useRef(swellSpeed);
   swellScaleRef.current = swellScale;
   swellSpeedRef.current = swellSpeed;
+
+  const taggedTargetsRef = useRef<WeakSet<Element>>(new WeakSet());
 
   const applySwell = () => {
     const root = containerRef.current;
@@ -209,23 +204,35 @@ const AMLLLyricsPlayer = ({
     const scale = swellScaleRef.current;
     const speed = Math.max(0.05, swellSpeedRef.current);
     const anims = (root as any).getAnimations({ subtree: true }) as Animation[];
+    const extraScale = Math.max(1, scale) - 1;
     for (const a of anims) {
       if (!a.id || !a.id.startsWith("emphasize-word-")) continue;
-      if (a.playbackRate !== speed) a.playbackRate = speed;
-      const effect = a.effect as KeyframeEffect | null;
-      if (!effect || scale === 1) continue;
-      const marker = `/*lvbl-swell:${scale}*/`;
-      const kfs = effect.getKeyframes();
-      let mutated = false;
-      for (const kf of kfs) {
-        const t = (kf as any).transform as string | undefined;
-        if (typeof t !== "string" || t.includes(marker)) continue;
-        // Strip any previous marker before re-applying with new scale
-        const cleaned = t.replace(/\s*scale\([^)]*\)\s*\/\*lvbl-swell:[^*]*\*\//g, "");
-        (kf as any).transform = `${cleaned} scale(${scale}) ${marker}`;
-        mutated = true;
+      if (a.playbackRate !== speed) {
+        try { a.playbackRate = speed; } catch {}
       }
-      if (mutated) effect.setKeyframes(kfs as any);
+      if (extraScale <= 0) continue;
+      const effect = a.effect as KeyframeEffect | null;
+      const target = (effect?.target ?? null) as Element | null;
+      if (!effect || !target || taggedTargetsRef.current.has(target)) continue;
+      try {
+        const t = effect.getTiming().duration as number;
+        const dur = typeof t === "number" && isFinite(t) ? t : 600;
+        const extra = target.animate(
+          [
+            { transform: "scale(1)" },
+            { transform: `scale(${1 + extraScale})`, offset: 0.5 },
+            { transform: "scale(1)" },
+          ],
+          { duration: dur, easing: "ease-in-out", composite: "add", fill: "none" }
+        );
+        try { extra.playbackRate = speed; } catch {}
+        taggedTargetsRef.current.add(target);
+        const release = () => taggedTargetsRef.current.delete(target);
+        extra.addEventListener("finish", release);
+        extra.addEventListener("cancel", release);
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -233,10 +240,7 @@ const AMLLLyricsPlayer = ({
     const root = containerRef.current;
     if (!root) return;
     applySwell();
-    const obs = new MutationObserver(() => {
-      // Debounce a microtask; AMLL bulk-mutates during re-renders.
-      queueMicrotask(applySwell);
-    });
+    const obs = new MutationObserver(() => queueMicrotask(applySwell));
     obs.observe(root, { childList: true, subtree: true });
     return () => obs.disconnect();
   }, []);
