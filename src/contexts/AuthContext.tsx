@@ -120,35 +120,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Hard safety net: never let the app hang on auth bootstrap.
-    // If we're offline OR Supabase auth refresh stalls, release loading after 2.5s.
-    const offlineFast = typeof navigator !== "undefined" && navigator.onLine === false;
-    const safetyTimer = setTimeout(finish, offlineFast ? 300 : 2500);
+    // If Supabase auth refresh stalls, release loading after 2.5s.
+    const safetyTimer = setTimeout(finish, 2500);
 
-    if (offlineFast && getOfflineSnapshot()) {
+    // Show offline snapshot immediately if one exists — prevents flicker
+    // and prevents the app from getting stuck on a white screen if Supabase
+    // can't be reached at all (offline / DNS / blocked).
+    if (getOfflineSnapshot()) {
       applyOfflineSnapshot();
     }
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
-
         if (session?.user) {
           applyAuthenticatedState(session);
           return;
         }
 
-        // When offline, keep the last known user snapshot instead of treating
-        // auth refresh failures as a real sign-out.
-        if (isOffline && applyOfflineSnapshot()) {
-          return;
-        }
-
-        // Ignore optimistic refresh/sign-out clears while connectivity is shaky.
-        if (isOffline && (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED")) {
-          applyOfflineSnapshot();
-          return;
-        }
+        // Any time the session is missing but we still have a local snapshot,
+        // keep the user signed in locally. Supabase often emits transient
+        // SIGNED_OUT / TOKEN_REFRESHED events when connectivity is shaky;
+        // navigator.onLine is unreliable, so we trust the snapshot instead.
+        // Real sign-outs go through `signOut()` which clears the snapshot
+        // first, so this branch will correctly fall through to clear state.
+        if (applyOfflineSnapshot()) return;
 
         clearAuthenticatedState();
       }
@@ -170,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (applyOfflineSnapshot()) return;
         finish();
       });
+
 
     return () => {
       clearTimeout(safetyTimer);
