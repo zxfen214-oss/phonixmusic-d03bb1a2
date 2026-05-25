@@ -114,18 +114,19 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
 
       {/* Mobile Controls - Simplified */}
       <div className="flex md:hidden items-center gap-1">
-        <button onClick={previousTrack} className="icon-button h-9 w-9">
-          <img src={iconPrev} alt="Previous" className="h-4 w-4 invert dark:invert" />
+        <button onClick={previousTrack} className="icon-button h-9 w-9 text-white">
+          <img src={iconPrev} alt="Previous" className="h-4 w-4 brightness-0 invert" />
         </button>
         <button
           onClick={isPlaying ? pauseTrack : resumeTrack}
-          className="icon-button accent h-11 w-11"
+          className="icon-button h-11 w-11 text-white"
         >
-          <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert dark:invert" />
+          <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 brightness-0 invert" />
         </button>
-        <button onClick={nextTrack} className="icon-button h-9 w-9">
-          <img src={iconNext} alt="Next" className="h-4 w-4 invert dark:invert" />
+        <button onClick={nextTrack} className="icon-button h-9 w-9 text-white">
+          <img src={iconNext} alt="Next" className="h-4 w-4 brightness-0 invert" />
         </button>
+
 
         {/* Playback speed (popover) */}
         <Popover>
@@ -207,29 +208,29 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
           <button
             onClick={toggleShuffle}
             className={cn(
-              "icon-button h-8 w-8",
+              "icon-button h-8 w-8 text-white",
               shuffle && "text-accent"
             )}
           >
             <Shuffle className="h-4 w-4" />
           </button>
-          <button onClick={previousTrack} className="icon-button h-9 w-9">
-            <img src={iconPrev} alt="Previous" className="h-5 w-5 invert dark:invert" />
+          <button onClick={previousTrack} className="icon-button h-9 w-9 text-white">
+            <img src={iconPrev} alt="Previous" className="h-5 w-5 brightness-0 invert" />
           </button>
           <button
             onClick={isPlaying ? pauseTrack : resumeTrack}
             className="icon-button h-10 w-10 text-white hover:text-white"
           >
-            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 invert" />
+            <img src={isPlaying ? iconPause : iconPlay} alt={isPlaying ? "Pause" : "Play"} className="h-5 w-5 brightness-0 invert" />
           </button>
 
-          <button onClick={nextTrack} className="icon-button h-9 w-9">
-            <img src={iconNext} alt="Next" className="h-5 w-5 invert dark:invert" />
+          <button onClick={nextTrack} className="icon-button h-9 w-9 text-white">
+            <img src={iconNext} alt="Next" className="h-5 w-5 brightness-0 invert" />
           </button>
           <button
             onClick={toggleRepeat}
             className={cn(
-              "icon-button h-8 w-8",
+              "icon-button h-8 w-8 text-white",
               repeat !== 'none' && "text-accent"
             )}
           >
@@ -240,6 +241,7 @@ export function PlayerBar({ onOpenLyrics, onOpenMobilePlayer }: PlayerBarProps) 
             )}
           </button>
         </div>
+
 
         {/* Progress */}
         <div className="flex items-center gap-3 w-full">
