@@ -966,27 +966,15 @@ export function KaraokeEditor({ track, isOpen, onClose, onSave }: KaraokeEditorP
                           size="icon"
                           className="h-8 w-8 md:h-9 md:w-9"
                           onClick={() => {
-                            // Seek to 1 second before the active line's start time
+                            // Seek to 1.5 seconds before the active line's start.
+                            // We INTENTIONALLY do NOT wipe existing word timings or
+                            // line markings — replay is for re-listening, not re-recording.
                             const lineTime = lyricsLines[activeLineIndex]?.time ?? 0;
-                            const targetTime = Math.max(0, lineTime - 1);
+                            const targetTime = Math.max(0, lineTime - 1.5);
                             const targetProgress = track.duration > 0 ? (targetTime / track.duration) * 100 : 0;
                             seekTo(targetProgress);
-                            // Reset current line's fill
-                            setLineTimings(prev => {
-                              const updated = [...prev];
-                              if (updated[activeLineIndex]) {
-                                updated[activeLineIndex] = {
-                                  ...updated[activeLineIndex],
-                                  fillProgress: 0,
-                                  capturedStart: false,
-                                  capturedEnd: false,
-                                  wordTimings: updated[activeLineIndex].wordTimings.map(w => ({ ...w, startTime: 0, endTime: 0, captured: false })),
-                                };
-                              }
-                              return updated;
-                            });
                           }}
-                          title="Replay current line (1s before)"
+                          title="Replay current line (1.5s before) — keeps markings"
                         >
                           <RotateCcw className="h-3.5 w-3.5 md:h-4 md:w-4" />
                         </Button>
