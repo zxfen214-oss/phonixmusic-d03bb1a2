@@ -37,9 +37,9 @@
 .amll-lyrics-host {
   /* generous line-height so heavy ascenders/descenders never clip; reduced
      vertical padding to keep lyrics tighter against the container edges. */
-  line-height: 1.55 !important;
-  padding-top: 0.15em;
-  padding-bottom: 0.15em;
+  line-height: 1.18 !important;
+  padding-top: 0em;
+  padding-bottom: 0em;
   /* Soft fade at top/bottom on every device — prevents the hard clip the
      user reported (top/bottom lines getting chopped). */
   -webkit-mask-image: linear-gradient(
@@ -64,7 +64,7 @@
 .amll-lyrics-host span,
 .amll-lyrics-host div {
   overflow: visible !important;
-  line-height: 1.55 !important;
+  line-height: 1.18 !important;
 }
 
 /* Background lines (parenthesized lyrics): hidden by default, fade in only
