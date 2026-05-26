@@ -170,7 +170,7 @@ export default function ApplePlayerControls({
 
       {/* Lossless / Dolby badge — between progress bar and transport */}
       {badge && (
-        <div className="flex items-center justify-center" style={{ marginTop: compact ? 6 : 10, marginBottom: compact ? 2 : 4 }}>
+        <div className="flex items-center justify-center" style={{ marginTop: compact ? 2 : 4, marginBottom: compact ? 10 : 14 }}>
           <LosslessBadge format={badge as "lossless" | "dolby"} />
         </div>
       )}
@@ -178,14 +178,14 @@ export default function ApplePlayerControls({
       {/* Transport */}
       <div
         className="flex items-center justify-center"
-        style={{ gap: compact ? 36 : 44, marginTop: compact ? 6 : 10, marginBottom: compact ? 8 : 12 }}
+        style={{ gap: compact ? 36 : 44, marginTop: compact ? 10 : 14, marginBottom: compact ? 8 : 12 }}
       >
         <button
           onClick={(e) => { e.stopPropagation(); touch(); previousTrack(); }}
           className="p-1 active:scale-90 transition-transform"
           aria-label="Previous"
         >
-          <img src={iconPrev} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
+          <img src={iconPrev} alt="" className={compact ? "h-10 w-10 brightness-0 invert" : "h-12 w-12 brightness-0 invert"} />
         </button>
         <motion.button
           whileTap={{ scale: 0.92 }}
@@ -204,7 +204,7 @@ export default function ApplePlayerControls({
           className="p-1 active:scale-90 transition-transform"
           aria-label="Next"
         >
-          <img src={iconNext} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
+          <img src={iconNext} alt="" className={compact ? "h-10 w-10 brightness-0 invert" : "h-12 w-12 brightness-0 invert"} />
         </button>
       </div>
 
