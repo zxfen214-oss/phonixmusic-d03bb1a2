@@ -1003,6 +1003,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const [mobileControlsVisible, setMobileControlsVisible] = useState(true);
   const mobileControlsTimerRef = useRef<number | null>(null);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  // Static-lyrics toggle removed in favour of auto-fallback. Local visual-only
+  // favourite state — wires up to a future library "starred" flag.
+  const [mobileFavorite, setMobileFavorite] = useState(false);
+  // Brief "settling" window after mount so AMLL renders the first frames in
+  // snap mode (no spring/bounce) even when the user's custom spring is heavy.
+  const [mountSettling, setMountSettling] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setMountSettling(false), 650);
+    return () => window.clearTimeout(id);
+  }, []);
   const [staticLyricsMode, setStaticLyricsMode] = useState(false);
   // Low-end mode removed — always run lyrics/karaoke at full framerate.
   const [staticLyricsText, setStaticLyricsText] = useState("");
@@ -1465,6 +1475,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         initial={{ opacity: 0, scale: 1.02 }}
         animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
+        drag={isMobile ? "y" : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.3}
+        onDragEnd={(_, info) => {
+          if (info.offset.y > 120 || info.velocity.y > 500) handleClose();
+        }}
         className="fixed inset-0 z-50 overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="absolute inset-0" style={{ zIndex: 0, background: '#000' }}>
@@ -1573,35 +1589,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                 style={{ maxWidth: '620px' }}
               >
                 <div className="flex h-full flex-col gap-6 py-10">
-                  <div className="flex items-center gap-2 px-1">
-                    <button
-                      onClick={() => setStaticLyricsMode(!staticLyricsMode)}
-                      className={cn("p-1.5 rounded-md transition-colors", staticLyricsMode ? "bg-white/20 text-white" : "text-white/40 hover:text-white/60")}
-                      title="Static lyrics"
-                    >
-                      <AlignLeft className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {/* Static lyrics toggle removed — static is auto-shown when
+                      no synced LRC/eLRC is available. */}
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                    {staticLyricsMode ? (
+                    {amllLines.length > 0 ? (
+                      <AMLLLyricsPlayer
+                        lines={amllLines}
+                        currentTime={smoothTime * 1000}
+                        isSeek={isSeekFlag}
+                        fontSize={45}
+                        enableBlur={false}
+                        onLineClick={amllSeek}
+                        posYSpringKeyframes={posYSpringKeyframes}
+                        swellScale={swellScale}
+                        swellSpeed={swellSpeed}
+                        className="h-full w-full"
+                      />
+                    ) : staticLyricsText.trim() ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                     ) : (
-                      amllLines.length > 0 ? (
-                        <AMLLLyricsPlayer
-                          lines={amllLines}
-                          currentTime={smoothTime * 1000}
-                          isSeek={isSeekFlag}
-                          fontSize={45}
-                          enableBlur={false}
-                          onLineClick={amllSeek}
-                          posYSpringKeyframes={posYSpringKeyframes}
-                          swellScale={swellScale}
-                          swellSpeed={swellSpeed}
-                          className="h-full w-full"
-                        />
-                      ) : (
-                        <LyricsContent {...lyricsContentProps} isMobile={false} />
-                      )
+                      <LyricsContent {...lyricsContentProps} isMobile={false} />
                     )}
                   </div>
                 </div>
@@ -1632,25 +1639,35 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </p>
             </div>
 
+            {/* Favourite heart (replaces former Static-lyrics toggle slot) */}
             <button
               className={cn(
                 "flex items-center justify-center flex-shrink-0 rounded-full transition-colors",
-                staticLyricsMode ? "bg-white/25" : "hover:bg-white/20"
+                mobileFavorite ? "bg-white/25" : "hover:bg-white/20"
               )}
-              style={{ width: '36px', height: '36px', background: staticLyricsMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
-              onClick={(e) => { e.stopPropagation(); setStaticLyricsMode(!staticLyricsMode); }}
-              title="Static lyrics"
+              style={{ width: '36px', height: '36px', background: mobileFavorite ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)' }}
+              onClick={(e) => { e.stopPropagation(); setMobileFavorite(v => !v); }}
+              title={mobileFavorite ? "Unfavourite" : "Favourite"}
             >
-              <AlignLeft className="text-white" style={{ width: '16px', height: '16px' }} />
+              <Heart
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  color: '#fff',
+                  fill: mobileFavorite ? '#fff' : 'transparent',
+                }}
+              />
             </button>
 
 
+            {/* 3-dot menu (replaces former close X). Swipe down to close. */}
             <button
-              onClick={(e) => { e.stopPropagation(); handleClose(); }}
+              onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); }}
               className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
               style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
+              title="More — swipe down to close"
             >
-              <X className="text-white" style={{ width: '18px', height: '18px' }} />
+              <MoreHorizontal className="text-white" style={{ width: '18px', height: '18px' }} />
             </button>
           </div>
 
@@ -1658,29 +1675,26 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <div
               ref={lyricsContainerRef}
               className="relative flex-1 min-h-0"
-              style={{ overflow: staticLyricsMode ? 'auto' : 'hidden' }}
+              style={{ overflow: 'hidden' }}
             >
-              {staticLyricsMode ? (
+              {amllLines.length > 0 ? (
+                <AMLLLyricsPlayer
+                  lines={amllLines}
+                  currentTime={smoothTime * 1000}
+                  isSeek={isSeekFlag || mountSettling}
+                  fontSize={36}
+                  enableBlur={false}
+                  onLineClick={amllSeek}
+                  isMobile
+                  posYSpringKeyframes={posYSpringKeyframes}
+                  swellScale={swellScale}
+                  swellSpeed={swellSpeed}
+                  className="h-full w-full"
+                />
+              ) : staticLyricsText.trim() ? (
                 <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
-                amllLines.length > 0 ? (
-                  <AMLLLyricsPlayer
-                    lines={amllLines}
-                    currentTime={smoothTime * 1000}
-                    isSeek={isSeekFlag}
-                    fontSize={36}
-                    enableBlur={false}
-                    
-                    onLineClick={amllSeek}
-                    isMobile
-                    posYSpringKeyframes={posYSpringKeyframes}
-                          swellScale={swellScale}
-                          swellSpeed={swellSpeed}
-                    className="h-full w-full"
-                  />
-                ) : (
-                  <LyricsContent {...lyricsContentProps} isMobile />
-                )
+                <LyricsContent {...lyricsContentProps} isMobile />
               )}
             </div>
           </div>
@@ -1727,6 +1741,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
               <ApplePlayerControls
+                hideTitle
                 onInteract={resetMobileControlsTimer}
                 onMore={() => currentTrack && setShowPlaylistDialog(true)}
               />
