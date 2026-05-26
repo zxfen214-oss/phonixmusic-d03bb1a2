@@ -344,14 +344,36 @@ const captureWordStart = useCallback(() => {
       setActiveWord(-1);
     }
   }, [phase, activeLine, lines.length]);
-  const jumpBeforeCurrentLine = useCallback(() => {
+const jumpBeforeCurrentLine = useCallback(() => {
   const lineIndex = activeLine === -1 ? 0 : activeLine;
 
   const lrcLine = originalLrcLines[lineIndex];
-
   if (!lrcLine) return;
 
-  // 1.5s before line
+  // Reset timings for THIS line
+  setTimings((prev) => {
+    const next = prev.map((row) => row.slice());
+
+    if (next[lineIndex]) {
+      next[lineIndex] = next[lineIndex].map(() => ({
+        start: -1,
+        end: -1,
+      }));
+    }
+
+    return next;
+  });
+
+  // Remove history events for this line
+  setHistory((prev) =>
+    prev.filter((e) => e.lineIndex !== lineIndex)
+  );
+
+  // Reset cursor to beginning of this line
+  setActiveLine(lineIndex);
+  setActiveWord(-1);
+
+  // Seek 1.5s before line
   const targetTime = Math.max(0, lrcLine.startTime - 1.5);
 
   const percent = (targetTime / duration) * 100;
