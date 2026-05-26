@@ -1533,9 +1533,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
-                <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                  <Heart className="h-5 w-5 text-white/60" />
-                </button>
                 <button
                   onClick={() => currentTrack && setShowPlaylistDialog(true)}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
