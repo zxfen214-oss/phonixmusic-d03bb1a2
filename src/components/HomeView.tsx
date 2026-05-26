@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/lib/offlineCache";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { toast } from "sonner";
+import { useDominantColors } from "@/hooks/useDominantColor";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
@@ -96,7 +97,69 @@ function TrialBanner({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
+function EqualizerBars({ active, color }: { active: boolean; color: string }) {
+  return (
+    <div className="flex items-end gap-[3px] h-5">
+      {[0, 1, 2, 3].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] rounded-full"
+          style={{ background: color, transformOrigin: 'bottom' }}
+          animate={
+            active
+              ? { scaleY: [0.3, 1, 0.5, 0.9, 0.4], opacity: 1 }
+              : { scaleY: 0.3, opacity: 0.5 }
+          }
+          transition={
+            active
+              ? { duration: 0.9 + i * 0.15, repeat: Infinity, ease: 'easeInOut', delay: i * 0.08 }
+              : { duration: 0.3 }
+          }
+          initial={{ scaleY: 0.3 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Waveform({ color }: { color: string }) {
+  // Decorative SVG waveform that sits behind text
+  const bars = Array.from({ length: 42 });
+  return (
+    <svg
+      viewBox="0 0 420 60"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ opacity: 0.18 }}
+    >
+      {bars.map((_, i) => {
+        const h = 8 + Math.abs(Math.sin(i * 0.7) * 22) + Math.abs(Math.cos(i * 1.3) * 10);
+        const y = 30 - h / 2;
+        return (
+          <rect
+            key={i}
+            x={i * 10}
+            y={y}
+            width={4}
+            height={h}
+            rx={2}
+            fill={color}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (track: Track, all: Track[]) => void; allTracks: Track[] }) {
+  const { currentTrack, isPlaying } = usePlayer();
+  const { palette, primary } = useDominantColors(track.artwork);
+  const isCurrent = currentTrack?.id === track.id && isPlaying;
+
+  const c1 = palette[0] || primary || 'hsl(260 60% 30%)';
+  const c2 = palette[1] || 'hsl(300 50% 25%)';
+  const c3 = palette[2] || 'hsl(220 70% 25%)';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -104,38 +167,74 @@ function TopSongBanner({ track, onPlay, allTracks }: { track: Track; onPlay: (tr
       transition={{ duration: 0.5, delay: 0.1 }}
       className="relative overflow-hidden rounded-2xl cursor-pointer group"
       onClick={() => onPlay(track, allTracks)}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      whileHover={{ scale: 1.015 }}
+      whileTap={{ scale: 0.985 }}
       style={{
-        background: "linear-gradient(135deg, hsl(220 70% 25%) 0%, hsl(260 60% 30%) 50%, hsl(300 50% 25%) 100%)",
+        background: `linear-gradient(135deg, ${c3} 0%, ${c1} 50%, ${c2} 100%)`,
+        boxShadow: `0 18px 50px -12px ${c1}80, 0 0 0 1px rgba(255,255,255,0.06) inset`,
+        transition: 'background 600ms ease',
       }}
     >
-      <div className="flex items-center gap-4 p-4 md:p-6">
-        <div className="relative h-20 w-20 md:h-24 md:w-24 flex-shrink-0 overflow-hidden rounded-xl shadow-lg">
-          <img
-            src={track.artwork || "/placeholder.svg"}
-            alt={track.title}
-            className="object-cover object-center h-full w-full"
+      {/* Color blur orbs derived from album */}
+      <div
+        className="absolute -top-16 -left-10 w-56 h-56 rounded-full pointer-events-none"
+        style={{ background: c1, filter: 'blur(60px)', opacity: 0.55 }}
+      />
+      <div
+        className="absolute -bottom-20 right-0 w-64 h-64 rounded-full pointer-events-none"
+        style={{ background: c2, filter: 'blur(70px)', opacity: 0.5 }}
+      />
+
+      {/* Waveform behind text */}
+      <Waveform color="#ffffff" />
+
+      <div className="relative flex items-center gap-4 p-4 md:p-6">
+        <div className="relative flex-shrink-0">
+          {/* Hover glow ring around album art */}
+          <div
+            className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, ${c1}cc, transparent 70%)`,
+              filter: 'blur(18px)',
+            }}
           />
-          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Play className="h-8 w-8 text-white ml-0.5" />
-          </div>
+          <motion.div
+            className="relative h-20 w-20 md:h-24 md:w-24 overflow-hidden rounded-xl shadow-2xl"
+            animate={isCurrent ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+            transition={isCurrent ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+          >
+            <img
+              src={track.artwork || "/placeholder.svg"}
+              alt={track.title}
+              className="object-cover object-center h-full w-full"
+            />
+            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Play className="h-8 w-8 text-white ml-0.5" />
+            </div>
+          </motion.div>
         </div>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="h-4 w-4 text-yellow-400" />
             <span className="text-yellow-400 text-xs font-semibold uppercase tracking-wider">#1 Most Played</span>
+            <div className="ml-1">
+              <EqualizerBars active={isCurrent} color="#facc15" />
+            </div>
           </div>
-          <h3 className="text-white text-lg md:text-xl font-bold truncate">{track.title}</h3>
-          <p className="text-white/60 text-sm truncate">{track.artist}</p>
+          <h3 className="text-white text-lg md:text-xl font-bold truncate drop-shadow-md">{track.title}</h3>
+          <p className="text-white/70 text-sm truncate">{track.artist}</p>
         </div>
+
         <motion.button
-          className="h-12 w-12 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors flex-shrink-0"
+          className="h-12 w-12 rounded-full bg-white/20 hover:bg-white flex items-center justify-center flex-shrink-0 backdrop-blur-md transition-colors group/btn"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          style={{ boxShadow: `0 8px 24px -6px ${c1}aa` }}
         >
-          <Play className="h-5 w-5 text-white ml-0.5" />
+          <Play className="h-5 w-5 text-white group-hover/btn:text-black ml-0.5 transition-colors" />
         </motion.button>
       </div>
-      
     </motion.div>
   );
 }
