@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { Volume2, List } from "lucide-react";
 import { motion, AnimatePresence, useMotionValue, PanInfo } from "framer-motion";
@@ -26,6 +26,17 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
   // Preload icons on mount and artwork when track changes
   useEffect(() => { preloadPlayerIcons(); }, []);
   useEffect(() => { preloadArtwork(currentTrack?.artwork); }, [currentTrack?.artwork]);
+
+  // Defer mounting the heavy LyricsBackground (MeshGradient) until AFTER the
+  // open slide animation finishes — mounting it synchronously was the main
+  // cause of the open-stutter the user reported.
+  const [bgMounted, setBgMounted] = useState(false);
+  useEffect(() => {
+    if (!isOpen) { setBgMounted(false); return; }
+    const id = window.setTimeout(() => setBgMounted(true), 320);
+    return () => window.clearTimeout(id);
+  }, [isOpen]);
+
 
   // Swipe-down to close
   const dragY = useMotionValue(0);
@@ -62,7 +73,7 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
         >
           {/* AMLL MeshGradient background — matches the lyrics tab */}
           <div className="absolute inset-0 z-0" style={{ background: '#000' }}>
-            <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />
+            {bgMounted && <LyricsBackground albumSrc={currentTrack.artwork} flowSpeed={2} />}
           </div>
 
           {/* Content */}
