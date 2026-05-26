@@ -1472,12 +1472,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, scale: 1.02 }}
-        animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        initial={{ opacity: 0, scale: 1.02, y: 0 }}
+        animate={{
+          opacity: isClosing ? 0 : 1,
+          scale: isClosing ? 1 : 1,
+          y: isClosing ? (typeof window !== 'undefined' ? window.innerHeight : 800) : 0,
+        }}
+        transition={{ duration: isClosing ? 0.35 : 0.3, ease: isClosing ? [0.32, 0.72, 0, 1] : "easeOut" }}
         drag={isMobile ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.3}
+        dragElastic={{ top: 0, bottom: 0.6 }}
         onDragEnd={(_, info) => {
           if (info.offset.y > 120 || info.velocity.y > 500) handleClose();
         }}
@@ -1615,9 +1619,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         </div>
 
         <div className="relative h-full flex flex-col md:hidden z-10">
+          {/* Drag handle — grey rounded bar at top */}
+          <div className="flex justify-center flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 2 }}>
+            <div
+              style={{
+                width: 40,
+                height: 5,
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.32)',
+              }}
+            />
+          </div>
           <div
             className="flex items-center gap-3 flex-shrink-0"
-            style={{ padding: '32px 24px 10px 24px' }}
+            style={{ padding: '14px 24px 10px 24px' }}
           >
             <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
               <img
