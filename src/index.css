@@ -35,11 +35,27 @@
   letter-spacing: -0.01em;
 }
 .amll-lyrics-host {
-  /* generous line-height + padding so heavy ascenders/descenders never clip,
-     even at the larger font sizes we now use. */
-  line-height: 1.6 !important;
-  padding-top: 0.5em;
-  padding-bottom: 0.5em;
+  /* generous line-height so heavy ascenders/descenders never clip; reduced
+     vertical padding to keep lyrics tighter against the container edges. */
+  line-height: 1.55 !important;
+  padding-top: 0.15em;
+  padding-bottom: 0.15em;
+  /* Soft fade at top/bottom on every device — prevents the hard clip the
+     user reported (top/bottom lines getting chopped). */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 9%,
+    black 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 9%,
+    black 88%,
+    transparent 100%
+  );
 }
 .amll-lyrics-host > div,
 .amll-lyrics-host [class*="lyricMainLine"],
@@ -47,46 +63,38 @@
 .amll-lyrics-host [class*="lyricBgLine"],
 .amll-lyrics-host span,
 .amll-lyrics-host div {
-  /* AMLL's internal containers — give children breathing room so
-     letter ascenders/descenders never get clipped by overflow:hidden
-     applied to the karaoke gradient masks. */
   overflow: visible !important;
-  line-height: 1.6 !important;
+  line-height: 1.55 !important;
 }
 
 /* Background lines (parenthesized lyrics): hidden by default, fade in only
-   when the parent line is the currently active one. We DO NOT override
-   AMLL's own transform/position/margin — those drive layout and clobbering
-   them makes the bg line render in the wrong place (overlapping neighbors).
-   AMLL hashes its class names (FmKaba_lyricBgLine, FmKaba_active, etc.) so
-   we match by substring. */
+   when the parent line is the currently active one. */
 .amll-lyrics-host [class*="lyricBgLine"] {
   opacity: 0 !important;
   transition: opacity 280ms ease-out;
   pointer-events: none;
 }
-/* When the bg line itself becomes active (its parent main line is active),
-   AMLL adds the _active class to it. Show it then. */
 .amll-lyrics-host [class*="lyricBgLine"][class*="_active"] {
   opacity: 0.55 !important;
 }
 
-/* Mobile: shift main lyric up + soft fade-out at top/bottom (no hard cut) */
+/* Mobile: stronger top fade-out and deeper bottom fade so the controls
+   gradient blends cleanly with the lyric area. */
 @media (max-width: 767px) {
   .amll-lyrics-host-mobile {
     -webkit-mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 8%,
-      black 70%,
-      transparent 96%
+      black 10%,
+      black 72%,
+      transparent 98%
     );
     mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 8%,
-      black 70%,
-      transparent 96%
+      black 10%,
+      black 72%,
+      transparent 98%
     );
   }
 }
