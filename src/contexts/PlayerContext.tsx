@@ -68,6 +68,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Always-current repeat mode for use inside onended/onStateChange callbacks
   const repeatRef = useRef<'none' | 'one' | 'all'>('none');
   useEffect(() => { repeatRef.current = state.repeat; }, [state.repeat]);
+  // Ref to the latest nextTrack callback so audio onended handlers (created
+  // inside loadLocalAudio / loadCachedOrRemoteAudio) always advance using
+  // the up-to-date queue + repeat logic. Without this the previous version
+  // only updated `currentTrack` in state but never loaded the next audio
+  // source, so playback stopped when a song ended in the background.
+  const playNextRef = useRef<() => void>(() => {});
 
 
   // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
@@ -229,24 +235,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                   } catch {}
                   return;
                 }
-                setState(prev => {
-                  const nextIndex = prev.queueIndex + 1;
-                  if (nextIndex < prev.queue.length) {
-                    const nextTrack = prev.queue[nextIndex];
-                    if (nextTrack.source === 'youtube' && nextTrack.youtubeId) {
-                      setTimeout(() => loadYouTubeVideo(nextTrack.youtubeId!), 100);
-                    }
-                    return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
-                  }
-                  if (repeatRef.current === 'all' && prev.queue.length > 0) {
-                    const first = prev.queue[0];
-                    if (first.source === 'youtube' && first.youtubeId) {
-                      setTimeout(() => loadYouTubeVideo(first.youtubeId!), 100);
-                    }
-                    return { ...prev, currentTrack: first, queueIndex: 0, progress: 0 };
-                  }
-                  return { ...prev, isPlaying: false };
-                });
+                // Defer to shared nextTrack() (queue advance + repeat=all).
+                playNextRef.current();
               }
             },
             onError: (event: any) => {
@@ -283,7 +273,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.playbackRate = playbackRate;
       
       audio.onended = () => {
-        // Repeat current track
+        // Repeat-one: restart same track.
         if (repeatRef.current === 'one' && audioRef.current) {
           try {
             audioRef.current.currentTime = 0;
@@ -291,18 +281,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           } catch {}
           return;
         }
-        setState(prev => {
-          const nextIndex = prev.queueIndex + 1;
-          if (nextIndex < prev.queue.length) {
-            const nextTrack = prev.queue[nextIndex];
-            return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
-          }
-          // End of queue: loop back if repeat=all
-          if (repeatRef.current === 'all' && prev.queue.length > 0) {
-            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
-          }
-          return { ...prev, isPlaying: false };
-        });
+        // Defer to the shared nextTrack() — it advances queue, loads the
+        // next audio source, and handles repeat=all wrap-around.
+        playNextRef.current();
       };
 
       audioRef.current = audio;
@@ -373,17 +354,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           } catch {}
           return;
         }
-        setState(prev => {
-          const nextIndex = prev.queueIndex + 1;
-          if (nextIndex < prev.queue.length) {
-            const nextTrack = prev.queue[nextIndex];
-            return { ...prev, currentTrack: nextTrack, queueIndex: nextIndex, progress: 0 };
-          }
-          if (repeatRef.current === 'all' && prev.queue.length > 0) {
-            return { ...prev, currentTrack: prev.queue[0], queueIndex: 0, progress: 0 };
-          }
-          return { ...prev, isPlaying: false };
-        });
+        playNextRef.current();
       };
 
       audioRef.current = audio;
@@ -493,6 +464,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
     });
   }, [loadYouTubeVideo, loadLocalAudio, loadCachedOrRemoteAudio, stopCurrentSource]);
+
+  // Keep the ref pointing at the latest nextTrack so onended (defined inside
+  // the audio loaders) can advance reliably even after re-renders.
+  useEffect(() => { playNextRef.current = nextTrack; }, [nextTrack]);
+
 
   const previousTrack = useCallback(() => {
     setState(prev => {
