@@ -32,6 +32,7 @@ import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import { LosslessBadge } from "@/components/LosslessBadge";
 import ApplePlayerControls from "@/components/ApplePlayerControls";
+import { LyricsMoreMenu } from "@/components/LyricsMoreMenu";
 
 import React from "react";
 
@@ -1432,6 +1433,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
 
+  // Plain-text version for "View Lyrics" menu item.
+  const plainLyricsText = useMemo(() => {
+    if (staticLyricsText.trim()) return staticLyricsText;
+    if (amllLines.length > 0) return amllLines.map((l: any) => l.words?.map((w: any) => w.word).join("") ?? "").join("\n");
+    return "";
+  }, [staticLyricsText, amllLines]);
+
   // Auto-collapse the desktop lyrics panel (so artwork centers) when
   // the current track has no lyrics at all.
   useEffect(() => {
@@ -1472,16 +1480,12 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, scale: 1.02, y: 0 }}
-        animate={{
-          opacity: isClosing ? 0 : 1,
-          scale: isClosing ? 1 : 1,
-          y: isClosing ? (typeof window !== 'undefined' ? window.innerHeight : 800) : 0,
-        }}
-        transition={{ duration: isClosing ? 0.35 : 0.3, ease: isClosing ? [0.32, 0.72, 0, 1] : "easeOut" }}
+        initial={{ opacity: 0, scale: 1.02 }}
+        animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         drag={isMobile ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.6 }}
+        dragElastic={0.3}
         onDragEnd={(_, info) => {
           if (info.offset.y > 120 || info.velocity.y > 500) handleClose();
         }}
@@ -1532,11 +1536,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <div style={{ marginTop: '22px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <ApplePlayerControls
                   compact
-                  onMore={() => currentTrack && setShowPlaylistDialog(true)}
+                  renderMore={() => (
+                    <LyricsMoreMenu
+                      track={currentTrack}
+                      lyricsText={plainLyricsText}
+                      buttonClassName="rounded-full flex items-center justify-center transition-colors"
+                      buttonStyle={{ width: 34, height: 34, backdropFilter: 'blur(10px)' }}
+                      iconStyle={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }}
+                    />
+                  )}
                 />
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
+                <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <Heart className="h-5 w-5 text-white/60" />
+                </button>
                 <button
                   onClick={() => currentTrack && setShowPlaylistDialog(true)}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -1619,20 +1634,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         </div>
 
         <div className="relative h-full flex flex-col md:hidden z-10">
-          {/* Drag handle — grey rounded bar at top */}
-          <div className="flex justify-center flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 2 }}>
-            <div
-              style={{
-                width: 40,
-                height: 5,
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.32)',
-              }}
-            />
-          </div>
           <div
             className="flex items-center gap-3 flex-shrink-0"
-            style={{ padding: '14px 24px 10px 24px' }}
+            style={{ padding: '32px 24px 10px 24px' }}
           >
             <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
               <img
@@ -1673,14 +1677,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
 
             {/* 3-dot menu (replaces former close X). Swipe down to close. */}
-            <button
-              onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); }}
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              title="More — swipe down to close"
-            >
-              <MoreHorizontal className="text-white" style={{ width: '18px', height: '18px' }} />
-            </button>
+            <LyricsMoreMenu
+              track={currentTrack}
+              lyricsText={plainLyricsText}
+              buttonClassName="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+              buttonStyle={{ width: '36px', height: '36px' }}
+              iconStyle={{ width: '18px', height: '18px' }}
+            />
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
