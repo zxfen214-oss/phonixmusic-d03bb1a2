@@ -22,6 +22,8 @@ interface Props {
   hideTitle?: boolean;
   /** Optional click handler for the "more" (…) button. */
   onMore?: () => void;
+  /** Optional custom render for the More button (replaces default). */
+  renderMore?: () => React.ReactNode;
   /** Optional click handler for the star (favorite) button. */
   onFavorite?: () => void;
   /** Whether favorite is currently on. */
@@ -39,6 +41,7 @@ interface Props {
 export default function ApplePlayerControls({
   hideTitle = false,
   onMore,
+  renderMore,
   onFavorite,
   isFavorite = false,
   onInteract,
@@ -115,18 +118,22 @@ export default function ApplePlayerControls({
                 }}
               />
             </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); touch(); onMore?.(); }}
-              className="rounded-full flex items-center justify-center transition-colors"
-              style={{
-                width: 34, height: 34,
-                background: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(10px)",
-              }}
-              aria-label="More"
-            >
-              <MoreHorizontal className="h-4 w-4" style={{ color: "rgba(255,255,255,0.85)" }} />
-            </button>
+            {renderMore ? (
+              renderMore()
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); touch(); onMore?.(); }}
+                className="rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  width: 34, height: 34,
+                  background: "rgba(255,255,255,0.12)",
+                  backdropFilter: "blur(10px)",
+                }}
+                aria-label="More"
+              >
+                <MoreHorizontal className="h-4 w-4" style={{ color: "rgba(255,255,255,0.85)" }} />
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -170,7 +177,7 @@ export default function ApplePlayerControls({
 
       {/* Lossless / Dolby badge — between progress bar and transport */}
       {badge && (
-        <div className="flex items-center justify-center" style={{ marginTop: 0, marginBottom: 0 }}>
+        <div className="flex items-center justify-center" style={{ marginTop: compact ? 6 : 10, marginBottom: compact ? 2 : 4 }}>
           <LosslessBadge format={badge as "lossless" | "dolby"} />
         </div>
       )}
@@ -178,14 +185,14 @@ export default function ApplePlayerControls({
       {/* Transport */}
       <div
         className="flex items-center justify-center"
-        style={{ gap: compact ? 36 : 44, marginTop: compact ? 24 : 30, marginBottom: compact ? 22 : 26 }}
+        style={{ gap: compact ? 36 : 44, marginTop: compact ? 6 : 10, marginBottom: compact ? 8 : 12 }}
       >
         <button
           onClick={(e) => { e.stopPropagation(); touch(); previousTrack(); }}
           className="p-1 active:scale-90 transition-transform"
           aria-label="Previous"
         >
-          <img src={iconPrev} alt="" className={compact ? "h-10 w-10 brightness-0 invert" : "h-12 w-12 brightness-0 invert"} />
+          <img src={iconPrev} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
         </button>
         <motion.button
           whileTap={{ scale: 0.92 }}
@@ -204,7 +211,7 @@ export default function ApplePlayerControls({
           className="p-1 active:scale-90 transition-transform"
           aria-label="Next"
         >
-          <img src={iconNext} alt="" className={compact ? "h-10 w-10 brightness-0 invert" : "h-12 w-12 brightness-0 invert"} />
+          <img src={iconNext} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
         </button>
       </div>
 
