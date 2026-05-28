@@ -175,17 +175,10 @@ export default function ApplePlayerControls({
         </div>
       </div>
 
-      {/* Lossless / Dolby badge — between progress bar and transport */}
-      {badge && (
-        <div className="flex items-center justify-center" style={{ marginTop: compact ? 6 : 10, marginBottom: compact ? 2 : 4 }}>
-          <LosslessBadge format={badge as "lossless" | "dolby"} />
-        </div>
-      )}
-
       {/* Transport */}
       <div
-        className="flex items-center justify-center"
-        style={{ gap: compact ? 36 : 44, marginTop: compact ? 6 : 10, marginBottom: compact ? 8 : 12 }}
+        className="relative flex items-center justify-center"
+        style={{ gap: compact ? 36 : 44, marginTop: compact ? 14 : 18, marginBottom: compact ? 8 : 10 }}
       >
         <button
           onClick={(e) => { e.stopPropagation(); touch(); previousTrack(); }}
@@ -214,6 +207,17 @@ export default function ApplePlayerControls({
           <img src={iconNext} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
         </button>
       </div>
+
+      {/* Lossless / Dolby badge — sits just below the playback controls */}
+      {badge && (
+        <div
+          className="flex justify-center"
+          style={{ marginBottom: compact ? 10 : 14 }}
+        >
+          <LosslessBadge format={badge as "lossless" | "dolby"} />
+        </div>
+      )}
+
 
 
       {/* Volume */}
