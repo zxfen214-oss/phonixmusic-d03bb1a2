@@ -5,6 +5,8 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMergedSongRecord } from "@/lib/songRecords";
+import { applyEightDToAudio } from "@/lib/eightDEffect";
+import { getEightDEnabled, onEightDChange } from "@/lib/eightDStore";
 
 declare global {
   interface Window {
@@ -287,6 +289,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
+      getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
       await audio.play();
       setState(prev => ({ ...prev, isPlaying: true }));
     }
@@ -359,6 +362,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       audioRef.current = audio;
       setIsLossless(true);
+      getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
       try { await audio.play(); } catch (e) { console.warn("audio.play failed:", e); }
       // Re-check token after async play
       if (token !== undefined && token !== loadTokenRef.current) {
@@ -468,6 +472,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Keep the ref pointing at the latest nextTrack so onended (defined inside
   // the audio loaders) can advance reliably even after re-renders.
   useEffect(() => { playNextRef.current = nextTrack; }, [nextTrack]);
+
+  // Live-apply 8D / "Lossless Effect" toggle for the currently playing track.
+  useEffect(() => {
+    return onEightDChange(({ trackId, enabled }) => {
+      if (state.currentTrack?.id === trackId && audioRef.current) {
+        applyEightDToAudio(audioRef.current, enabled);
+      }
+    });
+  }, [state.currentTrack?.id]);
 
 
   const previousTrack = useCallback(() => {
