@@ -1,12 +1,13 @@
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff, FileDown, Disc3 } from "lucide-react";
+import { Play, Pause, MoreHorizontal, Youtube, Pencil, Trash2, Shield, MessageSquare, ListPlus, WifiOff, FileDown, Disc3, Orbit, Check } from "lucide-react";
 import { useView } from "@/contexts/ViewContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getEightDEnabled, setEightDEnabled, onEightDChange } from "@/lib/eightDStore";
 import { MetadataEditor } from "./MetadataEditor";
 import { AdminSongEditor } from "./AdminSongEditor";
 import { RequestAdminDialog } from "./RequestAdminDialog";
@@ -14,6 +15,7 @@ import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { DownloadButton } from "./DownloadButton";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { motion } from "framer-motion";
+import { buildELrc, safeFilename, downloadELrcFile } from "@/lib/elrc";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +46,22 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const [showAdminEditor, setShowAdminEditor] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const [eightD, setEightD] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getEightDEnabled(track.id).then(v => { if (alive) setEightD(v); }).catch(() => {});
+    const off = onEightDChange(({ trackId, enabled }) => {
+      if (trackId === track.id) setEightD(enabled);
+    });
+    return () => { alive = false; off(); };
+  }, [track.id]);
+
+  const toggleEightD = async () => {
+    const next = !eightD;
+    setEightD(next);
+    await setEightDEnabled(track.id, next);
+  };
   
   const isCurrentTrack = currentTrack?.id === track.id;
   const isCurrentlyPlaying = isCurrentTrack && isPlaying;
@@ -243,6 +261,13 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
             <DropdownMenuItem onClick={handleDownloadELrc}>
               <FileDown className="h-4 w-4 mr-2" />
               Download eLRC Lyrics
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggleEightD(); }}>
+              <Orbit className="h-4 w-4 mr-2" />
+              <span className="flex-1">Lossless Effect</span>
+              {eightD && <Check className="h-4 w-4 text-accent" />}
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
