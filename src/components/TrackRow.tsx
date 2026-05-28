@@ -15,7 +15,7 @@ import { AddToPlaylistDialog } from "./AddToPlaylistDialog";
 import { DownloadButton } from "./DownloadButton";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { motion } from "framer-motion";
-import { buildELrc, safeFilename, downloadELrcFile } from "@/lib/elrc";
+import { buildELrc, safeFilename, downloadELrcFile } from "@/lib/exportELrc";
 import {
   DropdownMenu,
   DropdownMenuContent,
