@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef } from "react";
+import "@applemusic-like-lyrics/core/style.css";
 import {
   DomLyricPlayer,
   type LyricLine,
@@ -207,12 +208,15 @@ const AMLLLyricsPlayer = ({
     const extraScale = Math.max(1, scale) - 1;
     for (const a of anims) {
       if (!a.id || !a.id.startsWith("emphasize-word-")) continue;
+      const effect = a.effect as KeyframeEffect | null;
+      const target = (effect?.target ?? null) as Element | null;
+      // Skip background lyric lines entirely — no swell scale or speed change
+      // on (parenthesized) backing vocals.
+      if (target && target.closest('[class*="_lyricBgLine"]')) continue;
       if (a.playbackRate !== speed) {
         try { a.playbackRate = speed; } catch {}
       }
       if (extraScale <= 0) continue;
-      const effect = a.effect as KeyframeEffect | null;
-      const target = (effect?.target ?? null) as Element | null;
       if (!effect || !target || taggedTargetsRef.current.has(target)) continue;
       try {
         const t = effect.getTiming().duration as number;
