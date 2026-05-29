@@ -120,23 +120,28 @@ export default function ApplePlayerControls({
               />
             </button>
             {renderMore ? (
-              renderMore()
-            ) : (
-                {renderMore ? (
-              renderMore()
-            ) : (
-              <button
-                onClick={(e) => { e.stopPropagation(); touch(); onMore?.(); }}
-                className="rounded-full flex items-center justify-center transition-colors"
-                style={{
-                  width: 34, height: 34,
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(10px)",
-                }}
-                aria-label="More"
-              >
-                <MoreHorizontal className="h-4 w-4" style={{ color: "rgba(255,255,255,0.85)" }} />
-              </button>
+  renderMore()
+) : (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      touch();
+      onMore?.();
+    }}
+    className="rounded-full flex items-center justify-center transition-colors"
+    style={{
+      width: 34,
+      height: 34,
+      background: "rgba(255,255,255,0.12)",
+      backdropFilter: "blur(10px)",
+    }}
+    aria-label="More"
+  >
+    <MoreHorizontal
+      className="h-4 w-4"
+      style={{ color: "rgba(255,255,255,0.85)" }}
+    />
+  </button>
             )}
           </div>
         </div>
