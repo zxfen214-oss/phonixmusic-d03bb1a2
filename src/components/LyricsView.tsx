@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
+import { LyricsMoreMenu } from "@/components/LyricsMoreMenu";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
 import { normalizeLyricsText } from "@/lib/ttml";
@@ -1434,6 +1435,14 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
 
+                                                            // Plain-text version for "View Lyrics" menu item.
+  const plainLyricsText = useMemo(() => {
+    if (staticLyricsText.trim()) return staticLyricsText;
+    if (amllLines.length > 0) return amllLines.map((l: any) => l.words?.map((w: any) => w.word).join("") ?? "").join("\n");
+    return "";
+  }, [staticLyricsText, amllLines]);
+
+
   // Auto-collapse the desktop lyrics panel (so artwork centers) when
   // the current track has no lyrics at all.
   useEffect(() => {
@@ -1534,7 +1543,15 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <div style={{ marginTop: '22px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <ApplePlayerControls
                   compact
-                  onMore={() => currentTrack && setShowPlaylistDialog(true)}
+                    renderMore={() => (
+                    <LyricsMoreMenu
+                      track={currentTrack}
+                      lyricsText={plainLyricsText}
+                      buttonClassName="rounded-full flex items-center justify-center transition-colors"
+                      buttonStyle={{ width: 34, height: 34, backdropFilter: 'blur(10px)' }}
+                      iconStyle={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }}
+                    />
+                  )}
                 />
               </div>
 
@@ -1675,14 +1692,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
 
             {/* 3-dot menu (replaces former close X). Swipe down to close. */}
-            <button
-              onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); }}
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              title="More — swipe down to close"
-            >
-              <MoreHorizontal className="text-white" style={{ width: '18px', height: '18px' }} />
-            </button>
+             <LyricsMoreMenu
+              track={currentTrack}
+              lyricsText={plainLyricsText}
+              buttonClassName="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+              buttonStyle={{ width: '36px', height: '36px' }}
+              iconStyle={{ width: '18px', height: '18px' }}
+            />
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
