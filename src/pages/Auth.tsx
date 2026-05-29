@@ -19,7 +19,7 @@ import { z } from "zod";
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
-const CLUB_OPTIONS = ["CC", "ADB", "IQ", "CV", "QI", "HUZ", "MLC", "BCC"] as const;
+const CLUB_OPTIONS = ["CC", "ADB", "IQ", "CV", "QI", "HUZ", "MLC", "BCC", "SUS"] as const;
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
