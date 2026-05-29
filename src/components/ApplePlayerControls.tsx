@@ -1,4 +1,4 @@
-6import { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Star, MoreHorizontal, Volume2 } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
