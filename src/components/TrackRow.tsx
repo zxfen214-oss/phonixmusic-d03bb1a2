@@ -17,6 +17,17 @@ import { useLibrary } from "@/contexts/LibraryContext";
 import { motion } from "framer-motion";
 import { buildELrc, safeFilename, downloadELrcFile } from "@/lib/elrc";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -47,6 +58,9 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const [eightD, setEightD] = useState(false);
+  const [showOffsetDialog, setShowOffsetDialog] = useState(false);
+  const [offsetMs, setOffsetMs] = useState<string>("0");
+  const [isExportingLrc, setIsExportingLrc] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -92,7 +106,14 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
   };
 
   const { toast } = useToast();
-  const handleDownloadELrc = async () => {
+
+  const openDownloadELrc = () => {
+    setOffsetMs("0");
+    setShowOffsetDialog(true);
+  };
+
+  const performDownloadELrc = async () => {
+    setIsExportingLrc(true);
     try {
       let synced: string | null = null;
       let words: any[] = [];
@@ -107,13 +128,15 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
         synced = (data as any)?.synced_lyrics ?? null;
         words = (data as any)?.karaoke_data?.words ?? [];
       }
+      const parsedOffset = Number.parseInt(offsetMs, 10);
       const content = buildELrc({
         synced_lyrics: synced,
         karaoke_words: words,
         title: track.title,
         artist: track.artist,
+        offsetMs: Number.isFinite(parsedOffset) ? parsedOffset : 0,
       });
-      if (!content.trim()) {
+      if (!content.trim() || content.replace(/\[(?:ti|ar):[^\]]*\]\s*/g, "").trim() === "") {
         toast({
           title: "No lyrics available",
           description: "This song doesn't have synced or karaoke lyrics yet.",
@@ -122,10 +145,13 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
         return;
       }
       const name = `${safeFilename(track.artist)} - ${safeFilename(track.title)}.lrc`;
-     downloadELrcFile(content, name);
+      downloadELrcFile(content, name);
+      setShowOffsetDialog(false);
     } catch (e) {
       console.error(e);
       toast({ title: "Download failed", description: "Could not export eLRC file.", variant: "destructive" });
+    } finally {
+      setIsExportingLrc(false);
     }
   };
 
@@ -258,7 +284,7 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
               </DropdownMenuItem>
             )}
             
-            <DropdownMenuItem onClick={handleDownloadELrc}>
+            <DropdownMenuItem onClick={openDownloadELrc}>
               <FileDown className="h-4 w-4 mr-2" />
               Download eLRC Lyrics
             </DropdownMenuItem>
@@ -315,6 +341,37 @@ export function TrackRow({ track, index, tracks, isOffline }: TrackRowProps) {
           onClose={() => setShowPlaylistDialog(false)}
         />
       )}
+
+      <Dialog open={showOffsetDialog} onOpenChange={setShowOffsetDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Download eLRC</DialogTitle>
+            <DialogDescription>
+              Set a timing offset to nudge the lyrics earlier or later. Positive values delay; negative values advance.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="lrc-offset" className="text-xs">Offset (milliseconds)</Label>
+            <Input
+              id="lrc-offset"
+              type="number"
+              step={50}
+              value={offsetMs}
+              onChange={(e) => setOffsetMs(e.target.value)}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">e.g. 500 = lyrics appear 0.5s later. -250 = 0.25s earlier.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOffsetDialog(false)} disabled={isExportingLrc}>
+              Cancel
+            </Button>
+            <Button onClick={performDownloadELrc} disabled={isExportingLrc}>
+              {isExportingLrc ? "Exporting…" : "Download .lrc"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
