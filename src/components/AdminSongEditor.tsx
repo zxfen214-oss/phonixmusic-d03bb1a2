@@ -5,6 +5,7 @@ import { uploadPublicStorageFile } from "@/lib/storageUploads";
 import { saveAudioFile } from "@/lib/database";
 import { fetchMergedSongRecord, saveSongRecord, updateSongRecordsByIds } from "@/lib/songRecords";
 import { fetchTextUtf8 } from "@/lib/lyrics";
+import { normalizeLyricsText } from "@/lib/ttml";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -393,11 +394,13 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       }
 
       if (lyricsFile) {
-        // Read file content for synced_lyrics (source of truth)
+        // Read file content for synced_lyrics (source of truth).
+        // If it's TTML (.ttml / Apple karaoke), convert to eLRC first.
         try {
-          syncedLyricsContent = await lyricsFile.text();
+          const raw = await lyricsFile.text();
+          syncedLyricsContent = normalizeLyricsText(raw);
         } catch (e) {
-          console.warn("Failed to read LRC file text:", e);
+          console.warn("Failed to read lyrics file text:", e);
         }
         const url = await uploadFile(lyricsFile, "lyrics");
         if (url) lyricsUrl = url;
@@ -808,7 +811,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
             >
               {/* Lyrics Upload */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Synced Lyrics (.lrc)</Label>
+                <Label className="text-xs">Synced Lyrics (.lrc / .ttml)</Label>
                 {existingSong?.lyrics_url || existingSong?.synced_lyrics ? (
                   <div className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg">
                     <FileText className="h-4 w-4 text-accent" />
@@ -819,7 +822,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   <label className="flex items-center gap-3 p-2.5 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
                     <Upload className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">{lyricsFile ? lyricsFile.name : "Upload .lrc file"}</span>
-                    <input type="file" accept=".lrc,.txt" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
+                    <input type="file" accept=".lrc,.txt,.ttml,.xml,application/ttml+xml,text/xml" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
+                    <span className="text-[10px] text-muted-foreground sr-only">Accepts .lrc, .ttml (Apple karaoke)</span>
                   </label>
                 )}
               </div>
