@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+6import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Star, MoreHorizontal, Volume2 } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -23,6 +23,7 @@ interface Props {
   /** Optional click handler for the "more" (…) button. */
   onMore?: () => void;
   /** Optional custom render for the More button (replaces default). */
+  
   renderMore?: () => React.ReactNode;
   /** Optional click handler for the star (favorite) button. */
   onFavorite?: () => void;
@@ -119,6 +120,9 @@ export default function ApplePlayerControls({
               />
             </button>
             {renderMore ? (
+              renderMore()
+            ) : (
+                {renderMore ? (
               renderMore()
             ) : (
               <button
