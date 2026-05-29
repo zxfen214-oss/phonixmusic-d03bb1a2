@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMergedSongRecord } from "@/lib/songRecords";
+import { normalizeLyricsText } from "@/lib/ttml";
 
 export interface LyricLine {
   time: number; // in seconds
@@ -108,6 +109,8 @@ function parseELRCWords(text: string, lineStartTime: number): { word: string; st
  * Supports: standard LRC, eLRC (word-level), <left>, <right>, <music>start</music>end, <nl>
  */
 export function parseLRC(content: string): ParsedLyrics {
+  // Accept TTML transparently — convert to eLRC first if needed.
+  content = normalizeLyricsText(content);
   const lines: LyricLine[] = [];
   const lrcLines = content.replace(/\r\n?/g, "\n").split("\n");
   
