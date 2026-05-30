@@ -36,7 +36,14 @@ interface PlayerContextType extends PlayerState {
   audioFormat: 'lossless' | 'dolby' | null;
   /** Whether the current track has any lyrics (synced or plain) available */
   hasLyrics: boolean;
+  /**
+   * Live, drift-free playback time in seconds, read directly from the
+   * underlying audio/YouTube source. Use for tight lyric sync — call
+   * inside a requestAnimationFrame loop instead of deriving from `progress`.
+   */
+  getCurrentTime: () => number;
 }
+
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
@@ -76,6 +83,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // only updated `currentTrack` in state but never loaded the next audio
   // source, so playback stopped when a song ended in the background.
   const playNextRef = useRef<() => void>(() => {});
+
+  /**
+   * Drift-free read of the live playback position. Reads straight from the
+   * <audio> element or YouTube player instead of through React state — this
+   * gives lyric/karaoke renderers a sync source that never lags behind audio.
+   */
+  const getCurrentTime = useCallback(() => {
+    if (audioRef.current) return audioRef.current.currentTime || 0;
+    const yt = youtubePlayerRef.current;
+    if (yt && typeof yt.getCurrentTime === 'function') {
+      try { return yt.getCurrentTime() || 0; } catch { return 0; }
+    }
+    return 0;
+  }, []);
 
 
   // Hard cleanup of any current audio source (audio element + YouTube player + object URLs)
@@ -709,6 +730,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         isLossless,
         audioFormat,
         hasLyrics,
+        getCurrentTime,
       }}
     >
       {children}
@@ -748,6 +770,7 @@ export function usePlayer() {
       isLossless: false,
       audioFormat: null,
       hasLyrics: false,
+      getCurrentTime: () => 0,
     } as PlayerContextType;
   }
   return context;
