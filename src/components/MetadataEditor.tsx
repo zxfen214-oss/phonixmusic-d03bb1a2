@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Track } from '@/types/music';
 import { updateTrack } from '@/lib/database';
-import { X, Upload, Music, Save } from 'lucide-react';
+import { X, Upload, Music, Save, Youtube, ExternalLink, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -175,6 +175,56 @@ export function MetadataEditor({ track, isOpen, onClose, onSave }: MetadataEdito
               <span className="truncate">{track.filePath}</span>
             )}
           </div>
+
+          {/* YouTube link */}
+          {track.youtubeId && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-xs">
+                <Youtube className="h-4 w-4 text-accent" />
+                YouTube link
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={`https://www.youtube.com/watch?v=${track.youtubeId}`}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="bg-secondary border-border text-xs font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Copy link"
+                  onClick={async () => {
+                    const url = `https://www.youtube.com/watch?v=${track.youtubeId}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast({ title: 'Copied', description: 'YouTube link copied to clipboard.' });
+                    } catch {
+                      toast({ title: 'Copy failed', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Open on YouTube"
+                  asChild
+                >
+                  <a
+                    href={`https://www.youtube.com/watch?v=${track.youtubeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
