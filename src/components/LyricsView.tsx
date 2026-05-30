@@ -30,9 +30,10 @@ import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
 import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
-import { normalizeLyricsText } from "@/lib/ttml";
 import { LosslessBadge } from "@/components/LosslessBadge";
 import ApplePlayerControls from "@/components/ApplePlayerControls";
+import { LyricsMoreMenu } from "@/components/LyricsMoreMenu";
+import { useKaraokeLeadIn } from "@/hooks/useKaraokeLeadIn";
 
 import React from "react";
 
@@ -1032,21 +1033,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // auto-derive it from <left>/<right> presence (false).
   const charLimitOverriddenRef = useRef(false);
 
-  const currentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
+  const karaokeLeadInMs = useKaraokeLeadIn();
 
-  // Smooth time for karaoke — read DIRECTLY from the audio source each frame
-  // so lyrics stay perfectly synced with playback (no drift from the 250ms
-  // React `progress` interval, no re-render storms).
+  // Smooth time for karaoke — read live <audio>/YouTube currentTime each frame
+  // via getCurrentTime() to eliminate the 250ms throttled progress drift.
   const [smoothTime, setSmoothTime] = useState(0);
   const rafRef = useRef<number | null>(null);
   const seekLockRef = useRef<{ time: number; until: number } | null>(null);
-  // Tracks the last live source sample so we can interpolate between
-  // YouTube's coarse ~4Hz `getCurrentTime` updates without jitter.
-  const lastSrcRef = useRef<{ t: number; ts: number }>({ t: 0, ts: 0 });
+
   const isPlayingRef = useRef(isPlaying);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   const getCurrentTimeRef = useRef(getCurrentTime);
   useEffect(() => { getCurrentTimeRef.current = getCurrentTime; }, [getCurrentTime]);
+  const leadInRef = useRef(karaokeLeadInMs);
+  useEffect(() => { leadInRef.current = karaokeLeadInMs; }, [karaokeLeadInMs]);
 
   // Smooth playback rate tween for consistent speed changes
   const smoothRateRef = useRef(playbackRate);
@@ -1055,56 +1055,63 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     targetRateRef.current = playbackRate;
     const startRate = smoothRateRef.current;
     const startTs = performance.now();
-    const tweenDuration = 300; // 300ms tween
+    const tweenDuration = 300;
     const tweenRate = () => {
       const elapsed = performance.now() - startTs;
       const t = Math.min(1, elapsed / tweenDuration);
-      const eased = t * t * (3 - 2 * t); // smoothstep
+      const eased = t * t * (3 - 2 * t);
       smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
       if (t < 1) requestAnimationFrame(tweenRate);
     };
     requestAnimationFrame(tweenRate);
   }, [playbackRate]);
 
+  // rAF loop: read live audio currentTime each frame; interpolate between
+  // identical samples (YouTube reports ~4Hz) for smoothness; honor seek lock.
   useEffect(() => {
     if (!currentTrack) return;
-    const duration = currentTrack.duration;
-    // Tiny threshold to avoid re-rendering when audio.currentTime hasn't moved
-    // meaningfully (sub-millisecond). Tuned so karaoke fill still feels live.
-    const EPS = 0.008; // ~8ms ≈ half a 120Hz frame
+    const EPS = 0.008;
+    let lastSrcSample = -1;
+    let lastSrcTs = performance.now();
     let lastEmitted = -1;
+    const duration = currentTrack.duration || 0;
+
     const tick = () => {
       const now = performance.now();
-      let next: number;
-      if (seekLockRef.current && now < seekLockRef.current.until) {
-        next = seekLockRef.current.time;
-      } else {
-        const src = getCurrentTimeRef.current();
-        // Interpolate between identical source samples (YouTube ~4Hz) so
-        // word-by-word karaoke doesn't visibly step.
-        if (src === lastSrcRef.current.t && isPlayingRef.current && lastSrcRef.current.ts > 0) {
-          const dt = (now - lastSrcRef.current.ts) / 1000;
-          next = src + dt * (smoothRateRef.current || 1);
-        } else {
-          if (src !== lastSrcRef.current.t) lastSrcRef.current = { t: src, ts: now };
-          next = src;
+      const lock = seekLockRef.current;
+      if (lock && now < lock.until) {
+        const live = getCurrentTimeRef.current();
+        if (Math.abs(live - lock.time) < 0.25) seekLockRef.current = null;
+        if (Math.abs(lock.time - lastEmitted) > EPS) {
+          setSmoothTime(lock.time);
+          lastEmitted = lock.time;
         }
-        // Clear stale seek lock once source has converged
-        if (seekLockRef.current && Math.abs(src - seekLockRef.current.time) < 0.25) {
-          seekLockRef.current = null;
-        }
+        rafRef.current = requestAnimationFrame(tick);
+        return;
       }
-      next = Math.min(Math.max(next, 0), duration || next);
+
+      const src = getCurrentTimeRef.current();
+      if (src !== lastSrcSample) {
+        lastSrcSample = src;
+        lastSrcTs = now;
+      }
+      const rate = smoothRateRef.current || 1;
+      const interpolated = isPlayingRef.current
+        ? src + ((now - lastSrcTs) / 1000) * rate
+        : src;
+      const lead = leadInRef.current / 1000;
+      let next = interpolated + lead;
+      if (duration > 0) next = Math.min(Math.max(next, 0), duration);
+
       if (Math.abs(next - lastEmitted) > EPS) {
-        lastEmitted = next;
         setSmoothTime(next);
+        lastEmitted = next;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [currentTrack?.id, currentTrack?.duration]);
-
 
 
   // Fetch lyrics + karaoke
@@ -1156,7 +1163,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         }
 
         if (cachedSyncedText) {
-          cachedSyncedText = normalizeLyricsText(cachedSyncedText);
           const parsed = parseLRC(cachedSyncedText);
           if (parsed.lines.length > 0) {
             setParsedLyrics(parsed);
@@ -1244,7 +1250,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
         if (lyrics?.lines.length) {
           setParsedLyrics(lyrics);
-          if (lyrics.rawSyncedText) setSyncedLrcText(normalizeLyricsText(lyrics.rawSyncedText));
+          if (lyrics.rawSyncedText) setSyncedLrcText(lyrics.rawSyncedText);
           setStaticLyricsMode(false);
         } else if (!appliedFromCache) {
           // No remote lyrics and nothing from cache — fallback
@@ -1308,7 +1314,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
     // Lock smooth time to the seek target for 600ms to prevent bounce-back
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
-    lastSrcRef.current = { t: 0, ts: 0 };
     setSmoothTime(targetTime);
     setCurrentLineIndex(lineIndex);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
@@ -1319,7 +1324,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     if (!currentTrack) return;
     const targetTime = (value / 100) * currentTrack.duration;
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
-    lastSrcRef.current = { t: 0, ts: 0 };
     setSmoothTime(targetTime);
     seekTo(value);
   }, [currentTrack, seekTo]);
@@ -1421,7 +1425,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const handleClose = () => {
     setIsClosing(true);
-    setTimeout(onClose, 300);
+    setTimeout(onClose, isMobile ? 360 : 300);
   };
 
   // Lyrics navigator removed
@@ -1441,6 +1445,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
 
+  // Plain-text version for "View Lyrics" menu item.
+  const plainLyricsText = useMemo(() => {
+    if (staticLyricsText.trim()) return staticLyricsText;
+    if (amllLines.length > 0) return amllLines.map((l: any) => l.words?.map((w: any) => w.word).join("") ?? "").join("\n");
+    return "";
+  }, [staticLyricsText, amllLines]);
+
   // Auto-collapse the desktop lyrics panel (so artwork centers) when
   // the current track has no lyrics at all.
   useEffect(() => {
@@ -1455,7 +1466,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     const targetSeconds = ms / 1000;
     const nextProgress = (targetSeconds / currentTrack.duration) * 100;
     seekLockRef.current = { time: targetSeconds, until: performance.now() + 600 };
-    lastSrcRef.current = { t: 0, ts: 0 };
     setSmoothTime(targetSeconds);
     setIsSeekFlag(true);
     if (seekClearTimer.current) window.clearTimeout(seekClearTimer.current);
@@ -1480,16 +1490,20 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, scale: 1.02, y: 0 }}
-        animate={{
-          opacity: isClosing ? 0 : 1,
-          scale: isClosing ? 1 : 1,
-          y: isClosing ? (typeof window !== 'undefined' ? window.innerHeight : 800) : 0,
-        }}
-        transition={{ duration: isClosing ? 0.35 : 0.3, ease: isClosing ? [0.32, 0.72, 0, 1] : "easeOut" }}
+        initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 1.02 }}
+        animate={
+          isMobile
+            ? { y: isClosing ? "100%" : 0, opacity: 1 }
+            : { opacity: isClosing ? 0 : 1, scale: isClosing ? 0.95 : 1, y: isClosing ? 20 : 0 }
+        }
+        transition={
+          isMobile
+            ? { type: "tween", duration: 0.35, ease: [0.32, 0.72, 0, 1] }
+            : { duration: 0.3, ease: "easeOut" }
+        }
         drag={isMobile ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.6 }}
+        dragElastic={0.4}
         onDragEnd={(_, info) => {
           if (info.offset.y > 120 || info.velocity.y > 500) handleClose();
         }}
@@ -1540,11 +1554,24 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <div style={{ marginTop: '22px', width: showLyricsPanel ? '360px' : '400px' }}>
                 <ApplePlayerControls
                   compact
-                  onMore={() => currentTrack && setShowPlaylistDialog(true)}
+                  renderMore={() => (
+                    <LyricsMoreMenu
+                      track={currentTrack}
+                      lyricsText={plainLyricsText}
+                      syncedLrcText={syncedLrcText}
+                      buttonClassName="rounded-full flex items-center justify-center transition-colors"
+                      buttonStyle={{ width: 34, height: 34, backdropFilter: 'blur(10px)' }}
+                      iconStyle={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }}
+                    />
+
+                  )}
                 />
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
+                <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <Heart className="h-5 w-5 text-white/60" />
+                </button>
                 <button
                   onClick={() => currentTrack && setShowPlaylistDialog(true)}
                   className="p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -1627,20 +1654,13 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         </div>
 
         <div className="relative h-full flex flex-col md:hidden z-10">
-          {/* Drag handle — grey rounded bar at top */}
-          <div className="flex justify-center flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 2 }}>
-            <div
-              style={{
-                width: 40,
-                height: 5,
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.32)',
-              }}
-            />
+          {/* Drag handle pill — indicates swipe-down to close */}
+          <div className="flex items-center justify-center flex-shrink-0" style={{ paddingTop: 10, paddingBottom: 2 }}>
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.32)' }} />
           </div>
           <div
             className="flex items-center gap-3 flex-shrink-0"
-            style={{ padding: '14px 24px 10px 24px' }}
+            style={{ padding: '18px 24px 10px 24px' }}
           >
             <div className="overflow-hidden flex-shrink-0" style={{ width: '75px', height: '75px', borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.4)' }}>
               <img
@@ -1679,16 +1699,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               />
             </button>
 
+            <LyricsMoreMenu
+              track={currentTrack}
+              lyricsText={plainLyricsText}
+              syncedLrcText={syncedLrcText}
+              buttonClassName="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
+              buttonStyle={{ width: '36px', height: '36px' }}
+              iconStyle={{ width: '18px', height: '18px' }}
+            />
 
-            {/* 3-dot menu (replaces former close X). Swipe down to close. */}
-            <button
-              onClick={(e) => { e.stopPropagation(); currentTrack && setShowPlaylistDialog(true); }}
-              className="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
-              style={{ width: '36px', height: '36px', background: 'rgba(255,255,255,0.12)' }}
-              title="More — swipe down to close"
-            >
-              <MoreHorizontal className="text-white" style={{ width: '18px', height: '18px' }} />
-            </button>
+
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
