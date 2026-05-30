@@ -5,9 +5,11 @@ import { motion, AnimatePresence, useMotionValue, PanInfo } from "framer-motion"
 import lyricsIcon from "@/assets/lyrics-icon.png";
 import LyricsBackground from "@/components/LyricsBackground";
 import ApplePlayerControls from "@/components/ApplePlayerControls";
+import { supabase } from "@/integrations/supabase/client";
 
 import { preloadPlayerIcons, preloadArtwork } from "@/lib/preloadPlayerAssets";
 import { cn } from "@/lib/utils";
+
 
 interface MobilePlayerProps {
   isOpen: boolean;
@@ -36,6 +38,26 @@ export default function MobilePlayer({ isOpen, onClose, onOpenLyrics }: MobilePl
     const id = window.setTimeout(() => setBgMounted(true), 320);
     return () => window.clearTimeout(id);
   }, [isOpen]);
+
+  // Optional 9:16 phone-specific cover art — when set, replaces both the mesh
+  // background and the album art square with a full-bleed image.
+  const [phoneCover, setPhoneCover] = useState<string | null>(null);
+  useEffect(() => {
+    setPhoneCover(null);
+    if (!currentTrack?.youtubeId && !currentTrack?.title) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        let q = supabase.from("songs").select("phone_cover_url").limit(1);
+        if (currentTrack.youtubeId) q = q.eq("youtube_id", currentTrack.youtubeId);
+        else q = q.eq("title", currentTrack.title).eq("artist", currentTrack.artist);
+        const { data } = await q;
+        const url = (data?.[0] as any)?.phone_cover_url ?? null;
+        if (!cancelled) setPhoneCover(url);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [currentTrack?.youtubeId, currentTrack?.title, currentTrack?.artist]);
 
 
   // Swipe-down to close
