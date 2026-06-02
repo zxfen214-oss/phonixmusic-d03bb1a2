@@ -990,7 +990,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat, getCurrentTime } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -1034,19 +1034,33 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const charLimitOverriddenRef = useRef(false);
 
   const karaokeLeadInMs = useKaraokeLeadIn();
+  const rawCurrentTime = currentTrack ? (progress / 100) * currentTrack.duration : 0;
+  const currentTime = rawCurrentTime + karaokeLeadInMs / 1000;
 
-  // Smooth time for karaoke — read live <audio>/YouTube currentTime each frame
-  // via getCurrentTime() to eliminate the 250ms throttled progress drift.
+  // Smooth time for karaoke — resilient to seek bouncing
   const [smoothTime, setSmoothTime] = useState(0);
+  const baseTimeRef = useRef(0);
+  const baseTsRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const seekLockRef = useRef<{ time: number; until: number } | null>(null);
 
-  const isPlayingRef = useRef(isPlaying);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  const getCurrentTimeRef = useRef(getCurrentTime);
-  useEffect(() => { getCurrentTimeRef.current = getCurrentTime; }, [getCurrentTime]);
-  const leadInRef = useRef(karaokeLeadInMs);
-  useEffect(() => { leadInRef.current = karaokeLeadInMs; }, [karaokeLeadInMs]);
+  const playbackRateRef = useRef(playbackRate);
+  useEffect(() => { playbackRateRef.current = playbackRate; }, [playbackRate]);
+
+  // When currentTime updates from the progress interval, sync the base —
+  // BUT ignore updates that would "bounce back" right after a seek.
+  useEffect(() => {
+    const now = performance.now();
+    if (seekLockRef.current && now < seekLockRef.current.until) {
+      // We recently seeked — only accept if value is close to our seek target
+      const diff = Math.abs(currentTime - seekLockRef.current.time);
+      if (diff > 1.5) return; // stale bounce, ignore
+      seekLockRef.current = null; // values converged, unlock
+    }
+    baseTimeRef.current = currentTime;
+    baseTsRef.current = performance.now();
+    setSmoothTime(currentTime);
+  }, [currentTime]);
 
   // Smooth playback rate tween for consistent speed changes
   const smoothRateRef = useRef(playbackRate);
@@ -1055,64 +1069,37 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     targetRateRef.current = playbackRate;
     const startRate = smoothRateRef.current;
     const startTs = performance.now();
-    const tweenDuration = 300;
+    const tweenDuration = 300; // 300ms tween
     const tweenRate = () => {
       const elapsed = performance.now() - startTs;
       const t = Math.min(1, elapsed / tweenDuration);
-      const eased = t * t * (3 - 2 * t);
+      const eased = t * t * (3 - 2 * t); // smoothstep
       smoothRateRef.current = startRate + (targetRateRef.current - startRate) * eased;
       if (t < 1) requestAnimationFrame(tweenRate);
     };
     requestAnimationFrame(tweenRate);
+    baseTsRef.current = performance.now();
   }, [playbackRate]);
 
-  // rAF loop: read live audio currentTime each frame; interpolate between
-  // identical samples (YouTube reports ~4Hz) for smoothness; honor seek lock.
   useEffect(() => {
     if (!currentTrack) return;
-    const EPS = 0.008;
-    let lastSrcSample = -1;
-    let lastSrcTs = performance.now();
-    let lastEmitted = -1;
-    const duration = currentTrack.duration || 0;
-
     const tick = () => {
       const now = performance.now();
-      const lock = seekLockRef.current;
-      if (lock && now < lock.until) {
-        const live = getCurrentTimeRef.current();
-        if (Math.abs(live - lock.time) < 0.25) seekLockRef.current = null;
-        if (Math.abs(lock.time - lastEmitted) > EPS) {
-          setSmoothTime(lock.time);
-          lastEmitted = lock.time;
-        }
+      // If seek-locked, hold at the seek target
+      if (seekLockRef.current && now < seekLockRef.current.until) {
+        setSmoothTime(seekLockRef.current.time);
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
-
-      const src = getCurrentTimeRef.current();
-      if (src !== lastSrcSample) {
-        lastSrcSample = src;
-        lastSrcTs = now;
-      }
+      const elapsed = Math.max(0, (now - baseTsRef.current) / 1000);
       const rate = smoothRateRef.current || 1;
-      const interpolated = isPlayingRef.current
-        ? src + ((now - lastSrcTs) / 1000) * rate
-        : src;
-      const lead = leadInRef.current / 1000;
-      let next = interpolated + lead;
-      if (duration > 0) next = Math.min(Math.max(next, 0), duration);
-
-      if (Math.abs(next - lastEmitted) > EPS) {
-        setSmoothTime(next);
-        lastEmitted = next;
-      }
+      const next = isPlaying ? baseTimeRef.current + elapsed * rate : baseTimeRef.current;
+      setSmoothTime(Math.min(Math.max(next, 0), currentTrack.duration));
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [currentTrack?.id, currentTrack?.duration]);
-
+  }, [currentTrack?.id, currentTrack?.duration, isPlaying, playbackRate]);
 
   // Fetch lyrics + karaoke
   useEffect(() => {
@@ -1314,6 +1301,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
     // Lock smooth time to the seek target for 600ms to prevent bounce-back
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
+    baseTimeRef.current = targetTime;
+    baseTsRef.current = performance.now();
     setSmoothTime(targetTime);
     setCurrentLineIndex(lineIndex);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
@@ -1324,6 +1313,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     if (!currentTrack) return;
     const targetTime = (value / 100) * currentTrack.duration;
     seekLockRef.current = { time: targetTime, until: performance.now() + 600 };
+    baseTimeRef.current = targetTime;
+    baseTsRef.current = performance.now();
     setSmoothTime(targetTime);
     seekTo(value);
   }, [currentTrack, seekTo]);
@@ -1463,15 +1454,24 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   const seekClearTimer = useRef<number | null>(null);
   const amllSeek = useCallback((ms: number) => {
     if (!currentTrack || !currentTrack.duration) return;
-    const targetSeconds = ms / 1000;
-    const nextProgress = (targetSeconds / currentTrack.duration) * 100;
-    seekLockRef.current = { time: targetSeconds, until: performance.now() + 600 };
-    setSmoothTime(targetSeconds);
+    // `ms` is the line's start time in the displayed (lyrics) timeline, which
+    // includes the karaoke lead-in offset. The actual audio playhead must be
+    // seeked to (lineStart - leadIn) so the displayed time lands back on the
+    // clicked line after the seek converges.
+    const leadInSec = karaokeLeadInMs / 1000;
+    const displayedTarget = ms / 1000;
+    const audioTarget = Math.max(0, displayedTarget - leadInSec);
+    const nextProgress = (audioTarget / currentTrack.duration) * 100;
+    // seekLockRef.time is compared against `currentTime` (displayed = audio+leadIn)
+    seekLockRef.current = { time: displayedTarget, until: performance.now() + 800 };
+    baseTimeRef.current = displayedTarget;
+    baseTsRef.current = performance.now();
+    setSmoothTime(displayedTarget);
     setIsSeekFlag(true);
     if (seekClearTimer.current) window.clearTimeout(seekClearTimer.current);
     seekClearTimer.current = window.setTimeout(() => setIsSeekFlag(false), 80);
     seekTo(Math.max(0, Math.min(100, nextProgress)));
-  }, [currentTrack, seekTo]);
+  }, [currentTrack, seekTo, karaokeLeadInMs]);
 
   if (!currentTrack) return null;
 
