@@ -26,7 +26,10 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+type SearchMode = "all" | "artist";
+
 export function YouTubeView() {
+  const [searchMode, setSearchMode] = useState<SearchMode>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -62,14 +65,16 @@ export function YouTubeView() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    const q = searchQuery.trim();
+    if (!q) return;
 
     setIsSearching(true);
     setError(null);
     setHasSearched(true);
     
     try {
-      const searchResults = await searchYouTube(searchQuery);
+      const effectiveQuery = searchMode === "artist" ? `${q} songs` : q;
+      const searchResults = await searchYouTube(effectiveQuery);
       
       // If admin-edited version exists, replace YouTube data with admin data and deduplicate
       const seen = new Set<string>();
@@ -93,8 +98,19 @@ export function YouTubeView() {
           processed.push(track);
         }
       }
+
+      // In artist mode, only keep tracks whose artist matches the query.
+      const finalResults = searchMode === "artist"
+        ? processed.filter(t => {
+            const needle = q.toLowerCase();
+            return (
+              t.artist.toLowerCase().includes(needle) ||
+              t.title.toLowerCase().includes(needle)
+            ) && t.artist.toLowerCase().includes(needle);
+          })
+        : processed;
       
-      setResults(processed);
+      setResults(finalResults);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
       setResults([]);
@@ -167,13 +183,35 @@ export function YouTubeView() {
           <Youtube className="h-6 md:h-8 w-6 md:w-8 text-accent" />
           <h1 className="text-2xl md:text-3xl font-semibold">Search</h1>
         </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-2 mb-4">
+          {([
+            { value: "all", label: "All" },
+            { value: "artist", label: "Search By Artist" },
+          ] as { value: SearchMode; label: string }[]).map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setSearchMode(tab.value)}
+              className={cn(
+                "px-4 py-2 rounded-full text-sm font-medium transition-all duration-150",
+                searchMode === tab.value
+                  ? "bg-foreground text-background"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         
         {/* Search */}
         <form onSubmit={handleSearch} className="relative max-w-2xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search for songs, artists, albums..."
+            placeholder={searchMode === "artist" ? "Enter an artist's name..." : "Search for songs, artists, albums..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input pl-11 pr-24"
