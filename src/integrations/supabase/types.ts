@@ -14,224 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
-      billboard: {
-        Row: {
-          created_at: string
-          id: string
-          position: number
-          song_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          position: number
-          song_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          position?: number
-          song_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "billboard_song_id_fkey"
-            columns: ["song_id"]
-            isOneToOne: true
-            referencedRelation: "songs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          club: string | null
-          created_at: string
-          display_name: string | null
-          email: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          club?: string | null
-          created_at?: string
-          display_name?: string | null
-          email?: string | null
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          club?: string | null
-          created_at?: string
-          display_name?: string | null
-          email?: string | null
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      songs: {
-        Row: {
-          album: string | null
-          artist: string | null
-          audio_url: string | null
-          bounce_intensity: number | null
-          cover_url: string | null
-          created_at: string
-          created_by: string | null
-          duration: number | null
-          id: string
-          is_lossless: boolean
-          karaoke_color: string | null
-          karaoke_data: Json | null
-          karaoke_enabled: boolean
-          lyric_color: string | null
-          lyrics: string | null
-          lyrics_speed: number | null
-          lyrics_url: string | null
-          needs_metadata: boolean
-          plain_lyrics: string | null
-          stream_count: number
-          synced_lyrics: string | null
-          title: string | null
-          updated_at: string
-          word_lyrics: Json | null
-          youtube_id: string | null
-        }
-        Insert: {
-          album?: string | null
-          artist?: string | null
-          audio_url?: string | null
-          bounce_intensity?: number | null
-          cover_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          duration?: number | null
-          id?: string
-          is_lossless?: boolean
-          karaoke_color?: string | null
-          karaoke_data?: Json | null
-          karaoke_enabled?: boolean
-          lyric_color?: string | null
-          lyrics?: string | null
-          lyrics_speed?: number | null
-          lyrics_url?: string | null
-          needs_metadata?: boolean
-          plain_lyrics?: string | null
-          stream_count?: number
-          synced_lyrics?: string | null
-          title?: string | null
-          updated_at?: string
-          word_lyrics?: Json | null
-          youtube_id?: string | null
-        }
-        Update: {
-          album?: string | null
-          artist?: string | null
-          audio_url?: string | null
-          bounce_intensity?: number | null
-          cover_url?: string | null
-          created_at?: string
-          created_by?: string | null
-          duration?: number | null
-          id?: string
-          is_lossless?: boolean
-          karaoke_color?: string | null
-          karaoke_data?: Json | null
-          karaoke_enabled?: boolean
-          lyric_color?: string | null
-          lyrics?: string | null
-          lyrics_speed?: number | null
-          lyrics_url?: string | null
-          needs_metadata?: boolean
-          plain_lyrics?: string | null
-          stream_count?: number
-          synced_lyrics?: string | null
-          title?: string | null
-          updated_at?: string
-          word_lyrics?: Json | null
-          youtube_id?: string | null
-        }
-        Relationships: []
-      }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_song_library: {
-        Row: {
-          added_at: string
-          id: string
-          song_album: string | null
-          song_artist: string | null
-          song_cover_url: string | null
-          song_duration: number | null
-          song_title: string | null
-          song_youtube_id: string
-          user_id: string
-        }
-        Insert: {
-          added_at?: string
-          id?: string
-          song_album?: string | null
-          song_artist?: string | null
-          song_cover_url?: string | null
-          song_duration?: number | null
-          song_title?: string | null
-          song_youtube_id: string
-          user_id: string
-        }
-        Update: {
-          added_at?: string
-          id?: string
-          song_album?: string | null
-          song_artist?: string | null
-          song_cover_url?: string | null
-          song_duration?: number | null
-          song_title?: string | null
-          song_youtube_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -358,8 +150,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "moderator", "user"],
-    },
+    Enums: {},
   },
 } as const
