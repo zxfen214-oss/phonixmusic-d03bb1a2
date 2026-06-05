@@ -78,6 +78,13 @@
   opacity: 0.55 !important;
 }
 
+/* Prevent AMLL's default fade-out after karaoke completion:
+   keep the bright/filled words fully visible even when a line
+   scrolls out of the active zone. */
+.amll-lyrics-host [class*="lyricLine"] {
+  --bright-mask-alpha: 1 !important;
+}
+
 /* Mobile: stronger top fade-out and deeper bottom fade so the controls
    gradient blends cleanly with the lyric area. */
 @media (max-width: 767px) {
