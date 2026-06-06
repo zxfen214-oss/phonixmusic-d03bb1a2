@@ -122,6 +122,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         audioRef.current.load();
       } catch {}
       audioRef.current = null;
+      setIsAudioBackend(false);
     }
     if (objectUrlRef.current) {
       try { URL.revokeObjectURL(objectUrlRef.current); } catch {}
