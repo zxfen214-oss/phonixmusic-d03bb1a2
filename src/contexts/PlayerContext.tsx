@@ -521,6 +521,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
   }, [state.currentTrack?.id]);
 
+  // Live-apply karaoke (vocal removal) toggle for the active audio element.
+  useEffect(() => {
+    return onKaraokeChange((enabled) => {
+      setKaraokeEnabledState(enabled);
+      if (audioRef.current) applyKaraokeToAudio(audioRef.current, enabled);
+    });
+  }, []);
+
+  const setKaraokeEnabled = useCallback((enabled: boolean) => {
+    setKaraokeEnabledStore(enabled);
+  }, []);
+
+
 
   const previousTrack = useCallback(() => {
     setState(prev => {
