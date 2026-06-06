@@ -1544,14 +1544,16 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           
 <motion.div
   className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-  style={{ width: showLyricsPanel ? '480px' : '100%' }}
+  style={{
+    width: showLyricsPanel ? '480px' : '100%',
+    paddingLeft: showLyricsPanel ? '20px' : '0px',
+  }}
 >
   {vocalRemovalOn && (
     <div style={{ marginTop: '10px' }}>
       <SingBadge />
     </div>
   )}
-</motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
