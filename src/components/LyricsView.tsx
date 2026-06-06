@@ -1541,8 +1541,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               <Mic2 className="h-6 w-6" />
             </motion.button>
           )}
-
-     <motion.div
+          
 <motion.div
   className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
   style={{ width: showLyricsPanel ? '480px' : '100%' }}
