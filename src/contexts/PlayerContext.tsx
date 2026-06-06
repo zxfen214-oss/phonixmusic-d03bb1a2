@@ -804,6 +804,9 @@ export function usePlayer() {
       isLossless: false,
       audioFormat: null,
       hasLyrics: false,
+      isAudioBackend: false,
+      karaokeEnabled: false,
+      setKaraokeEnabled: () => {},
       getCurrentTime: () => 0,
     } as PlayerContextType;
   }
