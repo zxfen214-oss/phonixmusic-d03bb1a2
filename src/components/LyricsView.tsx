@@ -16,11 +16,9 @@ import {
   Volume2,
   VolumeX,
   Disc3,
-  Mic2,
 } from "lucide-react";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
-import SingBadge from "@/components/SingBadge";
 import iconNext from "@/assets/icon-next.png";
 import iconPrev from "@/assets/icon-prev.png";
 import lyricsIcon from "@/assets/lyrics-icon.png";
@@ -992,7 +990,7 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat, karaokeEnabled: vocalRemovalOn, karaokeAvailable: vocalRemovalAvailable, toggleKaraoke: toggleVocalRemoval } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -1526,34 +1524,11 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             <X className="h-6 w-6 text-white" />
           </motion.button>
 
-           {vocalRemovalAvailable && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
-              transition={{ duration: 0.2, delay: 0.05 }}
-              onClick={toggleVocalRemoval}
-              title={vocalRemovalOn ? "Turn off karaoke" : "Karaoke (vocal removal)"}
-              className={cn(
-                "absolute top-6 right-20 z-20 p-2 rounded-full transition-colors",
-                vocalRemovalOn ? "bg-white text-black hover:bg-white/90" : "bg-white/10 text-white hover:bg-white/20"
-              )}
-            >
-              <Mic2 className="h-6 w-6" />
-            </motion.button>
-          )}
-          
-<motion.div
-  className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-  style={{
-    width: showLyricsPanel ? '480px' : '100%',
-    paddingLeft: showLyricsPanel ? '20px' : '0px',
-  }}
->
-  {vocalRemovalOn && (
-    <div style={{ marginTop: '10px' }}>
-      <SingBadge />
-    </div>
-  )}
+          <motion.div
+            className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            style={{ width: showLyricsPanel ? '480px' : '100%', paddingLeft: showLyricsPanel ? '120px' : '0' }}
+            layout
+          >
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: isClosing ? 0 : 1, y: isClosing ? 20 : 0 }}
@@ -1805,30 +1780,11 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }}
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
-                    {vocalRemovalAvailable && (
-                <div className="flex justify-end mb-2">
-                  <button
-                    onClick={() => { toggleVocalRemoval(); resetMobileControlsTimer(); }}
-                    title={vocalRemovalOn ? "Turn off karaoke" : "Karaoke (vocal removal)"}
-                    className={cn(
-                      "rounded-full p-2 transition-colors",
-                      vocalRemovalOn ? "bg-white text-black" : "bg-white/15 text-white"
-                    )}
-                  >
-                    <Mic2 className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
               <ApplePlayerControls
                 hideTitle
                 onInteract={resetMobileControlsTimer}
                 onMore={() => currentTrack && setShowPlaylistDialog(true)}
               />
-                   {vocalRemovalOn && (
-                <div style={{ marginTop: '10px' }}>
-                  <SingBadge />
-                </div>
-              )}
             </div>
 
           </motion.div>
