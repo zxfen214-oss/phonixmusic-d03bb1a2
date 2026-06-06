@@ -5,8 +5,9 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMergedSongRecord } from "@/lib/songRecords";
-import { applyEightDToAudio } from "@/lib/eightDEffect";
+import { applyEightDToAudio, applyKaraokeToAudio } from "@/lib/audioGraph";
 import { getEightDEnabled, onEightDChange } from "@/lib/eightDStore";
+import { getKaraokeEnabled, setKaraokeEnabled as setKaraokeEnabledStore, onKaraokeChange } from "@/lib/karaokeStore";
 
 declare global {
   interface Window {
