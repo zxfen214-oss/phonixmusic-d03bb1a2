@@ -1591,6 +1591,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
                   )}
                 />
+                <AnimatePresence>
+                  {vocalsRemoved && (
+                    <motion.div
+                      key="sing-badge-pc"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      style={{ marginTop: 10 }}
+                    >
+                      <SingBadge />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
