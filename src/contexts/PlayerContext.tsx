@@ -82,14 +82,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // ── Karaoke (vocal removal) — Web Audio center-channel canceller ──
   const [karaokeEnabled, setKaraokeEnabled] = useState(false);
   const [audioElVersion, setAudioElVersion] = useState(0);
-  // Which backend is currently driving playback. Karaoke (Web Audio vocal removal)
-  // requires HTMLAudio — never the YouTube iframe — so dual-source tracks
-  // (YouTube + cached MP3) still qualify when 'audio' is active.
-  const [playbackBackend, setPlaybackBackend] = useState<'audio' | 'youtube' | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const mediaSourceMapRef = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
   const karaokeNodesRef = useRef<AudioNode[]>([]);
-  const karaokeAvailable = playbackBackend === 'audio';
+  const karaokeAvailable = state.currentTrack?.source === 'local';
 
   const toggleKaraoke = useCallback(() => {
     setKaraokeEnabled(v => !v);
@@ -168,7 +164,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [karaokeEnabled, audioElVersion]);
 
   const registerAudioElement = useCallback(() => {
-    setPlaybackBackend('audio');
     setAudioElVersion(v => v + 1);
   }, []);
 
@@ -193,7 +188,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       try { youtubePlayerRef.current.destroy?.(); } catch {}
       youtubePlayerRef.current = null;
     }
-    setPlaybackBackend(null);
   }, []);
 
   const applyPreservePitch = useCallback((audio: HTMLAudioElement, preserve: boolean) => {
@@ -302,7 +296,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     const waitForYT = () => {
       if (window.YT && window.YT.Player) {
-        setPlaybackBackend('youtube');
         youtubePlayerRef.current = new window.YT.Player(playerDiv.id, {
           height: '180',
           width: '320',
