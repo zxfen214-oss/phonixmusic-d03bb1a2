@@ -761,6 +761,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         isLossless,
         audioFormat,
         hasLyrics,
+        isAudioBackend,
+        karaokeEnabled,
+        setKaraokeEnabled,
         getCurrentTime,
       }}
     >
