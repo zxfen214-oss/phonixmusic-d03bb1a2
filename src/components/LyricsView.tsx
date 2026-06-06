@@ -1520,15 +1520,34 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleClose}
-            className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            <X className="h-6 w-6 text-white" />
-          </motion.button>
+          <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+            {vocalRemovalAvailable && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setVocalsRemoved(!vocalsRemoved)}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  vocalsRemoved ? "bg-white/80 hover:bg-white text-black" : "bg-white/10 hover:bg-white/20 text-white"
+                )}
+                title={vocalsRemoved ? "Vocals removed (Sing mode) — click to disable" : "Remove vocals (Sing mode)"}
+                aria-pressed={vocalsRemoved}
+              >
+                {vocalsRemoved ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              </motion.button>
+            )}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="h-6 w-6 text-white" />
+            </motion.button>
+          </div>
+
 
           <motion.div
             className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
