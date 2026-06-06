@@ -1543,12 +1543,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
           )}
 
      <motion.div
+<motion.div
   className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-  style={{
-    width: showLyricsPanel ? '480px' : '100%',
-    paddingLeft: showLyricsPanel ? '120px' : '0'
-  }}
-  layout
+  style={{ width: showLyricsPanel ? '480px' : '100%' }}
 >
   {vocalRemovalOn && (
     <div style={{ marginTop: '10px' }}>
