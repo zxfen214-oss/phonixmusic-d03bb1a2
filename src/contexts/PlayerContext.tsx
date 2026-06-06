@@ -323,7 +323,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
+      setIsAudioBackend(true);
       getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
+      applyKaraokeToAudio(audio, getKaraokeEnabled());
       await audio.play();
       setState(prev => ({ ...prev, isPlaying: true }));
     }
@@ -395,8 +397,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
+      setIsAudioBackend(true);
       setIsLossless(true);
       getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
+      applyKaraokeToAudio(audio, getKaraokeEnabled());
       try { await audio.play(); } catch (e) { console.warn("audio.play failed:", e); }
       // Re-check token after async play
       if (token !== undefined && token !== loadTokenRef.current) {
