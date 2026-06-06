@@ -16,7 +16,10 @@ import {
   Volume2,
   VolumeX,
   Disc3,
+  Mic,
+  MicOff,
 } from "lucide-react";
+import SingBadge from "@/components/SingBadge";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
 import iconNext from "@/assets/icon-next.png";
