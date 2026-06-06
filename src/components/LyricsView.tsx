@@ -993,8 +993,9 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat, isAudioBackend, karaokeEnabled, setKaraokeEnabled } = usePlayer();
-  const karaokeAvailable = isAudioBackend; // MP3/local/cached blob playback only — disabled for YouTube iframe
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat, isAudioBackend, karaokeEnabled: vocalsRemoved, setKaraokeEnabled: setVocalsRemoved } = usePlayer();
+  const vocalRemovalAvailable = isAudioBackend; // MP3/local/cached blob playback only — disabled for YouTube iframe
+
 
   const isMobile = useIsMobile();
 
