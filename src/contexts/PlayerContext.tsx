@@ -38,6 +38,16 @@ interface PlayerContextType extends PlayerState {
   /** Whether the current track has any lyrics (synced or plain) available */
   hasLyrics: boolean;
   /**
+   * True when the active playback backend is an HTMLAudioElement (local MP3,
+   * cached blob, or remote audio_url). False when YouTube iframe is active.
+   * Used to gate Web Audio effects that need a real audio element.
+   */
+  isAudioBackend: boolean;
+  /** Whether vocal removal (karaoke instrumental mode) is currently on. */
+  karaokeEnabled: boolean;
+  /** Toggle vocal removal on the currently playing MP3-backed audio. */
+  setKaraokeEnabled: (enabled: boolean) => void;
+  /**
    * Live, drift-free playback time in seconds, read directly from the
    * underlying audio/YouTube source. Use for tight lyric sync — call
    * inside a requestAnimationFrame loop instead of deriving from `progress`.
@@ -66,6 +76,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isLossless, setIsLossless] = useState(false);
   const [audioFormat, setAudioFormat] = useState<'lossless' | 'dolby' | null>(null);
   const [hasLyrics, setHasLyrics] = useState(false);
+  const [isAudioBackend, setIsAudioBackend] = useState(false);
+  const [karaokeEnabled, setKaraokeEnabledState] = useState<boolean>(() => getKaraokeEnabled());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const youtubePlayerRef = useRef<any>(null);
