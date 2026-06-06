@@ -16,7 +16,10 @@ import {
   Volume2,
   VolumeX,
   Disc3,
+  Mic,
+  MicOff,
 } from "lucide-react";
+import SingBadge from "@/components/SingBadge";
 import iconPlay from "@/assets/icon-play.png";
 import iconPause from "@/assets/icon-pause.png";
 import iconNext from "@/assets/icon-next.png";
@@ -990,7 +993,10 @@ function StaticLyricsContent({ text, isMobile }: { text: string; isMobile: boole
 // MAIN LYRICS VIEW
 // ═══════════════════════════════════════════════════
 export function LyricsView({ onClose }: LyricsViewProps) {
-  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat } = usePlayer();
+  const { currentTrack, isPlaying, progress, playbackRate, volume, isLossless, audioFormat, pauseTrack, resumeTrack, nextTrack, previousTrack, seekTo, setVolume, repeat, toggleRepeat, isAudioBackend, karaokeEnabled: vocalsRemoved, setKaraokeEnabled: setVocalsRemoved } = usePlayer();
+  const vocalRemovalAvailable = isAudioBackend; // MP3/local/cached blob playback only — disabled for YouTube iframe
+
+
   const isMobile = useIsMobile();
 
   const [parsedLyrics, setParsedLyrics] = useState<ParsedLyrics | null>(null);
@@ -1514,15 +1520,34 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         </div>
 
         <div className="relative h-full hidden md:flex items-center z-10">
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleClose}
-            className="absolute top-6 right-6 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            <X className="h-6 w-6 text-white" />
-          </motion.button>
+          <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+            {vocalRemovalAvailable && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setVocalsRemoved(!vocalsRemoved)}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  vocalsRemoved ? "bg-white/80 hover:bg-white text-black" : "bg-white/10 hover:bg-white/20 text-white"
+                )}
+                title={vocalsRemoved ? "Vocals removed (Sing mode) — click to disable" : "Remove vocals (Sing mode)"}
+                aria-pressed={vocalsRemoved}
+              >
+                {vocalsRemoved ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              </motion.button>
+            )}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: isClosing ? 0 : 1, scale: isClosing ? 0.8 : 1 }}
+              transition={{ duration: 0.2 }}
+              onClick={handleClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="h-6 w-6 text-white" />
+            </motion.button>
+          </div>
+
 
           <motion.div
             className="flex-shrink-0 flex flex-col justify-center transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
@@ -1566,6 +1591,19 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
                   )}
                 />
+                <AnimatePresence>
+                  {vocalsRemoved && (
+                    <motion.div
+                      key="sing-badge-pc"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      style={{ marginTop: 10 }}
+                    >
+                      <SingBadge />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="flex items-center justify-center gap-4 mt-4" style={{ width: showLyricsPanel ? '360px' : '400px' }}>
@@ -1780,15 +1818,45 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }}
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
+              {vocalRemovalAvailable && (
+                <div className="flex justify-end" style={{ marginBottom: 10 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); resetMobileControlsTimer(); setVocalsRemoved(!vocalsRemoved); }}
+                    className={cn(
+                      "flex items-center justify-center rounded-full transition-colors",
+                      vocalsRemoved ? "bg-white/85 text-black" : "bg-white/15 text-white"
+                    )}
+                    style={{ width: 38, height: 38, backdropFilter: 'blur(10px)' }}
+                    title={vocalsRemoved ? "Vocals removed — tap to disable" : "Remove vocals (Sing mode)"}
+                    aria-pressed={vocalsRemoved}
+                  >
+                    {vocalsRemoved ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                  </button>
+                </div>
+              )}
               <ApplePlayerControls
                 hideTitle
                 onInteract={resetMobileControlsTimer}
                 onMore={() => currentTrack && setShowPlaylistDialog(true)}
               />
+              <AnimatePresence>
+                {vocalsRemoved && (
+                  <motion.div
+                    key="sing-badge-mobile"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    style={{ marginTop: 8 }}
+                  >
+                    <SingBadge />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
           </motion.div>
         </div>
+
 
         {currentTrack && (
           <AddToPlaylistDialog
