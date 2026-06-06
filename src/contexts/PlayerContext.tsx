@@ -5,6 +5,8 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { getCachedAudio } from "@/lib/offlineCache";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMergedSongRecord } from "@/lib/songRecords";
+import { applyEightDToAudio } from "@/lib/eightDEffect";
+import { getEightDEnabled, onEightDChange } from "@/lib/eightDStore";
 
 declare global {
   interface Window {
@@ -34,11 +36,14 @@ interface PlayerContextType extends PlayerState {
   audioFormat: 'lossless' | 'dolby' | null;
   /** Whether the current track has any lyrics (synced or plain) available */
   hasLyrics: boolean;
-  /** Karaoke (vocal-removal) mode — only available for local MP3 tracks */
-  karaokeEnabled: boolean;
-  karaokeAvailable: boolean;
-  toggleKaraoke: () => void;
+  /**
+   * Live, drift-free playback time in seconds, read directly from the
+   * underlying audio/YouTube source. Use for tight lyric sync — call
+   * inside a requestAnimationFrame loop instead of deriving from `progress`.
+   */
+  getCurrentTime: () => number;
 }
+
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
@@ -79,92 +84,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // source, so playback stopped when a song ended in the background.
   const playNextRef = useRef<() => void>(() => {});
 
-  // ── Karaoke (vocal removal) — Web Audio center-channel canceller ──
-  const [karaokeEnabled, setKaraokeEnabled] = useState(false);
-  const [audioElVersion, setAudioElVersion] = useState(0);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const mediaSourceMapRef = useRef<WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>>(new WeakMap());
-  const karaokeNodesRef = useRef<AudioNode[]>([]);
-  const karaokeAvailable = state.currentTrack?.source === 'local';
-
-  const toggleKaraoke = useCallback(() => {
-    setKaraokeEnabled(v => !v);
-  }, []);
-
-  // Disable karaoke automatically when switching to a track that doesn't support it
-  useEffect(() => {
-    if (!karaokeAvailable && karaokeEnabled) setKaraokeEnabled(false);
-  }, [karaokeAvailable, karaokeEnabled]);
-
-  // (Re)wire the Web Audio graph when karaoke toggles or the audio element changes
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Tear down any previous karaoke nodes
-    karaokeNodesRef.current.forEach(n => { try { n.disconnect(); } catch {} });
-    karaokeNodesRef.current = [];
-
-    if (!karaokeEnabled) {
-      // If we already attached a MediaElementSource to this element, keep it
-      // wired straight to destination so audio still plays.
-      const existing = mediaSourceMapRef.current.get(audio);
-      if (existing && audioCtxRef.current) {
-        try { existing.disconnect(); } catch {}
-        existing.connect(audioCtxRef.current.destination);
-      }
-      return;
+  /**
+   * Drift-free read of the live playback position. Reads straight from the
+   * <audio> element or YouTube player instead of through React state — this
+   * gives lyric/karaoke renderers a sync source that never lags behind audio.
+   */
+  const getCurrentTime = useCallback(() => {
+    if (audioRef.current) return audioRef.current.currentTime || 0;
+    const yt = youtubePlayerRef.current;
+    if (yt && typeof yt.getCurrentTime === 'function') {
+      try { return yt.getCurrentTime() || 0; } catch { return 0; }
     }
-
-    // Ensure AudioContext
-    if (!audioCtxRef.current) {
-      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-      if (!Ctx) return;
-      audioCtxRef.current = new Ctx();
-    }
-    const ctx = audioCtxRef.current;
-    ctx.resume().catch(() => {});
-
-    // One MediaElementSource per audio element (Web Audio constraint)
-    let source = mediaSourceMapRef.current.get(audio);
-    if (!source) {
-      try {
-        source = ctx.createMediaElementSource(audio);
-        mediaSourceMapRef.current.set(audio, source);
-      } catch (e) {
-        console.warn('Karaoke: failed to create MediaElementSource', e);
-        return;
-      }
-    }
-    try { source.disconnect(); } catch {}
-
-    // Center-cancel: (L − R) for highs, preserve a mono low-passed bass mix
-    const splitter = ctx.createChannelSplitter(2);
-    const gainL = ctx.createGain(); gainL.gain.value = 0.5;
-    const gainR = ctx.createGain(); gainR.gain.value = -0.5;
-    const highPass = ctx.createBiquadFilter(); highPass.type = 'highpass'; highPass.frequency.value = 180;
-    const lowPass = ctx.createBiquadFilter(); lowPass.type = 'lowpass'; lowPass.frequency.value = 180;
-    const bassGain = ctx.createGain(); bassGain.gain.value = 0.8;
-    const makeup = ctx.createGain(); makeup.gain.value = 1.25;
-
-    source.connect(splitter);
-    splitter.connect(gainL, 0);
-    splitter.connect(gainR, 1);
-    gainL.connect(highPass);
-    gainR.connect(highPass);
-    highPass.connect(makeup);
-
-    source.connect(lowPass);
-    lowPass.connect(bassGain);
-    bassGain.connect(makeup);
-
-    makeup.connect(ctx.destination);
-
-    karaokeNodesRef.current = [splitter, gainL, gainR, highPass, lowPass, bassGain, makeup];
-  }, [karaokeEnabled, audioElVersion]);
-
-  const registerAudioElement = useCallback(() => {
-    setAudioElVersion(v => v + 1);
+    return 0;
   }, []);
 
 
@@ -379,11 +310,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
-      registerAudioElement();
+      getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
       await audio.play();
       setState(prev => ({ ...prev, isPlaying: true }));
     }
-  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled, registerAudioElement]);
+  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled]);
 
   const loadCachedOrRemoteAudio = useCallback(async (track: Track, token?: number) => {
     // Cleanup previous
@@ -451,8 +382,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       };
 
       audioRef.current = audio;
-      registerAudioElement();
       setIsLossless(true);
+      getEightDEnabled(track.id).then(en => applyEightDToAudio(audio, en)).catch(() => {});
       try { await audio.play(); } catch (e) { console.warn("audio.play failed:", e); }
       // Re-check token after async play
       if (token !== undefined && token !== loadTokenRef.current) {
@@ -463,7 +394,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return true;
     }
     return false;
-  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled, stopCurrentSource, registerAudioElement]);
+  }, [state.volume, playbackRate, applyPreservePitch, preservePitchEnabled, stopCurrentSource]);
 
   const playTrack = useCallback((track: Track, queue?: Track[]) => {
     // Increment load token to invalidate any in-flight loads
@@ -562,6 +493,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Keep the ref pointing at the latest nextTrack so onended (defined inside
   // the audio loaders) can advance reliably even after re-renders.
   useEffect(() => { playNextRef.current = nextTrack; }, [nextTrack]);
+
+  // Live-apply 8D / "Lossless Effect" toggle for the currently playing track.
+  useEffect(() => {
+    return onEightDChange(({ trackId, enabled }) => {
+      if (state.currentTrack?.id === trackId && audioRef.current) {
+        applyEightDToAudio(audioRef.current, enabled);
+      }
+    });
+  }, [state.currentTrack?.id]);
 
 
   const previousTrack = useCallback(() => {
@@ -790,9 +730,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         isLossless,
         audioFormat,
         hasLyrics,
-        karaokeEnabled,
-        karaokeAvailable,
-        toggleKaraoke,
+        getCurrentTime,
       }}
     >
       {children}
@@ -832,9 +770,7 @@ export function usePlayer() {
       isLossless: false,
       audioFormat: null,
       hasLyrics: false,
-      karaokeEnabled: false,
-      karaokeAvailable: false,
-      toggleKaraoke: () => {},
+      getCurrentTime: () => 0,
     } as PlayerContextType;
   }
   return context;
