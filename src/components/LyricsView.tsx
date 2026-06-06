@@ -1818,15 +1818,45 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             }}
           >
             <div style={{ width: '88%', margin: '0 auto' }}>
+              {vocalRemovalAvailable && (
+                <div className="flex justify-end" style={{ marginBottom: 10 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); resetMobileControlsTimer(); setVocalsRemoved(!vocalsRemoved); }}
+                    className={cn(
+                      "flex items-center justify-center rounded-full transition-colors",
+                      vocalsRemoved ? "bg-white/85 text-black" : "bg-white/15 text-white"
+                    )}
+                    style={{ width: 38, height: 38, backdropFilter: 'blur(10px)' }}
+                    title={vocalsRemoved ? "Vocals removed — tap to disable" : "Remove vocals (Sing mode)"}
+                    aria-pressed={vocalsRemoved}
+                  >
+                    {vocalsRemoved ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                  </button>
+                </div>
+              )}
               <ApplePlayerControls
                 hideTitle
                 onInteract={resetMobileControlsTimer}
                 onMore={() => currentTrack && setShowPlaylistDialog(true)}
               />
+              <AnimatePresence>
+                {vocalsRemoved && (
+                  <motion.div
+                    key="sing-badge-mobile"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    style={{ marginTop: 8 }}
+                  >
+                    <SingBadge />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
           </motion.div>
         </div>
+
 
         {currentTrack && (
           <AddToPlaylistDialog
