@@ -65,7 +65,9 @@ function parseMxmUrl(url: string): { artist: string; title: string } | null {
 export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEditorProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const fetchYoutubeMp3Fn = useServerFn(fetchYoutubeMp3);
+  const fetchYoutubeMp3Fn = async (_args: { data: { youtubeId: string } }): Promise<{ audioUrl: string; bytes: number }> => {
+    throw new Error("YouTube auto-fetch is not configured in this environment.");
+  };
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [isFetchingKaraoke, setIsFetchingKaraoke] = useState(false);
