@@ -401,3 +401,71 @@ export function applyManualKaraoke(
     return { ...line, words: newWords };
   });
 }
+
+/**
+ * Apply translation text to AMLL lyric lines.
+ *
+ * Accepts either:
+ *   • Timed LRC: `[mm:ss.xx] translation text`   -> mapped by nearest startTime (±750ms).
+ *   • Plain text (one line per lyric)            -> mapped by line index, skipping BG lines.
+ *
+ * Mutates a shallow copy; original `lines` is untouched.
+ */
+export function applyTranslation(lines: LyricLine[], translationText: string): LyricLine[] {
+  if (!translationText?.trim() || !lines.length) return lines;
+
+  const raw = translationText.replace(/\r/g, "").split("\n");
+  const timed: { time: number; text: string }[] = [];
+  const plain: string[] = [];
+  let hasTimed = false;
+
+  for (const line of raw) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (META_TAG.test(trimmed)) continue;
+
+    TIME_TAG.lastIndex = 0;
+    const stamps: number[] = [];
+    let lastIdx = 0;
+    let m: RegExpExecArray | null;
+    while ((m = TIME_TAG.exec(line))) {
+      if (m.index !== lastIdx) break;
+      stamps.push(toMs(m[1], m[2]));
+      lastIdx = TIME_TAG.lastIndex;
+    }
+    if (stamps.length) {
+      hasTimed = true;
+      const text = line.slice(lastIdx).replace(WORD_TAG, "").trim();
+      if (!text) continue;
+      for (const t of stamps) timed.push({ time: t, text });
+    } else {
+      plain.push(trimmed);
+    }
+  }
+
+  const result = lines.map((l) => ({ ...l }));
+
+  if (hasTimed && timed.length) {
+    timed.sort((a, b) => a.time - b.time);
+    const TOL = 750;
+    for (const l of result) {
+      let best = -1;
+      let bestDelta = Infinity;
+      for (let i = 0; i < timed.length; i++) {
+        const d = Math.abs(timed[i].time - l.startTime);
+        if (d < bestDelta) { bestDelta = d; best = i; }
+        if (timed[i].time > l.startTime + TOL) break;
+      }
+      if (best >= 0 && bestDelta <= TOL) l.translatedLyric = timed[best].text;
+    }
+  } else if (plain.length) {
+    let pi = 0;
+    for (const l of result) {
+      if (l.isBG) continue;
+      if (pi >= plain.length) break;
+      l.translatedLyric = plain[pi++];
+    }
+  }
+
+  return result;
+}

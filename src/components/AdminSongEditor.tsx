@@ -40,8 +40,6 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { LRCEditor } from "./LRCEditor";
 import { KaraokeEditor } from "./KaraokeEditor";
-import { useServerFn } from "react-router";
-import { fetchYoutubeMp3 } from "@/lib/youtubeDownload.functions";
 import { Download } from "lucide-react";
 
 interface AdminSongEditorProps {
@@ -67,7 +65,9 @@ function parseMxmUrl(url: string): { artist: string; title: string } | null {
 export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEditorProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const fetchYoutubeMp3Fn = useServerFn(fetchYoutubeMp3);
+  const fetchYoutubeMp3Fn = async (_args: { data: { youtubeId: string } }): Promise<{ audioUrl: string; bytes: number }> => {
+    throw new Error("YouTube auto-fetch is not configured in this environment.");
+  };
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [isFetchingKaraoke, setIsFetchingKaraoke] = useState(false);
