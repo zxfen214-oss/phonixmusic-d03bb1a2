@@ -5,7 +5,6 @@ import { uploadPublicStorageFile } from "@/lib/storageUploads";
 import { saveAudioFile } from "@/lib/database";
 import { fetchMergedSongRecord, saveSongRecord, updateSongRecordsByIds } from "@/lib/songRecords";
 import { fetchTextUtf8 } from "@/lib/lyrics";
-import { normalizeLyricsText } from "@/lib/ttml";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,9 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { LRCEditor } from "./LRCEditor";
 import { KaraokeEditor } from "./KaraokeEditor";
+import { useServerFn } from "@tanstack/react-start";
+import { fetchYoutubeMp3 } from "@/lib/youtubeDownload.functions";
+import { Download } from "lucide-react";
 
 interface AdminSongEditorProps {
   track: Track;
@@ -62,23 +64,12 @@ function parseMxmUrl(url: string): { artist: string; title: string } | null {
   }
 }
 
-/** "mm:ss.cc" → ms (e.g. "01:23.45" → 83450). Returns NaN on bad input. */
-function parseTimeToMs(s: string): number {
-  const m = s.trim().match(/^(\d{1,2}):(\d{2}(?:\.\d+)?)$/);
-  if (!m) return NaN;
-  return Math.round((parseFloat(m[1]) * 60 + parseFloat(m[2])) * 1000);
-}
-function msToTime(ms: number): string {
-  const total = Math.max(0, ms) / 1000;
-  const mm = Math.floor(total / 60).toString().padStart(2, "0");
-  const ss = (total - Math.floor(total / 60) * 60).toFixed(2).padStart(5, "0");
-  return `${mm}:${ss}`;
-}
-
 export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEditorProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
+  const fetchYoutubeMp3Fn = useServerFn(fetchYoutubeMp3);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [isFetchingKaraoke, setIsFetchingKaraoke] = useState(false);
   const [mxmFetchFailed, setMxmFetchFailed] = useState(false);
   const [mxmCustomArtist, setMxmCustomArtist] = useState('');
@@ -115,6 +106,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
     karaoke_data: any;
   } | null>(null);
   const [plainLyrics, setPlainLyrics] = useState("");
+  const [translatedLyrics, setTranslatedLyrics] = useState("");
   
   const [userLibraryInfo, setUserLibraryInfo] = useState<{
     count: number;
@@ -123,16 +115,9 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
   
   // Special commands state
   const [specialCommands, setSpecialCommands] = useState<{ time: string; command: string }[]>([]);
-
-  // Vertical-displacement spring (posY) keyframes — time ranges
-  const [springKeyframes, setSpringKeyframes] = useState<
-    { start: string; end: string; mass: number; damping: number; stiffness: number }[]
-  >([]);
-
-  // Word swell (emphasize) controls. 1 = AMLL default. Greater = bigger pop,
-  // Faster = quicker animation. Persisted on karaoke_data.
-  const [swellScale, setSwellScale] = useState<number>(1);
-  const [swellSpeed, setSwellSpeed] = useState<number>(1);
+  // Alignment overrides — admin can change AMLL vertical displacement (alignPosition)
+  // for specific time ranges within a song. Default desktop 0.32, mobile 0.18.
+  const [alignOverrides, setAlignOverrides] = useState<{ start: string; end: string; position: number }[]>([]);
   
   const [showLRCEditor, setShowLRCEditor] = useState(false);
   const [showKaraokeEditor, setShowKaraokeEditor] = useState(false);
@@ -145,7 +130,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const checkExistingSong = async () => {
     try {
-      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, karaoke_data, karaoke_enabled, updated_at, created_at";
+      const selectFields = "id, youtube_id, title, artist, lyrics_url, lyrics_speed, bounce_intensity, audio_url, karaoke_color, lyric_color, synced_lyrics, plain_lyrics, translated_lyrics, karaoke_data, karaoke_enabled, updated_at, created_at";
       const { merged, rows } = await fetchMergedSongRecord(
         { youtubeId: track.youtubeId, title: track.title, artist: track.artist, album: track.album },
         selectFields
@@ -195,33 +180,24 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
           audioFormat: (karaokeData?.audio_format as any) ?? 'none',
         }));
         setPlainLyrics((merged as any).plain_lyrics || "");
+        setTranslatedLyrics((merged as any).translated_lyrics || "");
+
+        // Load alignment overrides from karaoke_data
+        if (Array.isArray(karaokeData?.align_overrides)) {
+          setAlignOverrides(
+            karaokeData.align_overrides
+              .filter((o: any) => Number.isFinite(o?.startMs) && Number.isFinite(o?.endMs) && Number.isFinite(o?.position))
+              .map((o: any) => ({ start: formatMs(o.startMs), end: formatMs(o.endMs), position: o.position }))
+          );
+        } else {
+          setAlignOverrides([]);
+        }
 
         if (merged.synced_lyrics) {
           parseSpecialCommands(merged.synced_lyrics);
         }
-
-        // Load vertical-displacement spring keyframes from karaoke_data
-        const kfs = Array.isArray(karaokeData?.pos_y_spring_keyframes)
-          ? karaokeData.pos_y_spring_keyframes
-          : [];
-        setSpringKeyframes(
-          kfs
-            .filter((k: any) => k && (typeof k.start === "number" || typeof k.time === "number"))
-            .map((k: any) => ({
-              start: msToTime(typeof k.start === "number" ? k.start : k.time),
-              end: typeof k.end === "number" && Number.isFinite(k.end) ? msToTime(k.end) : "",
-              mass: typeof k.mass === "number" ? k.mass : 1,
-              damping: typeof k.damping === "number" ? k.damping : 15,
-              stiffness: typeof k.stiffness === "number" ? k.stiffness : 100,
-            }))
-        );
-        setSwellScale(typeof karaokeData?.swell_scale === "number" ? karaokeData.swell_scale : 1);
-        setSwellSpeed(typeof karaokeData?.swell_speed === "number" ? karaokeData.swell_speed : 1);
       } else {
         setExistingSong(null);
-        setSpringKeyframes([]);
-        setSwellScale(1);
-        setSwellSpeed(1);
       }
 
       if (track.youtubeId) {
@@ -274,6 +250,32 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
 
   const updateSpecialCommand = (index: number, field: 'time' | 'command', value: string) => {
     setSpecialCommands(prev => prev.map((cmd, i) => i === index ? { ...cmd, [field]: value } : cmd));
+  };
+
+  // ── Alignment override helpers ──
+  const parseTimeToMs = (s: string): number | null => {
+    const m = s.trim().match(/^(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?$/);
+    if (!m) return null;
+    const min = parseInt(m[1], 10);
+    const sec = parseInt(m[2], 10);
+    const frac = m[3] ? parseInt(m[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+    return min * 60_000 + sec * 1000 + frac;
+  };
+  const formatMs = (ms: number): string => {
+    const total = Math.max(0, Math.round(ms));
+    const min = Math.floor(total / 60_000);
+    const sec = Math.floor((total % 60_000) / 1000);
+    const cs = Math.floor((total % 1000) / 10);
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+  };
+  const addAlignOverride = () => {
+    setAlignOverrides(prev => [...prev, { start: '00:00.00', end: '00:10.00', position: 0.5 }]);
+  };
+  const removeAlignOverride = (index: number) => {
+    setAlignOverrides(prev => prev.filter((_, i) => i !== index));
+  };
+  const updateAlignOverride = (index: number, patch: Partial<{ start: string; end: string; position: number }>) => {
+    setAlignOverrides(prev => prev.map((o, i) => i === index ? { ...o, ...patch } : o));
   };
 
   const applySpecialCommands = async () => {
@@ -394,13 +396,11 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       }
 
       if (lyricsFile) {
-        // Read file content for synced_lyrics (source of truth).
-        // If it's TTML (.ttml / Apple karaoke), convert to eLRC first.
+        // Read file content for synced_lyrics (source of truth)
         try {
-          const raw = await lyricsFile.text();
-          syncedLyricsContent = normalizeLyricsText(raw);
+          syncedLyricsContent = await lyricsFile.text();
         } catch (e) {
-          console.warn("Failed to read lyrics file text:", e);
+          console.warn("Failed to read LRC file text:", e);
         }
         const url = await uploadFile(lyricsFile, "lyrics");
         if (url) lyricsUrl = url;
@@ -414,29 +414,32 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         }
       }
 
-      // Merge early_appearance and mobile_char_limit into karaoke_data
+      // Merge early_appearance, mobile_char_limit, align_overrides into karaoke_data
       const existingKaraokeData = latestSong?.karaoke_data || existingSong?.karaoke_data || {};
+      const cleanedOverrides = alignOverrides
+        .map((o) => ({
+          startMs: parseTimeToMs(o.start),
+          endMs: parseTimeToMs(o.end),
+          position: Number(o.position),
+        }))
+        .filter(
+          (o) =>
+            o.startMs !== null &&
+            o.endMs !== null &&
+            Number.isFinite(o.position) &&
+            (o.endMs as number) > (o.startMs as number)
+        )
+        .map((o) => ({
+          startMs: o.startMs as number,
+          endMs: o.endMs as number,
+          position: Math.max(0, Math.min(1, o.position)),
+        }));
       const mergedKaraokeData = {
         ...existingKaraokeData,
         early_appearance: formData.earlyAppearance,
         mobile_char_limit: formData.mobileCharLimit,
         audio_format: formData.audioFormat === 'none' ? null : formData.audioFormat,
-        pos_y_spring_keyframes: springKeyframes
-          .map((k) => {
-            const startMs = parseTimeToMs(k.start);
-            const endMs = k.end ? parseTimeToMs(k.end) : NaN;
-            return {
-              start: startMs,
-              end: Number.isFinite(endMs) ? endMs : null,
-              mass: Number(k.mass),
-              damping: Number(k.damping),
-              stiffness: Number(k.stiffness),
-            };
-          })
-          .filter((k) => Number.isFinite(k.start) && k.start >= 0)
-          .sort((a, b) => a.start - b.start),
-        swell_scale: Number.isFinite(swellScale) ? swellScale : 1,
-        swell_speed: Number.isFinite(swellSpeed) ? swellSpeed : 1,
+        align_overrides: cleanedOverrides,
       };
 
       const baseSongData: Record<string, any> = {
@@ -453,6 +456,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
         karaoke_color: formData.karaokeColor || null,
         lyric_color: formData.lyricColor || null,
         plain_lyrics: plainLyrics || null,
+        translated_lyrics: translatedLyrics || null,
         synced_lyrics: syncedLyricsContent,
         karaoke_data: mergedKaraokeData,
       };
@@ -496,6 +500,41 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
       toast({ title: "Error", description: "Failed to remove audio", variant: "destructive" });
     }
   };
+
+  const handleAutoFetchMp3 = async () => {
+    if (!track.youtubeId) {
+      toast({ title: "No YouTube ID", description: "This track has no YouTube ID to fetch from.", variant: "destructive" });
+      return;
+    }
+    setIsAutoFetching(true);
+    try {
+      const result = await fetchYoutubeMp3Fn({ data: { youtubeId: track.youtubeId } });
+      const lookup = { youtubeId: track.youtubeId, title: formData.title, artist: formData.artist, album: formData.album };
+      await saveSongRecord(
+        lookup,
+        { audio_url: result.audioUrl },
+        {
+          title: formData.title,
+          artist: formData.artist,
+          album: formData.album || null,
+          duration: track.duration,
+          youtube_id: track.youtubeId,
+        }
+      );
+      toast({ title: "MP3 fetched", description: `Audio attached (${(result.bytes / 1024 / 1024).toFixed(2)} MB).` });
+      await checkExistingSong();
+    } catch (error: any) {
+      console.error("Auto-fetch failed:", error);
+      toast({
+        title: "Auto-fetch failed",
+        description: error?.message || "The YouTube downloader API didn't return audio.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoFetching(false);
+    }
+  };
+
 
   const handleRemoveLyrics = async () => {
     if (!existingSong) return;
@@ -621,7 +660,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               <Terminal className="h-3 w-3" />
               Commands
             </TabsTrigger>
-            <TabsTrigger value="spring" className="flex-1 text-xs">Spring</TabsTrigger>
+            <TabsTrigger value="align" className="flex-1 text-xs">Align</TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -770,6 +809,19 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                     <input type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
                   </label>
                 )}
+                {track.youtubeId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoFetchMp3}
+                    disabled={isAutoFetching}
+                    className="w-full gap-2 mt-1.5"
+                  >
+                    {isAutoFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    {isAutoFetching ? "Fetching from YouTube…" : existingSong?.audio_url ? "Re-fetch MP3 from YouTube" : "Auto-fetch MP3 from YouTube"}
+                  </Button>
+                )}
               </div>
 
               {/* Audio format badge */}
@@ -811,7 +863,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
             >
               {/* Lyrics Upload */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Synced Lyrics (.lrc / .ttml)</Label>
+                <Label className="text-xs">Synced Lyrics (.lrc)</Label>
                 {existingSong?.lyrics_url || existingSong?.synced_lyrics ? (
                   <div className="flex items-center gap-2 p-2.5 bg-secondary rounded-lg">
                     <FileText className="h-4 w-4 text-accent" />
@@ -822,8 +874,7 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   <label className="flex items-center gap-3 p-2.5 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
                     <Upload className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">{lyricsFile ? lyricsFile.name : "Upload .lrc file"}</span>
-                    <input type="file" accept=".lrc,.txt,.ttml,.xml,application/ttml+xml,text/xml" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
-                    <span className="text-[10px] text-muted-foreground sr-only">Accepts .lrc, .ttml (Apple karaoke)</span>
+                    <input type="file" accept=".lrc,.txt" className="hidden" onChange={(e) => setLyricsFile(e.target.files?.[0] || null)} />
                   </label>
                 )}
               </div>
@@ -859,6 +910,22 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
                   onChange={(e) => setPlainLyrics(e.target.value)}
                   placeholder="Paste plain lyrics here..."
                   className="h-32 text-xs resize-none"
+                />
+              </div>
+
+              {/* Translation */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Translation</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Shown under each lyric line (Apple-style). Two accepted formats:
+                  {" "}<b>Synced LRC</b> — <code>[mm:ss.xx] translated text</code> (matched by timestamp), or
+                  {" "}<b>Plain text</b> — one translated line per original line, in order. Leave empty for none.
+                </p>
+                <Textarea
+                  value={translatedLyrics}
+                  onChange={(e) => setTranslatedLyrics(e.target.value)}
+                  placeholder={"[00:12.34] Translated line one\n[00:15.20] Translated line two\n\n— or plain text, one line per original lyric line"}
+                  className="h-32 text-xs resize-none font-mono"
                 />
               </div>
 
@@ -1020,8 +1087,8 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
             </motion.div>
           </TabsContent>
 
-          {/* Spring Tab — vertical-displacement spring (posY) keyframes */}
-          <TabsContent value="spring">
+          {/* Alignment Overrides Tab */}
+          <TabsContent value="align">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1029,144 +1096,80 @@ export function AdminSongEditor({ track, isOpen, onClose, onSave }: AdminSongEdi
               className="space-y-4 pt-2"
             >
               <div className="space-y-1.5">
-                <Label className="text-xs">Vertical-Displacement Spring</Label>
+                <Label className="text-xs">Vertical Displacement Overrides</Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Schedule spring physics for the lyric line vertical motion. Each keyframe takes effect at its timestamp.
-                  Defaults: Mass 1, Resistance 15, Elasticity 100.
+                  The default active-line vertical position is{' '}
+                  <code className="bg-secondary px-1 rounded">0.32</code> on desktop and{' '}
+                  <code className="bg-secondary px-1 rounded">0.18</code> on mobile (0 = top, 1 = bottom).
+                  Add ranges below to override it only for specific parts of this song. Anything
+                  outside these ranges uses the default. Save changes from this tab using the button below.
                 </p>
-              </div>
-
-              {/* Word swell (emphasize) controls */}
-              <div className="space-y-2 rounded-md border border-border/50 p-3">
-                <Label className="text-xs">Word Swell (long-held syllables)</Label>
-                <p className="text-[10px] text-muted-foreground">
-                  Controls the "grow & lift" effect on sustained words. 1 = AMLL default.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Scale (×)</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      min="0.5"
-                      max="4"
-                      value={swellScale}
-                      onChange={(e) => setSwellScale(parseFloat(e.target.value) || 1)}
-                      className="h-8 text-xs px-1.5"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Speed (×)</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      min="0.25"
-                      max="5"
-                      value={swellSpeed}
-                      onChange={(e) => setSwellSpeed(parseFloat(e.target.value) || 1)}
-                      className="h-8 text-xs px-1.5"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-[80px_80px_1fr_1fr_1fr_32px] gap-2 text-[10px] text-muted-foreground font-medium px-1">
-                <span>Start</span>
-                <span>End</span>
-                <span>Mass</span>
-                <span>Resistance</span>
-                <span>Elasticity</span>
-                <span />
               </div>
 
               <div className="space-y-2">
-                {springKeyframes.map((kf, i) => (
-                  <div key={i} className="grid grid-cols-[80px_80px_1fr_1fr_1fr_32px] gap-2 items-center">
-                    <Input
-                      value={kf.start}
-                      onChange={(e) =>
-                        setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, start: e.target.value } : k))
-                        )
-                      }
-                      placeholder="00:00.00"
-                      className="h-8 text-xs font-mono px-1.5"
-                    />
-                    <Input
-                      value={kf.end}
-                      onChange={(e) =>
-                        setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, end: e.target.value } : k))
-                        )
-                      }
-                      placeholder="00:00.00"
-                      className="h-8 text-xs font-mono px-1.5"
-                    />
-
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={kf.mass}
-                      onChange={(e) =>
-                        setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, mass: parseFloat(e.target.value) || 0 } : k))
-                        )
-                      }
-                      className="h-8 text-xs px-1.5"
-                    />
-                    <Input
-                      type="number"
-                      step="0.5"
-                      value={kf.damping}
-                      onChange={(e) =>
-                        setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, damping: parseFloat(e.target.value) || 0 } : k))
-                        )
-                      }
-                      className="h-8 text-xs px-1.5"
-                    />
-                    <Input
-                      type="number"
-                      step="1"
-                      value={kf.stiffness}
-                      onChange={(e) =>
-                        setSpringKeyframes((prev) =>
-                          prev.map((k, idx) => (idx === i ? { ...k, stiffness: parseFloat(e.target.value) || 0 } : k))
-                        )
-                      }
-                      className="h-8 text-xs px-1.5"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSpringKeyframes((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="h-8 w-8 text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                {alignOverrides.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground italic">No overrides — default position is used for the whole song.</p>
+                )}
+                {alignOverrides.map((o, i) => (
+                  <div key={i} className="space-y-1.5 rounded-lg border border-border p-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">Start</Label>
+                        <Input
+                          value={o.start}
+                          onChange={(e) => updateAlignOverride(i, { start: e.target.value })}
+                          placeholder="00:00.00"
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-0.5">
+                        <Label className="text-[10px] text-muted-foreground">End</Label>
+                        <Input
+                          value={o.end}
+                          onChange={(e) => updateAlignOverride(i, { end: e.target.value })}
+                          placeholder="00:10.00"
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAlignOverride(i)}
+                        className="h-8 w-8 text-destructive self-end"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] text-muted-foreground">Position (0 = top, 1 = bottom)</Label>
+                        <span className="text-[10px] font-mono">{o.position.toFixed(2)}</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={[o.position]}
+                        onValueChange={(v) => updateAlignOverride(i, { position: v[0] })}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setSpringKeyframes((prev) => [
-                    ...prev,
-                    { start: "00:00.00", end: "", mass: 1, damping: 15, stiffness: 100 },
-                  ])
-                }
-                className="w-full gap-1"
-              >
+              <Button variant="outline" size="sm" onClick={addAlignOverride} className="w-full gap-1">
                 <Plus className="h-3.5 w-3.5" />
-                Add Keyframe
+                Add Override
               </Button>
 
               <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isSaving ? "Saving..." : "Save Changes"}
+                {isSaving ? 'Saving...' : 'Save Overrides'}
               </Button>
+
+              {!existingSong && (
+                <p className="text-[10px] text-destructive">Save the song in the General tab first.</p>
+              )}
             </motion.div>
           </TabsContent>
         </Tabs>
