@@ -40,7 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { LRCEditor } from "./LRCEditor";
 import { KaraokeEditor } from "./KaraokeEditor";
-import { useServerFn } from "@tanstack/react-router";
+import { useServerFn } from "react-router";
 import { fetchYoutubeMp3 } from "@/lib/youtubeDownload.functions";
 import { Download } from "lucide-react";
 
