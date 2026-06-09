@@ -3,7 +3,7 @@ import {
   isKaraokeEnabled,
   setKaraokeEnabled,
   subscribeKaraoke,
-} from "@/lib/karaokeAudio.ts";
+} from "@/lib/karaokeAudio";
 
 export function useKaraokeMode(): [boolean, (next?: boolean) => void] {
   const [on, setOn] = useState<boolean>(() => isKaraokeEnabled());
