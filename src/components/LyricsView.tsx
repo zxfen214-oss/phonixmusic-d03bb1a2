@@ -1439,6 +1439,81 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     return base;
   }, [syncedLrcText, karaokeWords]);
 
+  // ── Auto translation (Lovable AI) ─────────────────────────────────────
+  const TRANSLATE_LANG = "English";
+  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translations, setTranslations] = useState<string[] | null>(null);
+  const lastTranslatedKey = useRef<string>("");
+
+  // Reset translation state on track change
+  useEffect(() => {
+    setTranslationEnabled(false);
+    setTranslations(null);
+    lastTranslatedKey.current = "";
+  }, [currentTrack?.id]);
+
+  // Fetch/load translations when enabled
+  useEffect(() => {
+    if (!translationEnabled || !currentTrack || amllLines.length === 0) return;
+    const key = `${currentTrack.id}|${amllLines.length}`;
+    if (lastTranslatedKey.current === key && translations) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setIsTranslating(true);
+        const { getCachedTranslations, setCachedTranslations, translateLines } = await import(
+          "@/lib/translateLyrics"
+        );
+        const cached = await getCachedTranslations(currentTrack.id, TRANSLATE_LANG);
+        const sourceTexts = amllLines.map((l: any) =>
+          (l.words ?? []).map((w: any) => w.word).join("")
+        );
+        if (cached && cached.length === sourceTexts.length) {
+          if (!cancelled) {
+            setTranslations(cached);
+            lastTranslatedKey.current = key;
+          }
+          return;
+        }
+        const result = await translateLines(sourceTexts, TRANSLATE_LANG);
+        if (cancelled) return;
+        setTranslations(result);
+        lastTranslatedKey.current = key;
+        try {
+          await setCachedTranslations(currentTrack.id, TRANSLATE_LANG, result);
+        } catch {}
+      } catch (err) {
+        console.error("Lyrics translation failed", err);
+        if (!cancelled) {
+          setTranslationEnabled(false);
+          console.warn("Lyrics translation failed:", err);
+        }
+      } finally {
+        if (!cancelled) setIsTranslating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [translationEnabled, currentTrack?.id, amllLines]);
+
+  // Overlay translations onto lines (only when enabled & ready)
+  const displayAmllLines = useMemo(() => {
+    if (!translationEnabled || !translations || translations.length !== amllLines.length) {
+      return amllLines;
+    }
+    return amllLines.map((l: any, i: number) => ({
+      ...l,
+      translatedLyric: translations[i] || "",
+    }));
+  }, [amllLines, translations, translationEnabled]);
+
+  const handleToggleTranslation = useCallback(() => {
+    setTranslationEnabled((v) => !v);
+  }, []);
+
   // Whether ANY lyrics (synced or static) are available for the current track.
   const hasAnyLyrics = amllLines.length > 0 || staticLyricsText.trim().length > 0;
 
@@ -1584,6 +1659,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                       track={currentTrack}
                       lyricsText={plainLyricsText}
                       syncedLrcText={syncedLrcText}
+                      canTranslate={amllLines.length > 0}
+                      translationEnabled={translationEnabled}
+                      isTranslating={isTranslating}
+                      onToggleTranslation={handleToggleTranslation}
                       buttonClassName="rounded-full flex items-center justify-center transition-colors"
                       buttonStyle={{ width: 34, height: 34, backdropFilter: 'blur(10px)' }}
                       iconStyle={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }}
@@ -1668,7 +1747,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                     {amllLines.length > 0 ? (
                       <AMLLLyricsPlayer
-                        lines={amllLines}
+                        lines={displayAmllLines}
                         currentTime={smoothTime * 1000}
                         isSeek={isSeekFlag}
                         fontSize={45}
@@ -1741,6 +1820,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               track={currentTrack}
               lyricsText={plainLyricsText}
               syncedLrcText={syncedLrcText}
+              canTranslate={amllLines.length > 0}
+              translationEnabled={translationEnabled}
+              isTranslating={isTranslating}
+              onToggleTranslation={handleToggleTranslation}
               buttonClassName="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
               buttonStyle={{ width: '36px', height: '36px' }}
               iconStyle={{ width: '18px', height: '18px' }}
@@ -1757,7 +1840,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             >
               {amllLines.length > 0 ? (
                 <AMLLLyricsPlayer
-                  lines={amllLines}
+                  lines={displayAmllLines}
                   currentTime={smoothTime * 1000}
                   isSeek={isSeekFlag || mountSettling}
                   fontSize={36}

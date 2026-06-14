@@ -29,6 +29,8 @@ import {
   Trash2,
   Play,
   Pause,
+  Languages,
+  Loader2,
 } from "lucide-react";
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -68,13 +70,30 @@ function fmt(seconds: number): string {
 interface Props {
   track: Track | null;
   lyricsText: string;
+  syncedLrcText?: string;
   buttonClassName?: string;
   buttonStyle?: React.CSSProperties;
   iconClassName?: string;
   iconStyle?: React.CSSProperties;
+  // Translation controls (optional; only render when provided)
+  canTranslate?: boolean;
+  translationEnabled?: boolean;
+  isTranslating?: boolean;
+  onToggleTranslation?: () => void;
 }
 
-export function LyricsMoreMenu({ track, lyricsText, buttonClassName, buttonStyle, iconClassName, iconStyle }: Props) {
+export function LyricsMoreMenu({
+  track,
+  lyricsText,
+  buttonClassName,
+  buttonStyle,
+  iconClassName,
+  iconStyle,
+  canTranslate,
+  translationEnabled,
+  isTranslating,
+  onToggleTranslation,
+}: Props) {
   const { progress, seekTo, speedPreset, setSpeedPreset, playbackRate } = usePlayer();
   const { toast } = useToast();
 
@@ -121,6 +140,31 @@ export function LyricsMoreMenu({ track, lyricsText, buttonClassName, buttonStyle
             <Scissors className="h-4 w-4 mr-2" />
             Cut Song
           </DropdownMenuItem>
+
+          {onToggleTranslation && (
+            <DropdownMenuItem
+              disabled={!canTranslate || isTranslating}
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleTranslation();
+              }}
+              className="focus:bg-white/10 focus:text-white"
+            >
+              {isTranslating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Languages className="h-4 w-4 mr-2" />
+              )}
+              {translationEnabled ? "Hide translation" : "Translate to English"}
+              {translationEnabled && !isTranslating && (
+                <Check className="h-4 w-4 ml-auto" />
+              )}
+            </DropdownMenuItem>
+          )}
+
+
+
+
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="focus:bg-white/10 focus:text-white data-[state=open]:bg-white/10">
