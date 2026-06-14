@@ -1743,7 +1743,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                     {amllLines.length > 0 ? (
                       <AMLLLyricsPlayer
-                        lines={amllLines}
+                        lines={displayAmllLines}
                         currentTime={smoothTime * 1000}
                         isSeek={isSeekFlag}
                         fontSize={45}
@@ -1832,7 +1832,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
             >
               {amllLines.length > 0 ? (
                 <AMLLLyricsPlayer
-                  lines={amllLines}
+                  lines={displayAmllLines}
                   currentTime={smoothTime * 1000}
                   isSeek={isSeekFlag || mountSettling}
                   fontSize={36}
