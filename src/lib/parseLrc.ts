@@ -272,8 +272,13 @@ export function parseLrc(text: string): LyricLine[] {
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
+          // BG line must start at its first word's actual timestamp, not the
+          // main line's [mm:ss] — otherwise AMLL begins highlighting the BG
+          // karaoke fill from the main line's start, well before its words
+          // actually fire.
+          const bgStart = bgWords[0].startTime;
           out.push({
-            start: wholeIsBg ? start : start + 0.0005,
+            start: bgStart,
             words: bgWords,
             plain: bgWords.map(w => w.word).join(""),
             isDuet: lineDuet,
@@ -286,8 +291,9 @@ export function parseLrc(text: string): LyricLine[] {
       if (companionRaw) {
         const compWords = buildWordsFromText(companionRaw, start, offset);
         if (compWords.length) {
+          const compStart = compWords[0].startTime;
           out.push({
-            start: start + 0.001,
+            start: compStart,
             words: compWords,
             plain: compWords.map(w => w.word).join(""),
             isDuet: !lineDuet,
