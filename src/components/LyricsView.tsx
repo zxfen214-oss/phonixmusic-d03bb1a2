@@ -1820,6 +1820,10 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               track={currentTrack}
               lyricsText={plainLyricsText}
               syncedLrcText={syncedLrcText}
+              canTranslate={amllLines.length > 0}
+              translationEnabled={translationEnabled}
+              isTranslating={isTranslating}
+              onToggleTranslation={handleToggleTranslation}
               buttonClassName="flex items-center justify-center flex-shrink-0 rounded-full hover:bg-white/20 transition-colors"
               buttonStyle={{ width: '36px', height: '36px' }}
               iconStyle={{ width: '18px', height: '18px' }}
