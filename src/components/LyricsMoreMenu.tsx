@@ -141,6 +141,36 @@ export function LyricsMoreMenu({
             Cut Song
           </DropdownMenuItem>
 
+          {onToggleTranslation && (
+            <DropdownMenuItem
+              disabled={!canTranslate || isTranslating}
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleTranslation();
+              }}
+              className="focus:bg-white/10 focus:text-white"
+            >
+              {isTranslating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Languages className="h-4 w-4 mr-2" />
+              )}
+              {translationEnabled ? "Hide translation" : "Translate to English"}
+              {translationEnabled && !isTranslating && (
+                <Check className="h-4 w-4 ml-auto" />
+              )}
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuItem
+            disabled={!track}
+            onClick={() => track && setShowCut(true)}
+            className="focus:bg-white/10 focus:text-white"
+          >
+            <Scissors className="h-4 w-4 mr-2" />
+            Cut Song
+          </DropdownMenuItem>
+
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="focus:bg-white/10 focus:text-white data-[state=open]:bg-white/10">
               <Gauge className="h-4 w-4 mr-2" />
