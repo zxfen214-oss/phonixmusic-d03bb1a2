@@ -82,7 +82,18 @@ interface Props {
   onToggleTranslation?: () => void;
 }
 
-export function LyricsMoreMenu({ track, lyricsText, buttonClassName, buttonStyle, iconClassName, iconStyle }: Props) {
+export function LyricsMoreMenu({
+  track,
+  lyricsText,
+  buttonClassName,
+  buttonStyle,
+  iconClassName,
+  iconStyle,
+  canTranslate,
+  translationEnabled,
+  isTranslating,
+  onToggleTranslation,
+}: Props) {
   const { progress, seekTo, speedPreset, setSpeedPreset, playbackRate } = usePlayer();
   const { toast } = useToast();
 
