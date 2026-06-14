@@ -1488,11 +1488,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
         console.error("Lyrics translation failed", err);
         if (!cancelled) {
           setTranslationEnabled(false);
-          toast({
-            title: "Translation failed",
-            description: err instanceof Error ? err.message : "Try again later.",
-            variant: "destructive",
-          });
+          console.warn("Lyrics translation failed:", err);
         }
       } finally {
         if (!cancelled) setIsTranslating(false);
