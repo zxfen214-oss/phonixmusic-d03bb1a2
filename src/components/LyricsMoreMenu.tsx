@@ -29,6 +29,8 @@ import {
   Trash2,
   Play,
   Pause,
+  Languages,
+  Loader2,
 } from "lucide-react";
 import { Track } from "@/types/music";
 import { usePlayer } from "@/contexts/PlayerContext";
@@ -68,10 +70,16 @@ function fmt(seconds: number): string {
 interface Props {
   track: Track | null;
   lyricsText: string;
+  syncedLrcText?: string;
   buttonClassName?: string;
   buttonStyle?: React.CSSProperties;
   iconClassName?: string;
   iconStyle?: React.CSSProperties;
+  // Translation controls (optional; only render when provided)
+  canTranslate?: boolean;
+  translationEnabled?: boolean;
+  isTranslating?: boolean;
+  onToggleTranslation?: () => void;
 }
 
 export function LyricsMoreMenu({ track, lyricsText, buttonClassName, buttonStyle, iconClassName, iconStyle }: Props) {
