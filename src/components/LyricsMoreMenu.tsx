@@ -160,16 +160,8 @@ export function LyricsMoreMenu({
                 <Check className="h-4 w-4 ml-auto" />
               )}
             </DropdownMenuItem>
-          )}
 
-          <DropdownMenuItem
-            disabled={!track}
-            onClick={() => track && setShowCut(true)}
-            className="focus:bg-white/10 focus:text-white"
-          >
-            <Scissors className="h-4 w-4 mr-2" />
-            Cut Song
-          </DropdownMenuItem>
+
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="focus:bg-white/10 focus:text-white data-[state=open]:bg-white/10">
