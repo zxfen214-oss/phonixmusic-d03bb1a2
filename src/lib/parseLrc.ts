@@ -359,15 +359,20 @@ export function getLyricsDuration(lines: LyricLine[]): number {
  */
 export function stripKaraoke(lines: LyricLine[]): LyricLine[] {
   return lines.map((l) => {
-    if (!l.words || l.words.length <= 1) return l;
+    if (!l.words || l.words.length <= 1) {
+      // Single-word lines (including pre-flattened BG lines) — leave as is.
+      return l;
+    }
     const text = l.words.map((w) => w.word).join("");
+    // For BG lines, set endTime === startTime so karaoke fill stays disabled.
+    const endTime = l.isBG ? l.startTime : l.endTime;
     return {
       ...l,
       words: [
         {
           word: text,
           startTime: l.startTime,
-          endTime: l.endTime,
+          endTime,
           obscene: false,
         },
       ],
