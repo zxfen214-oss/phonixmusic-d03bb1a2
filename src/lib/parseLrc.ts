@@ -324,12 +324,14 @@ export function parseLrc(text: string): LyricLine[] {
   const lines: LyricLine[] = out.map((l, i) => {
     const next = out[i + 1];
     const lineEnd = next ? next.start : l.start + 5000;
-    const words = l.words.map((w, idx) => {
-      const isLast = idx === l.words.length - 1;
-      return isLast
-        ? { ...w, endTime: Math.max(w.startTime + 200, Math.min(w.endTime, lineEnd)) }
-        : w;
-    });
+    const words = l.isBG
+      ? l.words // BG: leave word times untouched so karaoke fill stays disabled
+      : l.words.map((w, idx) => {
+          const isLast = idx === l.words.length - 1;
+          return isLast
+            ? { ...w, endTime: Math.max(w.startTime + 200, Math.min(w.endTime, lineEnd)) }
+            : w;
+        });
     return {
       words,
       translatedLyric: "",
