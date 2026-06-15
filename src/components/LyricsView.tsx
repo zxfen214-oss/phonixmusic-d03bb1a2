@@ -1575,6 +1575,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     isLoadingLyrics,
     defaultAlignment: parsedLyrics?.defaultAlignment,
     mobileCharLimit,
+    karaokeFeatureEnabled,
   };
 
   const useAmll = !reduceMotion && amllLines.length > 0;
