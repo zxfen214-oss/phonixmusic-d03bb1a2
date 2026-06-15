@@ -58,6 +58,17 @@ export default function Settings({ embedded = false }: SettingsProps) {
     setKaraokeLeadInMs(karaokeLeadIn);
   }, [karaokeLeadIn]);
 
+  const [reduceMotion, setReduceMotion] = useState(() => getReduceMotion());
+  useEffect(() => {
+    setLyricsPref(REDUCE_MOTION_KEY, reduceMotion);
+  }, [reduceMotion]);
+
+  const [karaokeFeature, setKaraokeFeature] = useState(() => getKaraokeFeatureEnabled());
+  useEffect(() => {
+    setLyricsPref(KARAOKE_FEATURE_KEY, karaokeFeature);
+  }, [karaokeFeature]);
+
+
   const handleSignOut = async () => {
     await signOut();
     navigate({ to: "/auth" });
