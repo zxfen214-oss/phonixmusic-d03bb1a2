@@ -1908,19 +1908,22 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               style={{ overflow: 'hidden' }}
             >
               {useAmll ? (
-                <AMLLLyricsPlayer
-                  lines={displayAmllLines}
-                  currentTime={smoothTime * 1000}
-                  isSeek={isSeekFlag || mountSettling}
-                  fontSize={36}
-                  enableBlur={false}
-                  onLineClick={amllSeek}
-                  isMobile
-                  posYSpringKeyframes={posYSpringKeyframes}
-                  swellScale={swellScale}
-                  swellSpeed={swellSpeed}
-                  className="h-full w-full"
-                />
+                <>
+                  <AMLLLyricsPlayer
+                    lines={displayAmllLines}
+                    currentTime={smoothTime * 1000}
+                    isSeek={isSeekFlag || mountSettling}
+                    fontSize={36}
+                    enableBlur={false}
+                    onLineClick={amllSeek}
+                    isMobile
+                    posYSpringKeyframes={posYSpringKeyframes}
+                    swellScale={swellScale}
+                    swellSpeed={swellSpeed}
+                    className="h-full w-full"
+                  />
+                  <AmllIntroOverlay lines={displayAmllLines} smoothTime={smoothTime} isMobile />
+                </>
               ) : staticLyricsText.trim() ? (
                 <StaticLyricsContent text={staticLyricsText} isMobile />
               ) : (
