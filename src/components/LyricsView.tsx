@@ -893,7 +893,7 @@ function LyricsContent({
           >
             {isMusic && musicEnd ? (
               <MusicIndicator currentTime={smoothTime} startTime={lineTime} endTime={musicEnd} />
-            ) : !isIntro && elrcWords && elrcWords.length > 0 ? (
+            ) : !isIntro && karaokeFeatureEnabled && elrcWords && elrcWords.length > 0 ? (
               <>
                 <ELRCLine words={elrcWords} currentTime={smoothTime} isMobile={isMobile} frozen={!isActive && smoothTime >= nextLineTime} charLimit={mobileCharLimit} />
                 {nlCompanionText && nlCompanionElrcWords && nlCompanionElrcWords.length > 0 ? (
