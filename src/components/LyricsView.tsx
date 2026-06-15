@@ -1850,7 +1850,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               className="relative flex-1 min-h-0"
               style={{ overflow: 'hidden' }}
             >
-              {amllLines.length > 0 ? (
+              {useAmll ? (
                 <AMLLLyricsPlayer
                   lines={displayAmllLines}
                   currentTime={smoothTime * 1000}
