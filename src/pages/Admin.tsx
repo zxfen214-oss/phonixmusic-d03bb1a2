@@ -494,7 +494,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
-      navigate({ to: "/" });
+      navigate("/");
     }
   }, [user, isAdmin, authLoading, navigate]);
 
@@ -901,7 +901,7 @@ export default function Admin() {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

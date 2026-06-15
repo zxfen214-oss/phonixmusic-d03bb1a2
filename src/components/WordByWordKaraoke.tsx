@@ -374,7 +374,7 @@ const jumpBeforeCurrentLine = useCallback(() => {
   setActiveWord(-1);
 
   // Seek 1.5s before line
-  const targetTime = Math.max(0, lrcLine.startTime - 1.5);
+  const targetTime = Math.max(0, lrcLine.time - 1.5);
 
   const percent = (targetTime / duration) * 100;
 

@@ -68,40 +68,52 @@ function parseELRCWords(text: string, lineStartTime: number): { word: string; st
   // eLRC pattern: text contains inline word timestamps like <00:01.50>word
   const elrcPattern = /<(\d{1,2}):(\d{2})(?:[.:])(\d{2,3})>/g;
   const matches = [...text.matchAll(elrcPattern)];
-  
-  if (matches.length < 2) return null; // Need at least 2 timestamps for word-level
-  
-  const words: { word: string; startTime: number; endTime: number }[] = [];
-  
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i];
-    const minutes = parseInt(match[1], 10);
-    const seconds = parseInt(match[2], 10);
-    const centiseconds = match[3] ? parseInt(match[3].padEnd(3, '0').slice(0, 3), 10) : 0;
-    const startTime = minutes * 60 + seconds + centiseconds / 1000;
-    
-    // Get the text between this timestamp and the next
-    const startIdx = match.index! + match[0].length;
-    const endIdx = i < matches.length - 1 ? matches[i + 1].index! : text.length;
-    const wordText = text.slice(startIdx, endIdx).trim();
-    
-    if (wordText) {
-      const nextMatch = matches[i + 1];
-      let endTime: number;
-      if (nextMatch) {
-        const nm = parseInt(nextMatch[1], 10);
-        const ns = parseInt(nextMatch[2], 10);
-        const nc = nextMatch[3] ? parseInt(nextMatch[3].padEnd(3, '0').slice(0, 3), 10) : 0;
-        endTime = nm * 60 + ns + nc / 1000;
-      } else {
-        endTime = startTime + 0.5; // default 500ms for last word
-      }
-      
-      words.push({ word: wordText, startTime, endTime });
-    }
+
+  if (matches.length < 1) return null;
+
+  const parseTagTime = (m: RegExpMatchArray): number => {
+    const minutes = parseInt(m[1], 10);
+    const seconds = parseInt(m[2], 10);
+    const centiseconds = m[3] ? parseInt(m[3].padEnd(3, '0').slice(0, 3), 10) : 0;
+    return minutes * 60 + seconds + centiseconds / 1000;
+  };
+
+  // Build token list. If text exists BEFORE the first timestamp, treat it as
+  // the first word starting at lineStartTime (this is the "missing first word"
+  // bug — many real-world eLRC files put the first word's text before the
+  // initial <tag>, e.g. "Hello<00:01.50> world<00:02.00>").
+  type Tok = { time: number; text: string };
+  const tokens: Tok[] = [];
+  const firstIdx = matches[0].index!;
+  if (firstIdx > 0) {
+    const leading = text.slice(0, firstIdx);
+    if (leading.trim()) tokens.push({ time: lineStartTime, text: leading });
   }
-  
-  return words.length > 0 ? words : null;
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const startTime = parseTagTime(m);
+    const startIdx = m.index! + m[0].length;
+    const endIdx = i < matches.length - 1 ? matches[i + 1].index! : text.length;
+    const wordText = text.slice(startIdx, endIdx);
+    if (wordText.trim()) tokens.push({ time: startTime, text: wordText });
+  }
+
+  if (tokens.length < 1) return null;
+
+  const words: { word: string; startTime: number; endTime: number }[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tk = tokens[i];
+    const next = tokens[i + 1];
+    const endTime = next ? next.time : tk.time + 0.5;
+    // Preserve original whitespace by trimming only at the edges of the join.
+    const cleaned = tk.text.replace(/^\s+|\s+$/g, '');
+    if (!cleaned) continue;
+    words.push({ word: cleaned, startTime: tk.time, endTime });
+  }
+
+  // Need at least 2 words for true word-level animation; otherwise fall back
+  // to the plain-line renderer so we don't fake karaoke on a single chunk.
+  return words.length >= 2 ? words : null;
 }
 
 /**

@@ -272,15 +272,15 @@ export function parseLrc(text: string): LyricLine[] {
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
-          // BG line: collapse to a single word so the renderer does NOT
-          // animate per-word karaoke fill on background lyrics. Start time
-          // is the first word's actual timestamp.
+          // BG line: collapse into a single, pre-filled word so the renderer
+          // does NOT animate karaoke fill on background lyrics. Setting
+          // endTime === startTime makes AMLL treat the word as "already
+          // 100% filled" the instant the line becomes active.
           const bgStart = bgWords[0].startTime;
-          const bgEnd = bgWords[bgWords.length - 1].endTime;
           const merged: LyricWord = {
             word: bgWords.map((w) => w.word).join(""),
             startTime: bgStart,
-            endTime: bgEnd,
+            endTime: bgStart, // zero-length = no fill animation
             obscene: false,
           };
           out.push({
@@ -324,12 +324,14 @@ export function parseLrc(text: string): LyricLine[] {
   const lines: LyricLine[] = out.map((l, i) => {
     const next = out[i + 1];
     const lineEnd = next ? next.start : l.start + 5000;
-    const words = l.words.map((w, idx) => {
-      const isLast = idx === l.words.length - 1;
-      return isLast
-        ? { ...w, endTime: Math.max(w.startTime + 200, Math.min(w.endTime, lineEnd)) }
-        : w;
-    });
+    const words = l.isBG
+      ? l.words // BG: leave word times untouched so karaoke fill stays disabled
+      : l.words.map((w, idx) => {
+          const isLast = idx === l.words.length - 1;
+          return isLast
+            ? { ...w, endTime: Math.max(w.startTime + 200, Math.min(w.endTime, lineEnd)) }
+            : w;
+        });
     return {
       words,
       translatedLyric: "",
@@ -357,15 +359,20 @@ export function getLyricsDuration(lines: LyricLine[]): number {
  */
 export function stripKaraoke(lines: LyricLine[]): LyricLine[] {
   return lines.map((l) => {
-    if (!l.words || l.words.length <= 1) return l;
+    if (!l.words || l.words.length <= 1) {
+      // Single-word lines (including pre-flattened BG lines) — leave as is.
+      return l;
+    }
     const text = l.words.map((w) => w.word).join("");
+    // For BG lines, set endTime === startTime so karaoke fill stays disabled.
+    const endTime = l.isBG ? l.startTime : l.endTime;
     return {
       ...l,
       words: [
         {
           word: text,
           startTime: l.startTime,
-          endTime: l.endTime,
+          endTime,
           obscene: false,
         },
       ],
