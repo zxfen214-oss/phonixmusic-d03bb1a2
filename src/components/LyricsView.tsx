@@ -1432,14 +1432,21 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
   // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
   // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const reduceMotion = useReduceMotion();
+  const karaokeFeatureEnabled = useKaraokeFeatureEnabled();
+
   const amllLines = useMemo(() => {
     if (!syncedLrcText) return [];
-    const base = parseLrcAmll(syncedLrcText);
-    if (karaokeWords.length > 0) {
-      return applyManualKaraoke(base, karaokeWords);
+    let base = parseLrcAmll(syncedLrcText);
+    if (karaokeFeatureEnabled && karaokeWords.length > 0) {
+      base = applyManualKaraoke(base, karaokeWords);
+    }
+    if (!karaokeFeatureEnabled) {
+      base = stripKaraoke(base);
     }
     return base;
-  }, [syncedLrcText, karaokeWords]);
+  }, [syncedLrcText, karaokeWords, karaokeFeatureEnabled]);
+
 
   // ── Auto translation (Lovable AI) ─────────────────────────────────────
   const TRANSLATE_LANG = "English";
