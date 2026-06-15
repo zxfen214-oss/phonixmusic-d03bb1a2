@@ -25,6 +25,15 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { getKaraokeLeadInMs, setKaraokeLeadInMs } from "@/hooks/useKaraokeLeadIn";
+import {
+  REDUCE_MOTION_KEY,
+  KARAOKE_FEATURE_KEY,
+  setLyricsPref,
+  getReduceMotion,
+  getKaraokeFeatureEnabled,
+} from "@/hooks/useLyricsPrefs";
+
+
 
 interface SettingsProps {
   embedded?: boolean;
@@ -48,6 +57,17 @@ export default function Settings({ embedded = false }: SettingsProps) {
   useEffect(() => {
     setKaraokeLeadInMs(karaokeLeadIn);
   }, [karaokeLeadIn]);
+
+  const [reduceMotion, setReduceMotion] = useState(() => getReduceMotion());
+  useEffect(() => {
+    setLyricsPref(REDUCE_MOTION_KEY, reduceMotion);
+  }, [reduceMotion]);
+
+  const [karaokeFeature, setKaraokeFeature] = useState(() => getKaraokeFeatureEnabled());
+  useEffect(() => {
+    setLyricsPref(KARAOKE_FEATURE_KEY, karaokeFeature);
+  }, [karaokeFeature]);
+
 
   const handleSignOut = async () => {
     await signOut();
@@ -179,6 +199,34 @@ export default function Settings({ embedded = false }: SettingsProps) {
                     id="lyrics-blur"
                     checked={lyricsBlurEnabled}
                     onCheckedChange={setLyricsBlurEnabled}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="reduce-motion">Reduce Motion</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Disable the AMLL lyrics renderer and use the simpler legacy lyrics animations
+                    </p>
+                  </div>
+                  <Switch
+                    id="reduce-motion"
+                    checked={reduceMotion}
+                    onCheckedChange={setReduceMotion}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="karaoke-feature">Karaoke</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Word-by-word karaoke highlighting. When off, eLRC / TTML and manual karaoke timings are stripped and rendered as plain LRC.
+                    </p>
+                  </div>
+                  <Switch
+                    id="karaoke-feature"
+                    checked={karaokeFeature}
+                    onCheckedChange={setKaraokeFeature}
                   />
                 </div>
 

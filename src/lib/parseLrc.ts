@@ -272,20 +272,27 @@ export function parseLrc(text: string): LyricLine[] {
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
-          // BG line must start at its first word's actual timestamp, not the
-          // main line's [mm:ss] — otherwise AMLL begins highlighting the BG
-          // karaoke fill from the main line's start, well before its words
-          // actually fire.
+          // BG line: collapse to a single word so the renderer does NOT
+          // animate per-word karaoke fill on background lyrics. Start time
+          // is the first word's actual timestamp.
           const bgStart = bgWords[0].startTime;
+          const bgEnd = bgWords[bgWords.length - 1].endTime;
+          const merged: LyricWord = {
+            word: bgWords.map((w) => w.word).join(""),
+            startTime: bgStart,
+            endTime: bgEnd,
+            obscene: false,
+          };
           out.push({
             start: bgStart,
-            words: bgWords,
-            plain: bgWords.map(w => w.word).join(""),
+            words: [merged],
+            plain: merged.word,
             isDuet: lineDuet,
             isBG: true,
           });
         }
       }
+
 
       // Companion (dual) line — same time, alternate alignment so AMLL renders side-by-side feel
       if (companionRaw) {
@@ -341,6 +348,31 @@ export function getLyricsDuration(lines: LyricLine[]): number {
   if (!lines.length) return 0;
   return lines[lines.length - 1].endTime + 1000;
 }
+
+/**
+ * Collapse per-word karaoke timing on each line into a single word that spans
+ * the whole line. Used when the "Karaoke" feature is disabled in Settings —
+ * effectively converts eLRC / TTML / manual-karaoke into plain LRC at render
+ * time without touching the source file.
+ */
+export function stripKaraoke(lines: LyricLine[]): LyricLine[] {
+  return lines.map((l) => {
+    if (!l.words || l.words.length <= 1) return l;
+    const text = l.words.map((w) => w.word).join("");
+    return {
+      ...l,
+      words: [
+        {
+          word: text,
+          startTime: l.startTime,
+          endTime: l.endTime,
+          obscene: false,
+        },
+      ],
+    };
+  });
+}
+
 
 /**
  * Inject manual karaoke word timings (PhonixMusic karaoke_data.words) into AMLL

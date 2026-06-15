@@ -32,7 +32,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
-import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { parseLrc as parseLrcAmll, applyManualKaraoke, stripKaraoke } from "@/lib/parseLrc";
+import { useReduceMotion, useKaraokeFeatureEnabled } from "@/hooks/useLyricsPrefs";
+
 import { LosslessBadge } from "@/components/LosslessBadge";
 import ApplePlayerControls from "@/components/ApplePlayerControls";
 import { LyricsMoreMenu } from "@/components/LyricsMoreMenu";
@@ -1430,14 +1432,21 @@ export function LyricsView({ onClose }: LyricsViewProps) {
   // AMLL lines (parsed from raw LRC text). Empty when no synced lyrics available.
   // Manual karaoke timings (PhonixMusic) are layered onto lines that lack
   // true eLRC word-level tags — so the AMLL renderer animates them too.
+  const reduceMotion = useReduceMotion();
+  const karaokeFeatureEnabled = useKaraokeFeatureEnabled();
+
   const amllLines = useMemo(() => {
     if (!syncedLrcText) return [];
-    const base = parseLrcAmll(syncedLrcText);
-    if (karaokeWords.length > 0) {
-      return applyManualKaraoke(base, karaokeWords);
+    let base = parseLrcAmll(syncedLrcText);
+    if (karaokeFeatureEnabled && karaokeWords.length > 0) {
+      base = applyManualKaraoke(base, karaokeWords);
+    }
+    if (!karaokeFeatureEnabled) {
+      base = stripKaraoke(base);
     }
     return base;
-  }, [syncedLrcText, karaokeWords]);
+  }, [syncedLrcText, karaokeWords, karaokeFeatureEnabled]);
+
 
   // ── Auto translation (Lovable AI) ─────────────────────────────────────
   const TRANSLATE_LANG = "English";
@@ -1558,8 +1567,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const lyricsContentProps = {
     visibleLyrics,
-    karaokeEnabled,
-    karaokeWords,
+    karaokeEnabled: karaokeEnabled && karaokeFeatureEnabled,
+    karaokeWords: karaokeFeatureEnabled ? karaokeWords : [],
     smoothTime,
     lyricsSpeed,
     bounceIntensity,
@@ -1567,6 +1576,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     defaultAlignment: parsedLyrics?.defaultAlignment,
     mobileCharLimit,
   };
+
+  const useAmll = !reduceMotion && amllLines.length > 0;
+
 
   return (
     <AnimatePresence>
@@ -1745,7 +1757,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   {/* Static lyrics toggle removed — static is auto-shown when
                       no synced LRC/eLRC is available. */}
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                    {amllLines.length > 0 ? (
+                    {useAmll ? (
                       <AMLLLyricsPlayer
                         lines={displayAmllLines}
                         currentTime={smoothTime * 1000}
@@ -1838,7 +1850,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
               className="relative flex-1 min-h-0"
               style={{ overflow: 'hidden' }}
             >
-              {amllLines.length > 0 ? (
+              {useAmll ? (
                 <AMLLLyricsPlayer
                   lines={displayAmllLines}
                   currentTime={smoothTime * 1000}
