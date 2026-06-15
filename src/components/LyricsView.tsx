@@ -843,9 +843,9 @@ function SecondaryTextLine({ text, isActive, isMobile }: { text: string; isActiv
 
 // ─── Lyrics content (shared between desktop & mobile) ───
 function LyricsContent({
-  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment, mobileCharLimit,
+  visibleLyrics, karaokeEnabled, karaokeWords, smoothTime, lyricsSpeed, bounceIntensity, isLoadingLyrics, isMobile, defaultAlignment, mobileCharLimit, karaokeFeatureEnabled,
 }: {
-  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right'; mobileCharLimit?: number;
+  visibleLyrics: VisibleLyricItem[]; karaokeEnabled: boolean; karaokeWords: KaraokeWord[]; smoothTime: number; lyricsSpeed: number; bounceIntensity: number; isLoadingLyrics: boolean; isMobile: boolean; defaultAlignment?: 'left' | 'right'; mobileCharLimit?: number; karaokeFeatureEnabled: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<string, HTMLDivElement>>(new Map());
