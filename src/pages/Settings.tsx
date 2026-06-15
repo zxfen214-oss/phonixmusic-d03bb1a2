@@ -71,7 +71,7 @@ export default function Settings({ embedded = false }: SettingsProps) {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/auth" });
+    navigate("/auth");
   };
 
   return (
@@ -83,7 +83,7 @@ export default function Settings({ embedded = false }: SettingsProps) {
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
             {!embedded && (
-              <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/" })}>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
@@ -122,7 +122,7 @@ export default function Settings({ embedded = false }: SettingsProps) {
                 {isAdmin && (
                   <Button 
                     variant="outline" 
-                    onClick={() => navigate({ to: "/admin" })}
+                    onClick={() => navigate("/admin")}
                     className="w-full gap-2"
                   >
                     <Shield className="h-4 w-4" />
