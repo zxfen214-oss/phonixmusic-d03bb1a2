@@ -1812,18 +1812,21 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                       no synced LRC/eLRC is available. */}
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
                     {useAmll ? (
-                      <AMLLLyricsPlayer
-                        lines={displayAmllLines}
-                        currentTime={smoothTime * 1000}
-                        isSeek={isSeekFlag}
-                        fontSize={45}
-                        enableBlur={false}
-                        onLineClick={amllSeek}
-                        posYSpringKeyframes={posYSpringKeyframes}
-                        swellScale={swellScale}
-                        swellSpeed={swellSpeed}
-                        className="h-full w-full"
-                      />
+                      <>
+                        <AMLLLyricsPlayer
+                          lines={displayAmllLines}
+                          currentTime={smoothTime * 1000}
+                          isSeek={isSeekFlag}
+                          fontSize={45}
+                          enableBlur={false}
+                          onLineClick={amllSeek}
+                          posYSpringKeyframes={posYSpringKeyframes}
+                          swellScale={swellScale}
+                          swellSpeed={swellSpeed}
+                          className="h-full w-full"
+                        />
+                        <AmllIntroOverlay lines={displayAmllLines} smoothTime={smoothTime} isMobile={false} />
+                      </>
                     ) : staticLyricsText.trim() ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
                     ) : (
