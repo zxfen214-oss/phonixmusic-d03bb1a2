@@ -1757,7 +1757,7 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                   {/* Static lyrics toggle removed — static is auto-shown when
                       no synced LRC/eLRC is available. */}
                   <div ref={lyricsContainerRef} className="relative min-h-0 flex-1">
-                    {amllLines.length > 0 ? (
+                    {useAmll ? (
                       <AMLLLyricsPlayer
                         lines={displayAmllLines}
                         currentTime={smoothTime * 1000}
