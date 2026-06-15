@@ -1567,8 +1567,8 @@ export function LyricsView({ onClose }: LyricsViewProps) {
 
   const lyricsContentProps = {
     visibleLyrics,
-    karaokeEnabled,
-    karaokeWords,
+    karaokeEnabled: karaokeEnabled && karaokeFeatureEnabled,
+    karaokeWords: karaokeFeatureEnabled ? karaokeWords : [],
     smoothTime,
     lyricsSpeed,
     bounceIntensity,
@@ -1576,6 +1576,9 @@ export function LyricsView({ onClose }: LyricsViewProps) {
     defaultAlignment: parsedLyrics?.defaultAlignment,
     mobileCharLimit,
   };
+
+  const useAmll = !reduceMotion && amllLines.length > 0;
+
 
   return (
     <AnimatePresence>
