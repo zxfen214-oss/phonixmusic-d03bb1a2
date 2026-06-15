@@ -25,6 +25,16 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { getKaraokeLeadInMs, setKaraokeLeadInMs } from "@/hooks/useKaraokeLeadIn";
+import {
+  REDUCE_MOTION_KEY,
+  KARAOKE_FEATURE_KEY,
+  setLyricsPref,
+  getReduceMotion,
+  getKaraokeFeatureEnabled,
+} from "@/hooks/useLyricsPrefs";
+
+import { Slider } from "@/components/ui/slider";
+import { getKaraokeLeadInMs, setKaraokeLeadInMs } from "@/hooks/useKaraokeLeadIn";
 
 interface SettingsProps {
   embedded?: boolean;
