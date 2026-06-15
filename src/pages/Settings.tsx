@@ -33,8 +33,7 @@ import {
   getKaraokeFeatureEnabled,
 } from "@/hooks/useLyricsPrefs";
 
-import { Slider } from "@/components/ui/slider";
-import { getKaraokeLeadInMs, setKaraokeLeadInMs } from "@/hooks/useKaraokeLeadIn";
+
 
 interface SettingsProps {
   embedded?: boolean;
