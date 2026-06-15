@@ -350,6 +350,31 @@ export function getLyricsDuration(lines: LyricLine[]): number {
 }
 
 /**
+ * Collapse per-word karaoke timing on each line into a single word that spans
+ * the whole line. Used when the "Karaoke" feature is disabled in Settings —
+ * effectively converts eLRC / TTML / manual-karaoke into plain LRC at render
+ * time without touching the source file.
+ */
+export function stripKaraoke(lines: LyricLine[]): LyricLine[] {
+  return lines.map((l) => {
+    if (!l.words || l.words.length <= 1) return l;
+    const text = l.words.map((w) => w.word).join("");
+    return {
+      ...l,
+      words: [
+        {
+          word: text,
+          startTime: l.startTime,
+          endTime: l.endTime,
+          obscene: false,
+        },
+      ],
+    };
+  });
+}
+
+
+/**
  * Inject manual karaoke word timings (PhonixMusic karaoke_data.words) into AMLL
  * lines that don't already carry true eLRC word-level timing.
  *
