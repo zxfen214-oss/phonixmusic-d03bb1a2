@@ -272,20 +272,27 @@ export function parseLrc(text: string): LyricLine[] {
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
-          // BG line must start at its first word's actual timestamp, not the
-          // main line's [mm:ss] — otherwise AMLL begins highlighting the BG
-          // karaoke fill from the main line's start, well before its words
-          // actually fire.
+          // BG line: collapse to a single word so the renderer does NOT
+          // animate per-word karaoke fill on background lyrics. Start time
+          // is the first word's actual timestamp.
           const bgStart = bgWords[0].startTime;
+          const bgEnd = bgWords[bgWords.length - 1].endTime;
+          const merged: LyricWord = {
+            word: bgWords.map((w) => w.word).join(""),
+            startTime: bgStart,
+            endTime: bgEnd,
+            obscene: false,
+          };
           out.push({
             start: bgStart,
-            words: bgWords,
-            plain: bgWords.map(w => w.word).join(""),
+            words: [merged],
+            plain: merged.word,
             isDuet: lineDuet,
             isBG: true,
           });
         }
       }
+
 
       // Companion (dual) line — same time, alternate alignment so AMLL renders side-by-side feel
       if (companionRaw) {
