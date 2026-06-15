@@ -272,15 +272,15 @@ export function parseLrc(text: string): LyricLine[] {
       if (bg) {
         const bgWords = buildWordsFromText(bg, start, offset);
         if (bgWords.length) {
-          // BG line: collapse to a single word so the renderer does NOT
-          // animate per-word karaoke fill on background lyrics. Start time
-          // is the first word's actual timestamp.
+          // BG line: collapse into a single, pre-filled word so the renderer
+          // does NOT animate karaoke fill on background lyrics. Setting
+          // endTime === startTime makes AMLL treat the word as "already
+          // 100% filled" the instant the line becomes active.
           const bgStart = bgWords[0].startTime;
-          const bgEnd = bgWords[bgWords.length - 1].endTime;
           const merged: LyricWord = {
             word: bgWords.map((w) => w.word).join(""),
             startTime: bgStart,
-            endTime: bgEnd,
+            endTime: bgStart, // zero-length = no fill animation
             obscene: false,
           };
           out.push({
