@@ -32,7 +32,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AddToPlaylistDialog } from "@/components/AddToPlaylistDialog";
 import AMLLLyricsPlayer from "@/components/AMLLLyricsPlayer";
 import LyricsBackground from "@/components/LyricsBackground";
-import { parseLrc as parseLrcAmll, applyManualKaraoke } from "@/lib/parseLrc";
+import { parseLrc as parseLrcAmll, applyManualKaraoke, stripKaraoke } from "@/lib/parseLrc";
+import { useReduceMotion, useKaraokeFeatureEnabled } from "@/hooks/useLyricsPrefs";
+
 import { LosslessBadge } from "@/components/LosslessBadge";
 import ApplePlayerControls from "@/components/ApplePlayerControls";
 import { LyricsMoreMenu } from "@/components/LyricsMoreMenu";
