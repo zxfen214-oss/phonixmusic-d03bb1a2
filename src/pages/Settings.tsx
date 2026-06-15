@@ -202,6 +202,34 @@ export default function Settings({ embedded = false }: SettingsProps) {
                   />
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="reduce-motion">Reduce Motion</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Disable the AMLL lyrics renderer and use the simpler legacy lyrics animations
+                    </p>
+                  </div>
+                  <Switch
+                    id="reduce-motion"
+                    checked={reduceMotion}
+                    onCheckedChange={setReduceMotion}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="karaoke-feature">Karaoke</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Word-by-word karaoke highlighting. When off, eLRC / TTML and manual karaoke timings are stripped and rendered as plain LRC.
+                    </p>
+                  </div>
+                  <Switch
+                    id="karaoke-feature"
+                    checked={karaokeFeature}
+                    onCheckedChange={setKaraokeFeature}
+                  />
+                </div>
+
                 {isAdmin && (
                   <div className="pt-4 border-t border-border space-y-3">
                     <div className="flex items-start justify-between gap-4">
