@@ -292,6 +292,59 @@ function MusicIndicator({ currentTime, startTime, endTime }: { currentTime: numb
   return <IntroCircles currentTime={currentTime} startTime={startTime} endTime={endTime} />;
 }
 
+// ─── Overlay: shows 3 breathing circles before the first AMLL line starts
+// AND during long instrumental gaps between AMLL lines (>= 4s).
+// Sits absolutely above the AMLL renderer; non-interactive.
+function AmllIntroOverlay({
+  lines,
+  smoothTime,
+  isMobile,
+}: {
+  lines: { startTime: number; endTime: number; isBG?: boolean }[];
+  smoothTime: number;
+  isMobile: boolean;
+}) {
+  const gap = useMemo(() => {
+    if (!lines.length) return null;
+    const tMs = smoothTime * 1000;
+    // Only consider non-BG lines for gap detection.
+    const mains = lines.filter((l) => !l.isBG);
+    if (!mains.length) return null;
+    // Before the first line
+    const first = mains[0];
+    if (tMs < first.startTime) {
+      return { start: Math.max(0, first.startTime - 4000), end: first.startTime };
+    }
+    // Between lines
+    for (let i = 0; i < mains.length - 1; i++) {
+      const cur = mains[i];
+      const nxt = mains[i + 1];
+      if (tMs >= cur.endTime && tMs < nxt.startTime) {
+        const gapSize = nxt.startTime - cur.endTime;
+        if (gapSize >= 4000) {
+          return { start: cur.endTime, end: nxt.startTime };
+        }
+      }
+    }
+    return null;
+  }, [lines, smoothTime]);
+
+  if (!gap) return null;
+  return (
+    <div
+      className="absolute inset-x-0 pointer-events-none flex justify-center z-10"
+      style={{ top: isMobile ? '10%' : '15%' }}
+    >
+      <IntroCircles
+        currentTime={smoothTime}
+        startTime={gap.start / 1000}
+        endTime={gap.end / 1000}
+      />
+    </div>
+  );
+}
+
+
 // ─── Helper: compute line-break indices for mobile (break after ~9 chars at word boundaries) ───
 function getMobileBreakIndices(words: { word: string }[], charLimit: number = 13): Set<number> {
   const breakAfter = new Set<number>();
