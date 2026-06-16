@@ -43,6 +43,7 @@ export function YouTubeView() {
   
   const { currentTrack, isPlaying, playTrack, pauseTrack, resumeTrack } = usePlayer();
   const { addTrack, tracks } = useLibrary();
+  const conEnabled = useConSongsEnabled();
   const { isAdmin } = useAuth();
   const { toast } = useToast();
 
