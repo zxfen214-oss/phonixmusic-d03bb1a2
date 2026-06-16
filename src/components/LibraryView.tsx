@@ -105,8 +105,10 @@ export function LibraryView() {
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
+  const conEnabled = useConSongsEnabled();
+
   const filteredAndSortedTracks = useMemo(() => {
-    let filtered = [...tracks];
+    let filtered = filterConTracks([...tracks], conEnabled);
 
     if (filterBy === "local") {
       filtered = filtered.filter(t => t.source === "local");
@@ -141,7 +143,7 @@ export function LibraryView() {
     }
 
     return filtered;
-  }, [tracks, searchQuery, sortBy, filterBy]);
+  }, [tracks, searchQuery, sortBy, filterBy, conEnabled]);
 
   const popularTracksList = useMemo(() => {
     return popularTracks.map(convertPopularToTrack);
