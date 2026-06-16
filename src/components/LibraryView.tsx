@@ -9,6 +9,7 @@ import { Search, SlidersHorizontal, Music, Play, TrendingUp, MoreHorizontal, Shi
 import { cn } from "@/lib/utils";
 import { popularTracks, convertPopularToTrack } from "@/data/popularTracks";
 import { Track } from "@/types/music";
+import { useConSongsEnabled, filterConTracks } from "@/hooks/useConSongs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DropdownMenu,
