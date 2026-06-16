@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { searchYouTube } from "@/lib/youtube";
 import { Search, Play, Plus, Youtube, Loader2, AlertCircle, MoreHorizontal, Shield, MessageSquare, ListPlus, Check } from "lucide-react";
 import { Track } from "@/types/music";
+import { useConSongsEnabled, filterConTracks } from "@/hooks/useConSongs";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { useLibrary } from "@/contexts/LibraryContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -293,8 +294,9 @@ export function YouTubeView() {
               </p>
 
               {(() => {
-                const featured = results.filter(t => t.isEdited);
-                const others = results.filter(t => !t.isEdited);
+                const visibleResults = filterConTracks(results, conEnabled);
+                const featured = visibleResults.filter(t => t.isEdited);
+                const others = visibleResults.filter(t => !t.isEdited);
                 return (
                   <>
                     {featured.length > 0 && (
