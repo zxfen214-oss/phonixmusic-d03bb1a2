@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, ALL_THEMES, type Theme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,6 @@ import { OfflineDownloadsSection } from "@/components/OfflineDownloadsSection";
 import { OfflineLibraryDownloadCard } from "@/components/OfflineLibraryDownloadCard";
 import { 
   ArrowLeft, 
-  Sun, 
-  Moon,
   User,
   Shield,
   LogOut,
@@ -18,7 +16,9 @@ import {
   Volume2,
   Bell,
   Info,
-  Eye
+  Eye,
+  Check,
+  ListFilter
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -32,6 +32,7 @@ import {
   getReduceMotion,
   getKaraokeFeatureEnabled,
 } from "@/hooks/useLyricsPrefs";
+import { getConSongsEnabled, setConSongsEnabled } from "@/hooks/useConSongs";
 
 
 
@@ -41,7 +42,7 @@ interface SettingsProps {
 
 export default function Settings({ embedded = false }: SettingsProps) {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user, isAdmin, signOut } = useAuth();
 
   const [lyricsBlurEnabled, setLyricsBlurEnabled] = useState(() => {
@@ -68,6 +69,11 @@ export default function Settings({ embedded = false }: SettingsProps) {
     setLyricsPref(KARAOKE_FEATURE_KEY, karaokeFeature);
   }, [karaokeFeature]);
 
+  const [conEnabled, setConEnabledState] = useState(() => getConSongsEnabled());
+  useEffect(() => {
+    setConSongsEnabled(conEnabled);
+  }, [conEnabled]);
+
 
   const handleSignOut = async () => {
     await signOut();
@@ -82,11 +88,9 @@ export default function Settings({ embedded = false }: SettingsProps) {
       )}>
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
-            {!embedded && (
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => (embedded ? navigate("/") : navigate(-1))}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
               <p className="text-muted-foreground text-sm md:text-base">Customize your experience</p>
@@ -153,25 +157,33 @@ export default function Settings({ embedded = false }: SettingsProps) {
                 Appearance
               </h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {theme === "dark" ? (
-                      <Moon className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Sun className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <Label htmlFor="dark-mode">Dark Mode</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {theme === "dark" ? "Currently using dark theme" : "Currently using light theme"}
-                      </p>
-                    </div>
+                <div>
+                  <Label className="mb-3 block">Theme</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {ALL_THEMES.map((t) => {
+                      const active = theme === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTheme(t.id as Theme)}
+                          className={cn(
+                            "relative flex flex-col items-center gap-2 rounded-lg border p-3 transition-colors",
+                            active ? "border-accent bg-accent/10" : "border-border hover:bg-muted/50"
+                          )}
+                        >
+                          <span
+                            className="block w-full h-10 rounded-md border border-border/50"
+                            style={{ background: t.swatch }}
+                          />
+                          <span className="text-xs font-medium">{t.label}</span>
+                          {active && (
+                            <Check className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-accent" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Switch
-                    id="dark-mode"
-                    checked={theme === "dark"}
-                    onCheckedChange={toggleTheme}
-                  />
                 </div>
               </div>
             </motion.div>
@@ -260,6 +272,36 @@ export default function Settings({ embedded = false }: SettingsProps) {
               </div>
             </motion.div>
           </StaggerItem>
+
+          {/* Content Section */}
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="p-6 rounded-xl border border-border bg-card"
+            >
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ListFilter className="h-5 w-5 text-accent" />
+                Content
+              </h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label htmlFor="con-songs">CON Songs</Label>
+                    <p className="text-sm text-muted-foreground">
+                      When off, songs marked under the CON category by admins are hidden from
+                      search, home, library and playlists.
+                    </p>
+                  </div>
+                  <Switch
+                    id="con-songs"
+                    checked={conEnabled}
+                    onCheckedChange={setConEnabledState}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </StaggerItem>
+
 
           {/* Playback Section */}
           <StaggerItem>

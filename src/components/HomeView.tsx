@@ -11,6 +11,7 @@ import { getAllCachedInfo, CacheInfo, formatBytes, getTotalCacheSize } from "@/l
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { toast } from "sonner";
 import { useDominantColors } from "@/hooks/useDominantColor";
+import { useConSongsEnabled, filterConTracks } from "@/hooks/useConSongs";
 
 const TRIAL_DISMISSED_KEY = "phonix_trial_dismissed";
 const PLAY_COUNT_KEY = "phonix_play_counts";
@@ -381,15 +382,17 @@ export function HomeView() {
     fetchSongs();
   }, []);
 
+  const conEnabled = useConSongsEnabled();
   const tracks = useMemo(() => {
     const seen = new Set<string>();
-    return songs.filter(s => {
+    const all = songs.filter(s => {
       const key = s.youtube_id || s.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     }).map(songToTrack);
-  }, [songs]);
+    return filterConTracks(all, conEnabled);
+  }, [songs, conEnabled]);
 
   // Determine the top most-listened song
   const topTrack = useMemo(() => {

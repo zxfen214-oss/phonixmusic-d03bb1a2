@@ -9,6 +9,7 @@ import { Search, SlidersHorizontal, Music, Play, TrendingUp, MoreHorizontal, Shi
 import { cn } from "@/lib/utils";
 import { popularTracks, convertPopularToTrack } from "@/data/popularTracks";
 import { Track } from "@/types/music";
+import { useConSongsEnabled, filterConTracks } from "@/hooks/useConSongs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DropdownMenu,
@@ -105,8 +106,10 @@ export function LibraryView() {
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
+  const conEnabled = useConSongsEnabled();
+
   const filteredAndSortedTracks = useMemo(() => {
-    let filtered = [...tracks];
+    let filtered = filterConTracks([...tracks], conEnabled);
 
     if (filterBy === "local") {
       filtered = filtered.filter(t => t.source === "local");
@@ -141,7 +144,7 @@ export function LibraryView() {
     }
 
     return filtered;
-  }, [tracks, searchQuery, sortBy, filterBy]);
+  }, [tracks, searchQuery, sortBy, filterBy, conEnabled]);
 
   const popularTracksList = useMemo(() => {
     return popularTracks.map(convertPopularToTrack);
