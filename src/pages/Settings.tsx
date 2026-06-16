@@ -83,11 +83,9 @@ export default function Settings({ embedded = false }: SettingsProps) {
       )}>
         <FadeIn>
           <div className="flex items-center gap-4 mb-8">
-            {!embedded && (
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => (embedded ? navigate("/") : navigate(-1))}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
               <p className="text-muted-foreground text-sm md:text-base">Customize your experience</p>
@@ -154,25 +152,33 @@ export default function Settings({ embedded = false }: SettingsProps) {
                 Appearance
               </h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {theme === "dark" ? (
-                      <Moon className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Sun className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <Label htmlFor="dark-mode">Dark Mode</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {theme === "dark" ? "Currently using dark theme" : "Currently using light theme"}
-                      </p>
-                    </div>
+                <div>
+                  <Label className="mb-3 block">Theme</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {ALL_THEMES.map((t) => {
+                      const active = theme === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTheme(t.id as Theme)}
+                          className={cn(
+                            "relative flex flex-col items-center gap-2 rounded-lg border p-3 transition-colors",
+                            active ? "border-accent bg-accent/10" : "border-border hover:bg-muted/50"
+                          )}
+                        >
+                          <span
+                            className="block w-full h-10 rounded-md border border-border/50"
+                            style={{ background: t.swatch }}
+                          />
+                          <span className="text-xs font-medium">{t.label}</span>
+                          {active && (
+                            <Check className="absolute top-1.5 right-1.5 h-3.5 w-3.5 text-accent" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Switch
-                    id="dark-mode"
-                    checked={theme === "dark"}
-                    onCheckedChange={toggleTheme}
-                  />
                 </div>
               </div>
             </motion.div>
