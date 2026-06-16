@@ -69,6 +69,11 @@ export default function Settings({ embedded = false }: SettingsProps) {
     setLyricsPref(KARAOKE_FEATURE_KEY, karaokeFeature);
   }, [karaokeFeature]);
 
+  const [conEnabled, setConEnabledState] = useState(() => getConSongsEnabled());
+  useEffect(() => {
+    setConSongsEnabled(conEnabled);
+  }, [conEnabled]);
+
 
   const handleSignOut = async () => {
     await signOut();
@@ -267,6 +272,36 @@ export default function Settings({ embedded = false }: SettingsProps) {
               </div>
             </motion.div>
           </StaggerItem>
+
+          {/* Content Section */}
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              className="p-6 rounded-xl border border-border bg-card"
+            >
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ListFilter className="h-5 w-5 text-accent" />
+                Content
+              </h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label htmlFor="con-songs">CON Songs</Label>
+                    <p className="text-sm text-muted-foreground">
+                      When off, songs marked under the CON category by admins are hidden from
+                      search, home, library and playlists.
+                    </p>
+                  </div>
+                  <Switch
+                    id="con-songs"
+                    checked={conEnabled}
+                    onCheckedChange={setConEnabledState}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </StaggerItem>
+
 
           {/* Playback Section */}
           <StaggerItem>
