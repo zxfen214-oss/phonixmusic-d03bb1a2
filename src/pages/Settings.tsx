@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, ALL_THEMES, type Theme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageTransition, FadeIn, StaggerContainer, StaggerItem } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,6 @@ import { OfflineDownloadsSection } from "@/components/OfflineDownloadsSection";
 import { OfflineLibraryDownloadCard } from "@/components/OfflineLibraryDownloadCard";
 import { 
   ArrowLeft, 
-  Sun, 
-  Moon,
   User,
   Shield,
   LogOut,
@@ -18,7 +16,9 @@ import {
   Volume2,
   Bell,
   Info,
-  Eye
+  Eye,
+  Check,
+  ListFilter
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -32,6 +32,7 @@ import {
   getReduceMotion,
   getKaraokeFeatureEnabled,
 } from "@/hooks/useLyricsPrefs";
+import { getConSongsEnabled, setConSongsEnabled } from "@/hooks/useConSongs";
 
 
 
@@ -41,7 +42,7 @@ interface SettingsProps {
 
 export default function Settings({ embedded = false }: SettingsProps) {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user, isAdmin, signOut } = useAuth();
 
   const [lyricsBlurEnabled, setLyricsBlurEnabled] = useState(() => {
