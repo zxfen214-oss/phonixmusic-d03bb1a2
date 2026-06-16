@@ -194,7 +194,7 @@ export default function ApplePlayerControls({
           className="p-1 active:scale-90 transition-transform"
           aria-label="Previous"
         >
-          <img src={iconPrev} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
+          <img src={iconPrev} alt="" className={compact ? "h-9 w-9 brightness-0 invert" : "h-11 w-11 brightness-0 invert"} />
         </button>
         <motion.button
           whileTap={{ scale: 0.92 }}
@@ -213,7 +213,7 @@ export default function ApplePlayerControls({
           className="p-1 active:scale-90 transition-transform"
           aria-label="Next"
         >
-          <img src={iconNext} alt="" className={compact ? "h-7 w-7 brightness-0 invert" : "h-9 w-9 brightness-0 invert"} />
+          <img src={iconNext} alt="" className={compact ? "h-9 w-9 brightness-0 invert" : "h-11 w-11 brightness-0 invert"} />
         </button>
       </div>
 

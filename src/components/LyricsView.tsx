@@ -1825,7 +1825,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                           swellSpeed={swellSpeed}
                           className="h-full w-full"
                         />
-                        <AmllIntroOverlay lines={displayAmllLines} smoothTime={smoothTime} isMobile={false} />
                       </>
                     ) : staticLyricsText.trim() ? (
                       <StaticLyricsContent text={staticLyricsText} isMobile={false} />
@@ -1922,7 +1921,6 @@ export function LyricsView({ onClose }: LyricsViewProps) {
                     swellSpeed={swellSpeed}
                     className="h-full w-full"
                   />
-                  <AmllIntroOverlay lines={displayAmllLines} smoothTime={smoothTime} isMobile />
                 </>
               ) : staticLyricsText.trim() ? (
                 <StaticLyricsContent text={staticLyricsText} isMobile />
